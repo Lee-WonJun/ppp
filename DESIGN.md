@@ -233,6 +233,13 @@ token, or identifier into the conversation. Generated forms use normal browser
 password inputs and may provide product-specific recovery guidance only when a
 real configured recovery capability exists.
 
+When a generated product interaction fails, the user can describe the outcome
+in the same composer. The host may privately attach bounded evidence from the
+active product view so the assistant can diagnose it without asking the user
+to copy a console. The visible conversation still contains only product
+language: no diagnostic stream, browser extension noise, network trace, stack,
+or internal tool name appears.
+
 ## Progress behavior
 
 Progress is a single current line, not a growing event log.
@@ -323,6 +330,8 @@ The generated canvas owns its own responsive behavior and must pass hidden stagi
 - no Codex OAuth/model readiness.
 - generated-product signed out, signup, login failure, signed in after reload,
   protected action, logout, and post-restore signed out.
+- generated-product action failure followed by a conversational repair that
+  can use the active view's bounded evidence without exposing it in the UI.
 - generated-product upload pending/success/failure, empty/search-results,
   delayed-work pending/completed/failed, live update in another tab, and public
   ingress success/rate-limited/verification-failed outcomes when those features

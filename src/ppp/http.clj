@@ -361,7 +361,8 @@
     (= :auth/identifier-taken code) 409
     (contains? #{:runtime/requester-not-connected
                  :provider/unavailable :provider/oauth-not-ready} code) 503
-    (contains? #{:turn/prompt-invalid :protocol/tab-id-invalid
+    (contains? #{:turn/prompt-invalid :turn/client-diagnostics-invalid
+                 :protocol/tab-id-invalid
                  :protocol/request-id-invalid :session/invalid-id
                  :session/title-invalid
                  :checkpoint/version-invalid :auth/identifier-invalid
@@ -388,6 +389,9 @@
 
     (= :runtime/action-not-found code)
     "That product action is not available in the current version."
+
+    (= :turn/client-diagnostics-invalid code)
+    "The product evidence could not be accepted. Try the request again."
 
     (= :checkpoint/not-found code)
     "That checkpoint does not exist."
@@ -455,6 +459,15 @@
                                           (:request-tab-id body))
                       :base-version (or (:baseVersion body)
                                         (:base-version body))
+                      :client-diagnostics
+                      (cond
+                        (contains? body :clientDiagnostics)
+                        (:clientDiagnostics body)
+
+                        (contains? body :client-diagnostics)
+                        (:client-diagnostics body)
+
+                        :else nil)
                       :request-id (request-id request)})]
          (json-response 202 result))
        (catch clojure.lang.ExceptionInfo cause

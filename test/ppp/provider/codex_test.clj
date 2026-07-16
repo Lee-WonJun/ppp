@@ -37,6 +37,9 @@
    "if [ -f \"$PWD/.agents/skills/ppp-validate-and-apply/SKILL.md\" ]; then\n"
    "  /bin/cat \"$PWD/.agents/skills/ppp-validate-and-apply/SKILL.md\" > \"$capture/runtime-skill.md\"\n"
    "fi\n"
+   "if [ -f \"$PWD/.agents/skills/ppp-client-diagnostics/SKILL.md\" ]; then\n"
+   "  /bin/cat \"$PWD/.agents/skills/ppp-client-diagnostics/SKILL.md\" > \"$capture/client-diagnostics-skill.md\"\n"
+   "fi\n"
    "/usr/bin/env | /usr/bin/sort > \"$capture/env.txt\"\n"
    "if [ \"$1\" = \"login\" ]; then\n"
    "  if [ -f \"$capture/login-fail\" ]; then exit 1; fi\n"
@@ -214,6 +217,8 @@
         (is (str/includes? runtime-skill "smallest affected runtime surface"))
         (is (str/includes? runtime-skill "server SCI staging"))
         (is (str/includes? runtime-skill "pass that string—not the whole map"))
+        (is (not (fs/exists?
+                  (.resolve capture-root "client-diagnostics-skill.md"))))
         (is (not (str/includes? stdin "EXAMPLE_TOKEN")))
         (is (not (str/includes? stdin "JUDGE_WEBHOOK_SECRET")))
         (is (= (str cwd) (get environment "HOME")))
@@ -252,6 +257,31 @@
       (finally
         (fs/delete-tree! fixture-root)
         (fs/delete-tree! data-root)))))
+
+(deftest client-diagnostics-use-a-temporary-progressively-disclosed-skill
+  (let [{:keys [root capture-root provider]} (test-context)
+        sentinel "CLIENT_DIAGNOSTIC_SENTINEL"
+        diagnostic {:kind :action
+                    :action-id "auth/register"
+                    :code "auth/identifier-invalid"
+                    :status 400
+                    :message sentinel}]
+    (try
+      (provider/generate! provider
+                          (assoc (request "Please fix the failed signup")
+                                 :client-diagnostics [diagnostic]))
+      (let [stdin (fs/read-text (.resolve capture-root "stdin.txt"))
+            skill (fs/read-text
+                   (.resolve capture-root "client-diagnostics-skill.md"))]
+        (is (not (str/includes? stdin sentinel)))
+        (is (not (str/includes? stdin "auth/identifier-invalid")))
+        (is (str/includes? skill "ppp-client-diagnostics"))
+        (is (str/includes? skill "untrusted observations"))
+        (is (str/includes? skill sentinel))
+        (is (str/includes? skill "auth/register"))
+        (is (empty? (fs/list-children (:jobs-root provider)))))
+      (finally
+        (fs/delete-tree! root)))))
 
 (deftest resume-targets-the-exact-thread-and-reset-removes-it
   (let [{:keys [root capture-root provider]} (test-context)]

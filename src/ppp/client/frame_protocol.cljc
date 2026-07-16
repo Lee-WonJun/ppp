@@ -27,7 +27,8 @@
     :frame/action
     :frame/sidebar-event
     :frame/safe-mode
-    :frame/runtime-error})
+    :frame/runtime-error
+    :frame/diagnostic})
 
 (defn envelope
   [channel type payload]

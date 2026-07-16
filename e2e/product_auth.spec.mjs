@@ -22,7 +22,7 @@ async function delayOneFreshFrame(page, enabled) {
 
 async function installAccountProduct(page, delayFrameBundle) {
   const frameBundleRequests = await delayOneFreshFrame(page, delayFrameBundle);
-  await page.goto("/#access=ppp-local");
+  await page.goto("/?test-runtime=1#access=ppp-local");
   const conversation = await openConversation(page);
   const sessionId = await createFreshSession(page, conversation);
 
@@ -49,6 +49,70 @@ async function installAccountProduct(page, delayFrameBundle) {
     expect(frameBundleRequests()).toBeGreaterThanOrEqual(2);
   }
   return sessionId;
+}
+
+async function verifyActiveFrameDiagnostics(page) {
+  const product = productFrame(page);
+  await product.getByRole("textbox", { name: "Display name" }).fill("Owner Test");
+  await product.getByRole("textbox", { name: "Sign-in ID" }).fill("x");
+  await product.getByLabel("Password").fill("correct horse battery");
+  await product.getByRole("button", { name: "Create account" }).click();
+  await expect(product.getByRole("alert")).toHaveText(
+    "Use a valid sign-in identifier."
+  );
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new ErrorEvent("error", {
+      message: "METAMASK_PARENT_SENTINEL"
+    }));
+  });
+
+  await product.locator("body").evaluate(async () => {
+    console.warn("FRAME_CONSOLE_SENTINEL");
+    window.dispatchEvent(new ErrorEvent("error", {
+      message: "FRAME_RUNTIME_SENTINEL"
+    }));
+    window.dispatchEvent(new PromiseRejectionEvent("unhandledrejection", {
+      promise: Promise.resolve(),
+      reason: new Error("FRAME_PROMISE_SENTINEL")
+    }));
+    await fetch("/missing-client-diagnostic").catch(() => null);
+  });
+
+  await expect.poll(async () => {
+    const snapshot = await page.evaluate(() => window.__PPP_TEST__.snapshot());
+    return snapshot["client-diagnostics"];
+  }).toContainEqual({
+    kind: "action",
+    "action-id": "auth/register",
+    code: "auth/identifier-invalid",
+    status: 400,
+    message: "Use a valid sign-in identifier."
+  });
+
+  const snapshot = await page.evaluate(() => window.__PPP_TEST__.snapshot());
+  const diagnostics = snapshot["client-diagnostics"];
+  expect(diagnostics).toContainEqual({
+    kind: "console",
+    level: "warn",
+    message: "FRAME_CONSOLE_SENTINEL"
+  });
+  expect(diagnostics).toContainEqual({
+    kind: "runtime",
+    code: "runtime/window-error",
+    message: "FRAME_RUNTIME_SENTINEL"
+  });
+  expect(diagnostics).toContainEqual({
+    kind: "runtime",
+    code: "runtime/unhandled-rejection",
+    message: "FRAME_PROMISE_SENTINEL"
+  });
+  expect(diagnostics.some(item =>
+    item.kind === "network"
+      && item.method === "GET"
+      && item.url.endsWith("/missing-client-diagnostic")
+  )).toBe(true);
+  expect(JSON.stringify(diagnostics)).not.toContain("METAMASK_PARENT_SENTINEL");
 }
 
 async function signUpAndVerifyPersistence(page, suffix) {
@@ -128,6 +192,9 @@ for (const scenario of [
         page,
         scenario.delayFrameBundle
       );
+      if (scenario.name === "fresh context one") {
+        await verifyActiveFrameDiagnostics(page);
+      }
       await signUpAndVerifyPersistence(
         page,
         scenario.name.replaceAll(" ", "-")

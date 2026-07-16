@@ -4,6 +4,7 @@
             [ppp.client.frame-host :as frame]
             [ppp.client.progress :as work-progress]
             [ppp.client.transport :as transport]
+            [ppp.shared.protocol :as protocol]
             [reagent.core :as r]
             [reagent.dom.client :as rdom]))
 
@@ -14,6 +15,7 @@
 (defonce keyboard-installed? (atom false))
 (defonce frame-sync-installed? (atom false))
 (defonce last-runtime-error (atom nil))
+(defonce client-diagnostics (atom []))
 
 (def initial-app-state
   {:phase :loading
@@ -53,6 +55,22 @@
               :progress (:label copy)
               :progress-detail (:detail copy)))
      (swap! app-state assoc :progress nil :progress-detail nil))))
+
+(defn- record-client-diagnostic!
+  [value]
+  (swap! client-diagnostics protocol/append-client-diagnostic value)
+  nil)
+
+(defn- diagnostic-wire-value
+  [diagnostic]
+  (cond-> {:kind (name (:kind diagnostic))}
+    (:action-id diagnostic) (assoc :actionId (:action-id diagnostic))
+    (:code diagnostic) (assoc :code (:code diagnostic))
+    (:status diagnostic) (assoc :status (:status diagnostic))
+    (:level diagnostic) (assoc :level (name (:level diagnostic)))
+    (:method diagnostic) (assoc :method (:method diagnostic))
+    (:url diagnostic) (assoc :url (:url diagnostic))
+    (:message diagnostic) (assoc :message (:message diagnostic))))
 
 (declare begin-create-project!
          create-session!
@@ -196,7 +214,8 @@
   []
   (let [draft (str/trim (:draft @app-state))
         {:keys [session-id csrf-token]} @app-state
-        version (current-base-version)]
+        version (current-base-version)
+        diagnostics @client-diagnostics]
     (when-not (str/blank? draft)
       (append-message! :user draft)
       (swap! app-state #(-> %
@@ -206,10 +225,18 @@
         (-> (fetch-json!
              (str "/api/sessions/" (js/encodeURIComponent session-id) "/turns")
              {:method "POST"
-              :body {:prompt draft
-                     :requestTabId (str transport/tab-id)
-                     :baseVersion version}
+              :body (cond-> {:prompt draft
+                             :requestTabId (str transport/tab-id)
+                             :baseVersion version}
+                      (seq diagnostics)
+                      (assoc :clientDiagnostics
+                             (mapv diagnostic-wire-value diagnostics)))
               :csrf-token csrf-token})
+            (.then (fn [result]
+                     ;; The accepted provider job owns this volatile evidence.
+                     ;; A transport/admission failure leaves it available for a retry.
+                     (reset! client-diagnostics [])
+                     result))
             (.catch
              (fn [error]
                (set-progress! nil)
@@ -470,6 +497,7 @@
     ;; an older staged frame. A later successful activation is authoritative;
     ;; it must clear that obsolete cancellation diagnostic.
     (reset! last-runtime-error nil)
+    (reset! client-diagnostics [])
     (swap! app-state assoc :runtime-error nil :sidebar-failed? false)
     (frame/update-sidebar!)
     (render-active-surfaces!)
@@ -641,6 +669,7 @@
   (when session-id
     (let [request-number (swap! load-sequence inc)]
       (frame/reset-runtime!)
+      (reset! client-diagnostics [])
       (swap! app-state assoc :runtime-error nil :sidebar-failed? false
              :checkpoints [])
       (load-checkpoints! session-id)
@@ -684,6 +713,7 @@
   (when (and session-id (not (str/blank? session-id)))
     (when-let [session (some #(when (= session-id (:id %)) %) (:sessions @app-state))]
       (replace-session-in-url! session-id)
+      (reset! client-diagnostics [])
       (swap! app-state assoc
              :phase :workspace
              :session-id session-id
@@ -803,6 +833,7 @@
   (swap! load-sequence inc)
   (transport/stop!)
   (frame/reset-runtime!)
+  (reset! client-diagnostics [])
   (replace-session-in-url! nil)
   (swap! app-state assoc
          :phase :projects
@@ -1081,6 +1112,7 @@
                              :connection (:connection @app-state)
                              :safe-mode (:safe-mode? @app-state)
                              :sidebar-open (:sidebar-open? @app-state)
+                             :client-diagnostics @client-diagnostics
                              :debug-error @last-runtime-error
                              :transport @transport/diagnostics}))}]
       (js/Object.defineProperty
@@ -1098,6 +1130,7 @@
         :sidebar-event-fn handle-frame-sidebar-event!
         :safe-mode-fn #(set-safe-mode! true)
         :runtime-error-fn scheduled-runtime-error!
+        :diagnostic-fn record-client-diagnostic!
         :sidebar-model-fn frame-sidebar-model
         :sidebar-open-fn #(and (:sidebar-open? @app-state)
                                (not (:safe-mode? @app-state)))

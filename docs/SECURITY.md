@@ -97,6 +97,7 @@ Generated source remains untrusted on both sides of the network.
 | Job duplicates or repeats after crash/restore | Idempotency key, lease, bounded retry, terminal status, restore cancellation. | Clocked job properties and restart/restore integration. |
 | Public ingress bypasses access or invokes another session | Parsed UUID/route registry, body/rate limits, optional constant-time HMAC verifier, session runtime lookup. | Public HTTP, verifier, rate-limit, and path properties. |
 | Search query reaches another session or pathological compute | Per-database reserved index, escaped FTS terms, document/dimension/candidate/limit bounds. | Text/vector determinism and session isolation properties. |
+| Client diagnostics leak secrets, inject provider instructions, or include extension noise | Exact active-frame source check, strict field allowlist and bounds, duplicate redaction/validation, no parent collector, volatile next-turn transport, and untrusted-evidence Skill wrapper. | PBT-18, provider stdin/Skill separation test, and active-frame browser regression. |
 
 ## 7. Access gate
 
@@ -173,6 +174,14 @@ Before a public SaaS release, implement a Responses API or other service-account
   do not touch the ledger. A rejected start receives no provider process.
 
 The packaged provider Skill is instruction-only. It is copied into the child Codex CWD so that `codex exec` discovers it as a repository-scoped Skill, and the stdin prompt invokes it explicitly. It cannot access session files, run validation, connect to a raw REPL, or grant generated code a new capability. Host policy, temporary SQLite, server SCI, and browser SCI remain authoritative.
+
+When bounded active-frame diagnostics exist, the Kernel may also create a
+temporary `ppp-client-diagnostics` Skill in that same isolated job directory.
+The diagnostics do not enter the normal stdin prompt, source tree, transcript
+summary, history, or logs. The Skill labels every record as untrusted evidence,
+contains only allowlisted one-line fields, and disappears with the job
+directory. Codex choosing to read it grants no browser, network, filesystem, or
+runtime authority.
 
 Even if a provider ignores instructions, its result receives no authority until host validation and SCI staging succeed.
 
@@ -429,6 +438,20 @@ Product-auth logs contain only stable outcome codes and durations. They exclude
 identifiers, passwords, tokens, cookie values, hashes, action bodies, and public
 user claims.
 
+Active generated-frame diagnostics are volatile user-turn context, not
+application telemetry. They remain in the browser ring until the next turn or
+runtime/session replacement, pass through strict normalization, and exist only
+in the provider's temporary diagnostic Skill for that invocation. The host
+never collects parent-window errors, so injected extension failures such as a
+missing wallet extension cannot become model context.
+
+Diagnostic messages are untrusted free text. The Kernel removes structured
+payloads and applies credential-pattern, email, long-token, line, and size
+redaction, but it cannot infer that every ordinary short word was private.
+Generated products must not log user data. A public multi-tenant service needs
+an explicit consent and data-classification review before enabling this
+optional evidence path.
+
 ## 20. Backup and recovery
 
 - Checkpoint SQLite snapshots use the live backup facility and are verified before gzip.
@@ -493,6 +516,9 @@ Any critical trust boundary without both validation and failure handling blocks 
   ownership, MFA, social OAuth, and account recovery require configured
   connectors and their own consent and abuse review; generated code must not
   simulate those proofs.
+- Client diagnostics are best-effort volatile evidence. A full reload before
+  the next turn discards them; durable browser observability would require a
+  separately reviewed encrypted and retention-bounded telemetry design.
 - Outbound content can contain malicious data that influences later model turns. External responses should not automatically become privileged provider instructions.
 - A public ingress can be abused within its rate/body budget. Products that
   cause valuable external effects must use a configured verifier alias and an

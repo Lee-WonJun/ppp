@@ -62,6 +62,7 @@ Last updated: 2026-07-17
 | PRD-F45 | PPP-022 | logout/cookie disposal integration plus login-throttle PBT-17 | E-01, E-14 |
 | PRD-F46 | PPP-022 | provider rolling-window/restart/repair accounting PBT-16 | E-01, E-14 |
 | PRD-F47 | PPP-022 | exhausted-turn preservation integration and Playwright product-use continuity | E-01, E-14 |
+| PRD-F48 | PPP-023 | PBT-18, provider Skill/stdin separation, exact active-frame action failure and parent-noise exclusion browser regression | E-01, E-15 |
 
 ## Property mapping
 
@@ -84,6 +85,7 @@ Last updated: 2026-07-17
 | PBT-15 search bounds/determinism | PPP-021 | `ppp.runtime.resources-test` plus browser search outcome |
 | PBT-16 provider rolling starts | PPP-022 | `ppp.provider.budget-test` plus coordinator/restart integration |
 | PBT-17 shared-password throttle | PPP-022 | `ppp.access-test` generated login sequences plus HTTP integration |
+| PBT-18 client diagnostic boundary | PPP-023 | `ppp.shared.protocol-test`, `ppp.provider.codex-test`, coordinator/HTTP integration, and Playwright |
 
 ## Ticket dependency graph
 
@@ -116,6 +118,8 @@ PPP-001
                               +---------------------------> PPP-021
                               |
                               +---------------------------> PPP-022
+                              |
+                              +---------------------------> PPP-023
 ```
 
 ## Completion ledger
@@ -144,3 +148,4 @@ PPP-001
 | PPP-020 | done | Session-owned resource/effect model and generated-product identity are complete. Isolated `bb verify` passes 141 JVM/814 assertions, 24 CLJS/104 assertions, Chromium 22/22, Docker smoke, and a 167-file secret scan. Product accounts pass two 1,000-case properties, HTTP/cookie/restore integration, and three fresh browser contexts including a 6.5-second delayed frame. The real Codex evolution passes 7/7 through dark/floating/Tetris/SQLite ranking/server-rule/Gomoku/account changes; paired bundles were promoted and stable 8787 restarted with zero sessions/runtimes. |
 | PPP-021 | done | The complete session resource plane now covers durable blobs, post-commit product events, durable jobs, public ingress, and Unicode text/vector search. Isolated `bb verify` passes 163 JVM/985 assertions, 25 CLJS/110 assertions, Chromium 23/23, Docker smoke, and a clean 176-file secret scan. PBT-11 through PBT-15 run at least 1,000 cases/sequences each; the real eight-step Codex evolution passes 8/8 in one resumed thread with all repair versions retained and covered. Paired bundles were promoted together, stable 8787 passed Chromium 23/23 directly, and the final Codex OAuth restart reports zero sessions/runtimes. |
 | PPP-022 | done | Shared-password login/logout, common Projects, and persistent rolling provider-start capacity are complete. Isolated `bb verify` passes 174 JVM/1,262 assertions, 25 CLJS/110 assertions, 25 normal Chromium tests, two production restart phases across three fresh contexts, Docker smoke, and a clean secret scan. PBT-16 and PBT-17 each run 1,000 generated sequences; capacity exhaustion preserves source/SQLite/checkpoints while actions and restore continue. Paired bundles were promoted together and stable 8787 passed real-browser Login, Projects, blank-runtime, and conversation smoke. |
+| PPP-023 | done | Bounded active-frame action/runtime/Promise/console/network reasons now flow through a volatile 12-record next-turn ring into an optional isolated provider Skill; parent, extension, foreign-frame, and persisted context are excluded. PBT-18 runs at least 1,000 generated inputs. Isolated `bb verify` passes 178 JVM/1,297 assertions, 27 CLJS/125 assertions, 25 normal Chromium tests with one intentional skip, production restart phases, Docker smoke, and a clean 189-file candidate scan. Paired bundles were promoted together, stable 8787 passed the diagnostic smoke without a real Codex call, and the final restart reports zero sessions/runtimes. |

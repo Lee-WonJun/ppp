@@ -273,6 +273,7 @@ inside that one product session.
 | PRD-F45 | Let an authorized browser log out by expiring the PPP access cookie and disposing its live host connection without modifying any project. Throttle repeated failed shared-password attempts per kernel-observed remote address. |
 | PRD-F46 | Limit the real Codex provider to 100 actual process starts in any rolling 60-minute window by default, count every repair attempt, persist the global ledger across restart, and exclude the fake provider. |
 | PRD-F47 | When provider capacity is exhausted, reject only new AI turns with a bounded retry signal while keeping project opening, generated actions, SQLite data, history, checkpoints, restore, Safe Mode, and logout available. |
+| PRD-F48 | Preserve bounded failures from the active generated product frame and make them available only to the next AI turn through an optional, progressively disclosed diagnostic Skill. Exclude parent-window and browser-extension noise, redact secrets, and never add the diagnostics to ordinary prompt context, history, or application logs. |
 
 ## 9. Hackathon demo acceptance
 

@@ -3,6 +3,7 @@
             [ppp.client.composer :as composer]
             [ppp.client.frame-protocol :as protocol]
             [ppp.client.runtime :as runtime]
+            [ppp.shared.protocol :as shared-protocol]
             [reagent.core :as r]
             [reagent.dom.client :as rdom]))
 
@@ -18,6 +19,7 @@
 (defonce state-watch-key (keyword (str "frame-state-" (random-uuid))))
 (defonce stage-state (atom {:settled? true :phase :idle}))
 (defonce render-flush-queued? (atom false))
+(defonce diagnostics-installed? (atom false))
 
 (declare schedule-render-flush!)
 
@@ -52,6 +54,124 @@
                (not (str/blank? (.-message current)))
                (conj (.-message current))))
       (vec (distinct details)))))
+
+(defn- diagnostic!
+  [value]
+  ;; Staging failures already travel through the transaction rejection path.
+  ;; Runtime evidence is intentionally limited to the currently active product.
+  (when (= :active (:phase @stage-state))
+    (try
+      (when-let [diagnostic (shared-protocol/normalize-client-diagnostic value)]
+        (post! :frame/diagnostic diagnostic))
+      (catch :default _ nil)))
+  nil)
+
+(defn- throwable-message
+  [value]
+  (cond
+    (string? value) value
+    (some? value) (or (ex-message value) (.-message value))
+    :else nil))
+
+(defn- throwable-code
+  [value]
+  (when value
+    (or (:cause-code (ex-data value))
+        (:code (ex-data value)))))
+
+(defn- diagnostic-argument
+  [value]
+  (cond
+    (string? value) value
+    (number? value) (str value)
+    (boolean? value) (str value)
+    (some? value) (throwable-message value)
+    :else nil))
+
+(defn- diagnostic-console-message
+  [arguments]
+  (->> arguments
+       (keep diagnostic-argument)
+       (take 4)
+       (str/join " ")))
+
+(defn- safe-network-url
+  [input]
+  (try
+    (let [raw (if (string? input) input (.-url input))
+          parsed (js/URL. raw (.-href js/location))
+          scheme (.-protocol parsed)]
+      (if (contains? #{"http:" "https:"} scheme)
+        (str scheme "//" (.-host parsed) (or (.-pathname parsed) "/"))
+        "/"))
+    (catch :default _ "/")))
+
+(defn- fetch-method
+  [input init]
+  (str/upper-case
+   (str (or (some-> init .-method)
+            (when-not (string? input) (.-method input))
+            "GET"))))
+
+(defn- install-diagnostics!
+  []
+  (when (compare-and-set! diagnostics-installed? false true)
+    (let [original-warn (.-warn js/console)
+          original-error (.-error js/console)
+          original-fetch (.-fetch js/window)]
+      (set! (.-warn js/console)
+            (fn [& arguments]
+              (.apply original-warn js/console (to-array arguments))
+              (diagnostic! {:kind :console
+                            :level :warn
+                            :message (diagnostic-console-message arguments)})))
+      (set! (.-error js/console)
+            (fn [& arguments]
+              (.apply original-error js/console (to-array arguments))
+              (diagnostic! {:kind :console
+                            :level :error
+                            :message (diagnostic-console-message arguments)})))
+      (set! (.-fetch js/window)
+            (fn [input & [init]]
+              (let [method (fetch-method input init)
+                    url (safe-network-url input)]
+                (-> (.call original-fetch js/window input init)
+                    (.then
+                     (fn [response]
+                       (when-not (.-ok response)
+                         (diagnostic! {:kind :network
+                                       :method method
+                                       :url url
+                                       :status (.-status response)}))
+                       response))
+                    (.catch
+                     (fn [error]
+                       (diagnostic! {:kind :network
+                                     :method method
+                                     :url url
+                                     :message (or (throwable-message error)
+                                                  "The request failed.")})
+                       (throw error)))))))
+      (.addEventListener
+       js/window "error"
+       (fn [event]
+         (let [error (.-error event)]
+           (diagnostic! {:kind :runtime
+                         :code (or (throwable-code error)
+                                   :runtime/window-error)
+                         :message (or (throwable-message error)
+                                      (.-message event)
+                                      "The product interaction failed.")}))))
+      (.addEventListener
+       js/window "unhandledrejection"
+       (fn [event]
+         (let [reason (.-reason event)]
+           (diagnostic! {:kind :runtime
+                         :code (or (throwable-code reason)
+                                   :runtime/unhandled-rejection)
+                         :message (or (throwable-message reason)
+                                      "A product request was not handled.")}))))))
+  nil)
 
 (defn- sidebar-event!
   ([event]
@@ -161,6 +281,11 @@
                              :runtime/client-frame-runtime))
                  :phase phase
                  :details (runtime-error-details error)}]
+    (when (= :active phase)
+      (diagnostic! {:kind :runtime
+                    :code (:code payload)
+                    :message (or (throwable-message error)
+                                 "The active product failed.")}))
     (if (= :staging (:phase @stage-state))
       (settle-stage! :frame/rejected payload)
       (post! :frame/runtime-error payload))))
@@ -182,7 +307,9 @@
   (let [request-id (str (random-uuid))]
     (js/Promise.
      (fn [resolve reject]
-       (swap! pending-actions assoc request-id {:resolve resolve :reject reject})
+       (swap! pending-actions assoc request-id {:resolve resolve
+                                                :reject reject
+                                                :action-id action-id})
        (post! :frame/action
               {:request-id request-id
                :action-id action-id
@@ -268,12 +395,18 @@
 
 (defn- action-result!
   [{:keys [request-id value message code status]} success?]
-  (when-let [{:keys [resolve reject]} (get @pending-actions request-id)]
+  (when-let [{:keys [resolve reject action-id]} (get @pending-actions request-id)]
     (swap! pending-actions dissoc request-id)
     (if success?
       (resolve value)
-      (reject (ex-info (or message "The product action failed.")
-                       {:code code :status status})))))
+      (do
+        (diagnostic! {:kind :action
+                      :action-id action-id
+                      :code code
+                      :status status
+                      :message (or message "The product action failed.")})
+        (reject (ex-info (or message "The product action failed.")
+                         {:code code :status status}))))))
 
 (defn- receive!
   [event]
@@ -339,5 +472,6 @@
       ;; immutable recovery shortcut before any generated source is evaluated
       ;; and relay only this reserved chord to the authenticated parent.
       (.addEventListener js/window "keydown" safe-mode-shortcut! true)
+      (install-diagnostics!)
       (.addEventListener js/window "message" receive!)
       (post! :frame/ready {}))))

@@ -552,7 +552,34 @@ Required controls:
 - Restore clears the stored thread ID so future context cannot assume the abandoned future state.
 - A repairable source, SQL, server SCI, or browser staging rejection is returned to the same Codex thread as structured feedback. The initial proposal plus at most two corrected attempts are allowed. Only the final successful proposal enters history as a change; exhausted attempts create one rejected event. Successful history records include the host-observed attempt count and affected runtime surfaces; the provider never declares its own trusted impact flag.
 
-### 8.3 Fake provider
+### 8.3 On-demand client diagnostics Skill
+
+The active opaque-origin product frame maintains a volatile, deduplicated ring
+of at most 12 bounded diagnostics. It may report generated action failures,
+`window.error`, unhandled Promise rejection, `console.warn`/`console.error`, and
+direct generated-frame `fetch` rejection or non-success status. A network
+record contains only method, origin/path without query or fragment, and status;
+it never contains headers, cookies, body, or response content.
+
+Only a message from the exact active frame may enter the host ring. Hidden
+staging frames, replaced frames, the authenticated parent window, and browser
+extensions cannot contribute records. Runtime/session activation clears the
+ring. Messages, action IDs, and codes are one-line, length-bounded, allowlisted,
+deduplicated, and secret-pattern-redacted in the frame and revalidated by the
+server.
+
+When the user sends the next turn, the host may attach the current ring as
+`clientDiagnostics`. The coordinator carries it transiently to the provider
+request and never writes it to transcript summary, history, rejection events,
+or logs. The Codex provider creates a temporary repository-scoped
+`ppp-client-diagnostics` Skill only when the ring is nonempty. Its name,
+description, and path are discoverable to Codex; the full bounded records are
+loaded only if Codex chooses the Skill for a relevant failure investigation.
+The diagnostics are explicitly untrusted evidence, never instructions, and
+the entire job directory is deleted after the provider invocation. They are
+not interpolated into the stdin prompt or current source tree.
+
+### 8.4 Fake provider
 
 The fake provider is deterministic and has no network dependency. It supports all demo turns plus explicit invalid, timeout, and refusal fixtures. CI, property tests, browser tests, and packaged smoke use it. Live OAuth evaluation runs only through explicit `bb eval-live` or `bb eval-evolution` commands.
 
@@ -595,9 +622,22 @@ Internal exception text and generated source are not returned.
 {
   "prompt": "Make judge votes worth three points and show the top three.",
   "requestTabId": "...",
-  "baseVersion": 2
+  "baseVersion": 2,
+  "clientDiagnostics": [
+    {
+      "kind": "action",
+      "actionId": "auth/register",
+      "code": "auth/identifier-invalid",
+      "status": 400,
+      "message": "Use a valid sign-in identifier."
+    }
+  ]
 }
 ```
+
+`clientDiagnostics` is optional, volatile, and limited to the normalized
+active-frame records in section 8.3. It is evidence for the submitted turn,
+not persisted conversation content.
 
 Success:
 
@@ -1135,6 +1175,7 @@ release evidence.
 | PRD-F33-F38 | 5, 7.1, 7.2, 9.2, 13, 14 and `docs/SECURITY.md` |
 | PRD-F39-F44 | 5, 7.3-7.7, 9, 10, 13, 14, 17 and `docs/SECURITY.md` |
 | PRD-F45-F47 | 5, 8.2, 9, 9.3, 17-19 and `docs/SECURITY.md` |
+| PRD-F48 | 7, 8.3, 9.1 and `docs/SECURITY.md` |
 
 ## 22. Resolved decisions
 
@@ -1156,5 +1197,8 @@ release evidence.
   list, not judge accounts or per-judge authorization.
 - The real provider uses a persistent global rolling start budget; project use
   and recovery do not consume or depend on that budget.
+- Active generated-frame failures are volatile provider evidence exposed
+  through an optional Skill, not ordinary conversation context or durable
+  telemetry.
 
 Unresolved implementation decisions: none.

@@ -608,6 +608,8 @@
            (outbound/ingress-catalog (:outbound coordinator))
            :source (store/current-source-map (:store coordinator)
                                              (:session-id request))}
+    (seq (:client-diagnostics request))
+    (assoc :client-diagnostics (:client-diagnostics request))
     feedback (assoc :repair-feedback feedback)))
 
 (defn process-turn!
@@ -681,7 +683,7 @@
 
 (defn submit-turn!
   [^Coordinator coordinator session-id
-   {:keys [prompt request-tab-id base-version request-id]}]
+   {:keys [prompt request-tab-id base-version request-id client-diagnostics]}]
   (let [session-id (store/parse-session-id session-id)
         tab-id (parse-protocol-uuid request-tab-id :protocol/tab-id-invalid)
         request-id (parse-protocol-uuid (or request-id (random-uuid))
@@ -689,6 +691,10 @@
         prompt (when (string? prompt) (str/trim prompt))
         prompt-bytes (when prompt
                        (alength (.getBytes ^String prompt StandardCharsets/UTF_8)))
+        client-diagnostics
+        (if (nil? client-diagnostics)
+          []
+          (protocol/normalize-client-diagnostics client-diagnostics))
         active-version (:runtime-version
                         (store/current-manifest (:store coordinator) session-id))]
     (when (or (str/blank? prompt)
@@ -696,6 +702,9 @@
                                                 :prompt-limit 4000))))
       (throw (ex-info "A turn prompt is required and must fit the configured limit"
                       {:code :turn/prompt-invalid})))
+    (when (nil? client-diagnostics)
+      (throw (ex-info "Client diagnostics did not match the bounded contract"
+                      {:code :turn/client-diagnostics-invalid})))
     (when-not (and (nat-int? base-version) (= base-version active-version))
       (throw (ex-info "This browser tab is not on the active runtime version"
                       {:code :runtime/stale-browser-version
@@ -714,7 +723,8 @@
                    :tab-id tab-id
                    :request-id request-id
                    :base-version base-version
-                   :prompt prompt}
+                   :prompt prompt
+                   :client-diagnostics client-diagnostics}
           submission
           (provider-queue/submit! (:provider-queue coordinator) session-id
                                   #(process-turn! coordinator request))]

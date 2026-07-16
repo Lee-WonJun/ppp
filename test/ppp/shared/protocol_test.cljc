@@ -1,5 +1,6 @@
 (ns ppp.shared.protocol-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
@@ -100,3 +101,97 @@
               (assoc-in base [:payload :details] (vec (repeat 5 "error"))))))
     (is (not (protocol/valid-client-envelope?
               (assoc-in base [:payload :details] [(apply str (repeat 241 "x"))]))))))
+
+(def diagnostic-shape-generator
+  (gen/let [kind (gen/one-of [(gen/elements [:action :runtime :console :network
+                                             :unknown])
+                              gen/string-alphanumeric
+                              gen/int])
+            action-id gen/string
+            code gen/string
+            status gen/int
+            level (gen/one-of [(gen/elements [:warn :error :info])
+                               gen/string-alphanumeric])
+            method gen/string
+            url gen/string
+            message gen/string]
+    {:kind kind
+     :actionId action-id
+     :code code
+     :status status
+     :level level
+     :method method
+     :url url
+     :message message
+     :ignored {:arbitrary true}}))
+
+(defn- bounded-one-line?
+  [value limit]
+  (or (nil? value)
+      (and (string? value)
+           (<= (count value) limit)
+           (not (re-find #"[\r\n\t]" value)))))
+
+(defn- safe-diagnostic?
+  [value]
+  (and (map? value)
+       (contains? #{:action :runtime :console :network} (:kind value))
+       (bounded-one-line? (:message value) 240)
+       (bounded-one-line? (:action-id value) 96)
+       (bounded-one-line? (:code value) 96)
+       (bounded-one-line? (:url value) 160)
+       (not (contains? value :ignored))
+       (not (some #(str/includes? (or (:url value) "") %) ["?" "#"]))
+       (every? #{:kind :action-id :code :status :level :method :url :message}
+               (keys value))))
+
+(deftest client-diagnostic-boundary-property
+  (let [result
+        (tc/quick-check
+         1000
+         (prop/for-all [records (gen/vector diagnostic-shape-generator 0 16)]
+                       (let [normalized (protocol/normalize-client-diagnostics records)]
+                         (if (nil? normalized)
+                           true
+                           (and (<= (count normalized) protocol/max-client-diagnostics)
+                                (= (count normalized) (count (distinct normalized)))
+                                (every? safe-diagnostic? normalized)))))
+         :seed 23018)]
+    (is (:pass? result) (pr-str (dissoc result :result-data)))))
+
+(deftest client-diagnostics-redact-and-minimize-evidence
+  (let [diagnostic
+        (protocol/normalize-client-diagnostic
+         {:kind "network"
+          :method "post"
+          :url "https://api.example.test/accounts?token=do-not-copy#member"
+          :status 400
+          :message (str "Authorization: Bearer private-value\n"
+                        "email owner@example.test password=hunter2")})]
+    (is (= :network (:kind diagnostic)))
+    (is (= "POST" (:method diagnostic)))
+    (is (= "https://api.example.test/accounts" (:url diagnostic)))
+    (is (= 400 (:status diagnostic)))
+    (is (str/includes? (:message diagnostic) "[redacted]"))
+    (is (str/includes? (:message diagnostic) "[redacted-email]"))
+    (is (not (str/includes? (:message diagnostic) "private-value")))
+    (is (not (str/includes? (:message diagnostic) "hunter2")))
+    (is (not (str/includes? (:message diagnostic) "owner@example.test"))))
+  (is (nil? (protocol/normalize-client-diagnostics
+             (vec (repeat (inc protocol/max-client-diagnostics)
+                          {:kind :runtime :message "failure"})))))
+  (is (nil? (protocol/normalize-client-diagnostic
+             {:kind :network
+              :method "GET"
+              :url "https://user:password@example.test/private"
+              :status 500})))
+  (let [same {:kind :console :level :warn :message "same"}
+        ring (reduce protocol/append-client-diagnostic []
+                     (concat [same same]
+                             (map (fn [index]
+                                    {:kind :runtime
+                                     :message (str "failure-" index)})
+                                  (range 20))))]
+    (is (= protocol/max-client-diagnostics (count ring)))
+    (is (= (count ring) (count (distinct ring))))
+    (is (= "failure-19" (:message (last ring))))))

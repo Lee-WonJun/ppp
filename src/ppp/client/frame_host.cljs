@@ -18,6 +18,7 @@
          :sidebar-event-fn (fn [_ _] nil)
          :safe-mode-fn (fn [] nil)
          :runtime-error-fn (fn [_] nil)
+         :diagnostic-fn (fn [_] nil)
          :sidebar-model-fn (constantly {})
          :sidebar-open-fn (constantly false)
          :session-id-fn (constantly nil)}))
@@ -174,6 +175,10 @@
                         {:code (or (:code payload) :runtime/client-frame-runtime)
                          :phase (:phase payload)
                          :details (:details payload)}))
+
+              :frame/diagnostic
+              (when (identical? runtime @active-runtime)
+                ((:diagnostic-fn @callbacks) payload))
 
               nil)))))
     (catch :default _

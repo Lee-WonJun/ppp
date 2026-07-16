@@ -1,5 +1,6 @@
 (ns ppp.coordinator-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [ppp.coordinator :as coordinator]
             [ppp.outbound.service :as outbound]
             [ppp.provider.core :as provider]
@@ -688,6 +689,73 @@
                    :request-tab-id (random-uuid)
                    :base-version 9}))))
         (is (empty? (store/list-history (:store context) session-id))))
+      (finally
+        (close-context! context)))))
+
+(deftest client-diagnostics-are-normalized-and-transient-provider-evidence
+  (let [requests (atom [])
+        recording-provider
+        (reify provider/Provider
+          (ready? [_] {:ready? true :provider :diagnostic-fixture})
+          (generate! [_ request]
+            (swap! requests conj request)
+            (provider/generation
+             {:kind :reply
+              :assistant-message "I found the failed signup path."
+              :clarification-question nil
+              :restore-version nil
+              :change nil}
+             "88888888-8888-4888-8888-888888888888")))
+        context (test-context {:test/provider recording-provider})]
+    (try
+      (let [session-id (:id (coordinator/create-session! (:coordinator context)))
+            tab-id (random-uuid)
+            sentinel "CLIENT_DIAGNOSTIC_SENTINEL"
+            submission
+            (coordinator/submit-turn!
+             (:coordinator context) session-id
+             {:prompt "Why did signup fail?"
+              :request-tab-id tab-id
+              :base-version 0
+              :client-diagnostics
+              [{:kind "action"
+                :actionId "auth/register"
+                :code "auth/identifier-invalid"
+                :status 400
+                :message sentinel}]})
+            result (coordinator/await-turn! (:coordinator context)
+                                            (:request-id submission) 10000)
+            request (first @requests)]
+        (is (= :reply (:kind result)))
+        (is (= [{:kind :action
+                 :action-id "auth/register"
+                 :code "auth/identifier-invalid"
+                 :status 400
+                 :message sentinel}]
+               (:client-diagnostics request)))
+        (is (not (str/includes? (pr-str (:transcript-summary request)) sentinel)))
+        (is (not (str/includes? (pr-str (store/list-history (:store context)
+                                                            session-id))
+                                sentinel)))
+        (is (= :turn/client-diagnostics-invalid
+               (exception-code
+                #(coordinator/submit-turn!
+                  (:coordinator context) session-id
+                  {:prompt "Try malformed evidence"
+                   :request-tab-id tab-id
+                   :base-version 0
+                   :client-diagnostics
+                   (vec (repeat (inc protocol/max-client-diagnostics)
+                                {:kind :runtime :message "failure"}))}))))
+        (is (= :turn/client-diagnostics-invalid
+               (exception-code
+                #(coordinator/submit-turn!
+                  (:coordinator context) session-id
+                  {:prompt "Try scalar evidence"
+                   :request-tab-id tab-id
+                   :base-version 0
+                   :client-diagnostics false}))))
+        (is (= 1 (count @requests))))
       (finally
         (close-context! context)))))
 

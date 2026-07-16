@@ -312,10 +312,15 @@
             csrf (:csrf-token (response-json bootstrap))]
         (with-redefs [coordinator/submit-turn!
                       (fn [coordinator-value submitted-session request-value]
-                        (reset! captured
-                                [coordinator-value submitted-session request-value])
-                        {:job-id #uuid "11111111-1111-4111-8111-111111111111"
-                         :request-id (:request-id request-value)})]
+                        (if (false? (:client-diagnostics request-value))
+                          (throw
+                           (ex-info "Client diagnostics did not match the bounded contract"
+                                    {:code :turn/client-diagnostics-invalid}))
+                          (do
+                            (reset! captured
+                                    [coordinator-value submitted-session request-value])
+                            {:job-id #uuid "11111111-1111-4111-8111-111111111111"
+                             :request-id (:request-id request-value)})))]
           (let [response
                 (handler
                  (request :post (str "/api/sessions/" session-id "/turns")
@@ -324,14 +329,36 @@
                            :body {:prompt "Build a gallery"
                                   :requestTabId
                                   "22222222-2222-4222-8222-222222222222"
-                                  :baseVersion 0}}))
+                                  :baseVersion 0
+                                  :clientDiagnostics
+                                  [{:kind "action"
+                                    :actionId "auth/register"
+                                    :status 400
+                                    :message "Use a valid sign-in identifier."}]}}))
                 body (response-json response)]
             (is (= 202 (:status response)))
             (is (= "11111111-1111-4111-8111-111111111111"
                    (:job-id body)))
             (is (= ::coordinator (first @captured)))
             (is (= (str session-id) (second @captured)))
-            (is (= "Build a gallery" (get-in @captured [2 :prompt]))))))
+            (is (= "Build a gallery" (get-in @captured [2 :prompt])))
+            (is (= "auth/register"
+                   (get-in @captured [2 :client-diagnostics 0 :actionId])))
+            (reset! captured nil)
+            (let [malformed
+                  (handler
+                   (request :post (str "/api/sessions/" session-id "/turns")
+                            {:cookie cookie
+                             :csrf csrf
+                             :body {:prompt "Try malformed evidence"
+                                    :requestTabId
+                                    "22222222-2222-4222-8222-222222222222"
+                                    :baseVersion 0
+                                    :clientDiagnostics false}}))]
+              (is (= 400 (:status malformed)))
+              (is (= "turn/client-diagnostics-invalid"
+                     (get-in (response-json malformed) [:error :code])))
+              (is (nil? @captured))))))
       (finally
         (fs/delete-tree! data-root)))))
 

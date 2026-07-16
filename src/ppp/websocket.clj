@@ -318,6 +318,34 @@
                            :type :runtime/resync
                            :payload bundle})))))
 
+(defn publish-product-event!
+  "Deliver an ephemeral event only to tabs subscribed to the exact active
+  session version. Durable state remains in SQLite and is reconstructed by an
+  action after a reconnect."
+  [^Hub hub session-id runtime-version topic payload]
+  (let [active-version (when-let [bundle-fn (:runtime-bundle-fn hub)]
+                         (:runtime-version (bundle-fn session-id)))]
+    (if (and (some? active-version) (not= active-version runtime-version))
+      0
+      (let [request-id (random-uuid)]
+        (reduce
+         (fn [delivered [_tab-id channel]]
+           (let [connection (connection-subscription hub channel)]
+             (if (and (= session-id (:session-id connection))
+                      (= runtime-version (:runtime-version connection))
+                      (send-envelope!
+                       hub channel
+                       (protocol/envelope
+                        {:session-id session-id
+                         :request-id request-id
+                         :runtime-version runtime-version
+                         :type :product/event
+                         :payload {:topic topic :value payload}})))
+               (inc delivered)
+               delivered)))
+         0
+         (get @(:subscriptions hub) session-id))))))
+
 (defn handler
   [hub request]
   (if-not (:websocket? request)

@@ -6,7 +6,10 @@
             [ppp.provider.codex :as codex]
             [ppp.provider.fake :as fake]
             [ppp.provider.queue :as provider-queue]
+            [ppp.runtime.auth :as product-auth]
+            [ppp.runtime.resources :as resources]
             [ppp.runtime.server :as server]
+            [ppp.scheduler :as scheduler]
             [ppp.session.store :as store]
             [ppp.shared.protocol :as protocol]
             [ppp.websocket :as websocket]))
@@ -34,6 +37,14 @@
   [_ _]
   (server/create-registry))
 
+(defmethod ig/init-key :ppp/product-auth
+  [_ config]
+  (product-auth/create-service config))
+
+(defmethod ig/init-key :ppp/resource-service
+  [_ config]
+  (resources/create-service config))
+
 (defmethod ig/init-key :ppp/outbound
   [_ config]
   (outbound/create-service config))
@@ -59,12 +70,21 @@
   [_ dependencies]
   (coordinator/initialize! (coordinator/create-coordinator dependencies)))
 
+(defmethod ig/init-key :ppp/scheduler
+  [_ {:keys [config coordinator]}]
+  (scheduler/start! coordinator config))
+
+(defmethod ig/halt-key! :ppp/scheduler
+  [_ scheduler]
+  (scheduler/stop! scheduler))
+
 (defmethod ig/init-key :ppp/http
-  [_ {:keys [config session-store coordinator websocket]}]
+  [_ {:keys [config session-store coordinator websocket product-auth]}]
   (let [handler (http/create-handler {:config config
                                       :session-store session-store
                                       :coordinator coordinator
                                       :websocket websocket
+                                      :product-auth product-auth
                                       :readiness #(coordinator/readiness coordinator)})
         stop (http/start! handler config)]
     {:handler handler :stop stop}))
@@ -80,6 +100,8 @@
    :ppp/provider application-config
    :ppp/provider-queue application-config
    :ppp/runtime-registry {}
+   :ppp/product-auth application-config
+   :ppp/resource-service application-config
    :ppp/outbound application-config
    :ppp/websocket {:config application-config
                    :session-store (ig/ref :ppp/session-store)}
@@ -88,9 +110,14 @@
                      :provider (ig/ref :ppp/provider)
                      :provider-queue (ig/ref :ppp/provider-queue)
                      :registry (ig/ref :ppp/runtime-registry)
+                     :product-auth (ig/ref :ppp/product-auth)
+                     :resource-service (ig/ref :ppp/resource-service)
                      :outbound (ig/ref :ppp/outbound)
                      :hub (ig/ref :ppp/websocket)}
+   :ppp/scheduler {:config application-config
+                   :coordinator (ig/ref :ppp/coordinator)}
    :ppp/http {:config application-config
               :session-store (ig/ref :ppp/session-store)
               :coordinator (ig/ref :ppp/coordinator)
+              :product-auth (ig/ref :ppp/product-auth)
               :websocket (ig/ref :ppp/websocket)}})

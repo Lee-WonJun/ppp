@@ -31,6 +31,8 @@
              ["make the sidebar a floating panel" :change]
              ["make a gallery with voting and a leaderboard" :change]
              ["테트리스 구현해줘" :change]
+             ["로그인, 회원가입을 구현해줘" :change]
+             ["[[fake:resource-workbench]]" :change]
              ["judge=3 points and show top 3" :change]
              ["restore checkpoint 2" :restore]
              ["make it better" :clarify]]]
@@ -38,7 +40,7 @@
         (is (= expected-kind (:kind result)) prompt)
         (is (protocol/valid-provider-result? result) prompt)
         (is (= "11111111-1111-4111-8111-111111111111" thread-id))))
-    (is (= 8 (:calls (provider/ready? fake-provider))))))
+    (is (= 10 (:calls (provider/ready? fake-provider))))))
 
 (deftest fake-security-and-failure-fixtures
   (let [fake-provider (fake/create-provider)]

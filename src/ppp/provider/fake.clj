@@ -8,7 +8,15 @@
    "(defn message [{:keys [role text status]}]\n"
    "  [:article {:class (str \"runtime-message runtime-message-\" (name role))}\n"
    "   [:p text]\n   (when status [:small status])])\n\n"
-   "(defn sidebar [{:keys [sessions session-id messages checkpoints draft busy? progress\n"
+   "(defn progress-status [phase detail]\n"
+   "  [:p.runtime-progress\n"
+   "   {:role \"status\" :aria-label (str phase \". \" detail)}\n"
+   "   [:span.runtime-progress-phase phase]\n"
+   "   [:span.runtime-progress-dots {:aria-hidden true}\n"
+   "    [:span.runtime-progress-dots-fill \"...\"]]\n"
+   "   [:span.runtime-progress-separator {:aria-hidden true} \" · \"]\n"
+   "   [:span.runtime-progress-detail detail]])\n\n"
+   "(defn sidebar [{:keys [sessions session-id messages checkpoints draft busy? progress progress-detail\n"
    "                              select-session! new-session! restore! draft-change! send!]}]\n"
    "  [:aside.runtime-sidebar.runtime-sidebar-floating {:aria-label \"Product conversation\"}\n"
    "   [:header.runtime-sidebar-header\n"
@@ -26,7 +34,7 @@
    "      [:div.runtime-empty\n"
    "       [:strong \"Start with the outcome.\"]\n"
    "       [:p \"Describe a product, a rule, or a visual change.\"]])\n"
-   "    (when progress [:p.runtime-progress progress])]\n"
+   "    (when progress [progress-status progress progress-detail])]\n"
    "   (when (seq checkpoints)\n"
    "     [:section.runtime-checkpoints {:aria-label \"Checkpoints\"}\n"
    "      [:strong \"Checkpoints\"]\n"
@@ -51,9 +59,13 @@
 (def ^:private base-workspace-css
   ":host { color: #171714; font-family: \"IBM Plex Sans\", \"Segoe UI\", sans-serif; }\n.runtime-sidebar { pointer-events: auto; position: fixed; z-index: 10; inset: 20px 20px 20px auto; display: grid; grid-template-rows: auto 1fr auto; width: min(420px, calc(100vw - 40px)); min-height: calc(100dvh - 40px); overflow: hidden; border: 1px solid #d9d7ce; border-radius: 18px; background: rgb(251 250 246 / 96%); box-shadow: 0 24px 70px rgb(23 23 20 / 16%); }\n.runtime-sidebar-header { display: grid; gap: 13px; padding: 17px 58px 14px 17px; border-bottom: 1px solid #e5e3dc; }\n.runtime-sidebar-title { display: flex; align-items: baseline; gap: 9px; }\n.runtime-sidebar-title strong { font-size: 15px; letter-spacing: -.02em; }\n.runtime-sidebar-title span { color: #77756d; font-size: 12px; }\n.runtime-session-tools { display: flex; gap: 8px; }\n.runtime-session-tools select { min-width: 0; flex: 1; border: 1px solid #d6d4ca; border-radius: 9px; background: #fff; padding: 9px 10px; }\n.runtime-session-tools button { width: 38px; border: 1px solid #d6d4ca; border-radius: 9px; background: #fff; cursor: pointer; }\n.runtime-conversation { overflow: auto; padding: 22px 18px; }\n.runtime-empty { max-width: 250px; margin: 18vh auto 0; text-align: center; }\n.runtime-empty strong { display: block; margin-bottom: 7px; }\n.runtime-empty p { margin: 0; color: #77756d; line-height: 1.5; }\n.runtime-message { max-width: 340px; margin: 0 0 18px; line-height: 1.5; }\n.runtime-message p { margin: 0; white-space: pre-wrap; }\n.runtime-message-user { margin-left: auto; padding: 11px 13px; border-radius: 12px 12px 3px 12px; background: #eceae2; }\n.runtime-message-assistant { margin-right: auto; }\n.runtime-message small, .runtime-progress { color: #77756d; }\n.runtime-composer { display: grid; grid-template-columns: 1fr auto; gap: 9px; padding: 14px 16px 17px; border-top: 1px solid #e5e3dc; background: #fbfaf6; }\n.runtime-composer textarea { min-height: 72px; resize: none; border: 1px solid #cfcdc3; border-radius: 11px; background: #fff; padding: 11px 12px; color: inherit; }\n.runtime-composer button { align-self: end; min-height: 40px; border: 0; border-radius: 10px; background: #285a43; padding: 0 16px; color: #fff; cursor: pointer; }\n.runtime-composer button:disabled { cursor: default; opacity: .5; }\n.runtime-progress { margin-top: 16px; }\n@media (max-width: 640px) { .runtime-sidebar { inset: 0; width: 100vw; min-height: 100dvh; border: 0; border-radius: 0; } }\n")
 
+(def ^:private progress-status-css
+  ".runtime-progress { display: flex; align-items: baseline; min-width: 0; margin: 16px 0 0; overflow: hidden; white-space: nowrap; }\n.runtime-progress-phase, .runtime-progress-dots, .runtime-progress-separator { flex: none; }\n.runtime-progress-phase { font-weight: 600; }\n.runtime-progress-dots { display: inline-block; width: 1.5em; overflow: hidden; }\n.runtime-progress-dots-fill { display: inline-block; width: 0; overflow: hidden; animation: runtime-progress-dots 1.2s linear infinite; }\n.runtime-progress-detail { min-width: 0; overflow: hidden; text-overflow: ellipsis; }\n@keyframes runtime-progress-dots { 0%, 24% { width: 0; } 25%, 49% { width: .5em; } 50%, 74% { width: 1em; } 75%, 100% { width: 1.5em; } }\n@media (prefers-reduced-motion: reduce) { .runtime-progress-dots-fill { width: 1.5em; animation: none; } }\n")
+
 (def ^:private workspace-css
   (str/replace
    (str base-workspace-css
+        progress-status-css
         ".runtime-checkpoints { display: grid; gap: 7px; max-height: 150px; overflow: auto; padding: 12px 16px; border-top: 1px solid #e5e3dc; }\n"
         ".runtime-checkpoints strong { color: #77756d; font-size: 12px; }\n"
         ".runtime-checkpoints button { border: 1px solid #d6d4ca; border-radius: 8px; background: #fff; padding: 8px 9px; text-align: left; cursor: pointer; }\n")
@@ -96,8 +108,7 @@
    "(ns runtime.client\n  (:require [runtime.api :as api]))\n\n"
    "(def board-width 10)\n"
    "(def board-height 20)\n\n"
-   "(when-not (contains? @api/page-state :tetris/x)\n"
-   "  (swap! api/page-state assoc :tetris/x 4 :tetris/y 0))\n\n"
+   "(api/initialize-state! {:tetris/x 4 :tetris/y 0})\n\n"
    "(defn fall! []\n"
    "  (swap! api/page-state update :tetris/y\n"
    "         (fn [y] (mod (inc (or y 0)) (dec board-height)))))\n\n"
@@ -346,6 +357,255 @@
    :sql
    "CREATE TABLE projects (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, tagline TEXT NOT NULL, created_at TEXT NOT NULL);\nCREATE TABLE votes (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL REFERENCES projects(id), voter_type TEXT NOT NULL CHECK (voter_type IN ('public', 'judge')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);\nCREATE INDEX votes_project_idx ON votes(project_id);\nINSERT INTO projects (name, tagline, created_at) VALUES ('Patchwork', 'Turn a workshop conversation into a tested release plan.', '2026-07-15 09:01:00'), ('Fieldnote', 'Collect research observations and reveal recurring product signals.', '2026-07-15 09:02:00'), ('Kindred', 'Match volunteer skills with neighborhood requests.', '2026-07-15 09:03:00'), ('Relay', 'Give every handoff a working example and a clear owner.', '2026-07-15 09:04:00'), ('Tidemark', 'Compare climate adaptation ideas against local constraints.', '2026-07-15 09:05:00'), ('Commonroom', 'Run lightweight public reviews without spreadsheet drift.', '2026-07-15 09:06:00');"})
 
+(def ^:private account-domain
+  "(ns runtime.domain)\n\n(defn valid-display-name? [value]\n  (and (string? value) (<= 2 (count value) 80)))\n")
+
+(def ^:private account-server
+  (str
+   "(ns runtime.server\n"
+   "  (:require [runtime.api :as api]\n"
+   "            [runtime.domain :as domain]\n"
+   "            [clojure.string :as str]))\n\n"
+   "(defn account-view [user]\n"
+   "  (if user\n"
+   "    (let [profile (first (api/query! \"SELECT display_name, points FROM product_profiles WHERE user_id = ?\" [(:id user)]))]\n"
+   "      {:signed-in? true :user user :profile profile})\n"
+   "    {:signed-in? false :user nil :profile nil}))\n\n"
+   "(defn signup [{:keys [identifier password display-name]}]\n"
+   "  (let [display-name (str/trim (or display-name \"\"))]\n"
+   "    (when-not (domain/valid-display-name? display-name)\n"
+   "      (throw (ex-info \"Enter a display name between 2 and 80 characters.\" {:code :profile/invalid})))\n"
+   "    (let [user (api/auth-register! {:identifier identifier :password password})]\n"
+   "      (api/execute! \"INSERT INTO product_profiles (user_id, display_name, points) VALUES (?, ?, 0)\" [(:id user) display-name])\n"
+   "      (account-view user))))\n\n"
+   "(defn login [{:keys [identifier password]}]\n"
+   "  (account-view (api/auth-login! {:identifier identifier :password password})))\n\n"
+   "(defn status [_]\n"
+   "  (account-view (api/auth-current-user)))\n\n"
+   "(defn logout [_]\n"
+   "  (api/auth-logout!)\n"
+   "  (account-view nil))\n\n"
+   "(defn earn-point [_]\n"
+   "  (let [user (api/auth-require-user!)]\n"
+   "    (api/execute! \"UPDATE product_profiles SET points = points + 1 WHERE user_id = ?\" [(:id user)])\n"
+   "    (account-view user)))\n\n"
+   "(api/register-action! :accounts/signup signup)\n"
+   "(api/register-action! :accounts/login login)\n"
+   "(api/register-action! :accounts/status status)\n"
+   "(api/register-action! :accounts/logout logout)\n"
+   "(api/register-action! :accounts/earn-point earn-point)\n"))
+
+(def ^:private account-domain-test
+  (str
+   "(ns runtime.domain-test\n"
+   "  (:require [clojure.test :refer [deftest is testing]]\n"
+   "            [runtime.domain :as domain]\n"
+   "            [runtime.test :as runtime-test]))\n\n"
+   "(deftest account-business-contract\n"
+   "  (testing \"profile names remain bounded\"\n"
+   "    (is (domain/valid-display-name? \"Player One\"))\n"
+   "    (is (not (domain/valid-display-name? \"\"))))\n"
+   "  (testing \"signup and authenticated mutations share one persisted view\"\n"
+   "    (let [created (runtime-test/invoke! :accounts/signup {:identifier \"test-player\" :password \"test password\" :display-name \"Test Player\"})\n"
+   "          user (:user created)\n"
+   "          advanced (runtime-test/invoke-as! (:id user) :accounts/earn-point {})\n"
+   "          reloaded (runtime-test/invoke-as! (:id user) :accounts/status {})]\n"
+   "      (is (= 0 (get-in created [:profile :points])))\n"
+   "      (is (= 1 (get-in advanced [:profile :points])))\n"
+   "      (is (= advanced reloaded)))))\n"))
+
+(def ^:private account-client
+  (str
+   "(ns runtime.client\n  (:require [runtime.api :as api]))\n\n"
+   "(api/initialize-state! {:account/mode :signup :account/identifier \"\" :account/password \"\" :account/display-name \"\"})\n\n"
+   "(defn action-with-feedback! [action payload]\n"
+   "  (swap! api/page-state assoc :account/error nil)\n"
+   "  (-> (api/action! action payload :account/status)\n"
+   "      (.then (fn [_] (swap! api/page-state assoc :account/password \"\")))\n"
+   "      (.catch (fn [error] (swap! api/page-state assoc :account/error (.-message error))))))\n\n"
+   "(defn auth-form [mode]\n"
+   "  [:form.account-form\n"
+   "   {:on-submit (fn [event]\n"
+   "                 (api/prevent-default! event)\n"
+   "                 (action-with-feedback!\n"
+   "                  (if (= mode :signup) :accounts/signup :accounts/login)\n"
+   "                  (cond-> {:identifier (:account/identifier @api/page-state)\n"
+   "                           :password (:account/password @api/page-state)}\n"
+   "                    (= mode :signup) (assoc :display-name (:account/display-name @api/page-state)))))}\n"
+   "   [:h1 (if (= mode :signup) \"Create your account\" \"Welcome back\")]\n"
+   "   [:p \"Your work and progress stay with this product.\"]\n"
+   "   (when (= mode :signup)\n"
+   "     [:label \"Display name\"\n"
+   "      [:input {:required true :autocomplete \"name\" :value (:account/display-name @api/page-state)\n"
+   "               :on-change #(swap! api/page-state assoc :account/display-name (api/event-value %))}]])\n"
+   "   [:label \"Sign-in ID\"\n"
+   "    [:input {:required true :autocomplete \"username\" :value (:account/identifier @api/page-state)\n"
+   "             :on-change #(swap! api/page-state assoc :account/identifier (api/event-value %))}]]\n"
+   "   [:label \"Password\"\n"
+   "    [:input {:required true :type \"password\" :autocomplete (if (= mode :signup) \"new-password\" \"current-password\")\n"
+   "             :value (:account/password @api/page-state)\n"
+   "             :on-change #(swap! api/page-state assoc :account/password (api/event-value %))}]]\n"
+   "   (when-let [error (:account/error @api/page-state)] [:p.account-error {:role \"alert\"} error])\n"
+   "   [:button.primary {:type \"submit\"} (if (= mode :signup) \"Create account\" \"Sign in\")]\n"
+   "   [:button.text-button {:type \"button\" :on-click #(swap! api/page-state assoc :account/mode (if (= mode :signup) :login :signup) :account/error nil)}\n"
+   "    (if (= mode :signup) \"I already have an account\" \"Create a new account\")]])\n\n"
+   "(defn signed-in [status]\n"
+   "  (let [{:keys [user profile]} status]\n"
+   "    [:section.account-card\n"
+   "     [:p.eyebrow \"SIGNED IN\"]\n"
+   "     [:h1 (str \"Hello, \" (:display_name profile))]\n"
+   "     [:p.account-id (str \"ID · \" (:identifier user))]\n"
+   "     [:output.points {:aria-label \"Points\"} (str (:points profile) \" points\")]\n"
+   "     [:div.account-actions\n"
+   "      [:button.primary {:type \"button\" :on-click #(action-with-feedback! :accounts/earn-point {})} \"Earn a point\"]\n"
+   "      [:button.text-button {:type \"button\" :on-click #(action-with-feedback! :accounts/logout {})} \"Sign out\"]]]))\n\n"
+   "(defn page [_]\n"
+   "  (api/ensure-action! :accounts/status {} :account/status)\n"
+   "  (let [status (:account/status @api/page-state)]\n"
+   "    [:main.account-product {:aria-label \"Account playground\"}\n"
+   "     [:section.account-intro [:p.eyebrow \"PRODUCT SANDBOX\"] [:h2 \"A real member experience, running now.\"] [:p \"Create an account, refresh the page, and keep going.\"]]\n"
+   "     (if (:signed-in? status) [signed-in status] [auth-form (:account/mode @api/page-state)])]))\n\n"
+   "(api/register-page! :home page)\n"))
+
+(def ^:private account-css
+  (str
+   workspace-css
+   ":root { background: #10130f; color: #f0f2e9; }\n"
+   ".account-product { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); align-items: center; gap: clamp(44px, 9vw, 140px); padding: clamp(42px, 8vw, 120px); background: radial-gradient(circle at 10% 15%, #263226, #10130f 48%); }\n"
+   ".account-intro { max-width: 680px; } .account-intro h2 { max-width: 640px; margin: 18px 0; font: 500 clamp(46px, 7vw, 96px)/.92 Georgia, serif; letter-spacing: -.06em; } .account-intro>p:last-child { max-width: 440px; color: #a9b0a2; font-size: 18px; line-height: 1.6; }\n"
+   ".eyebrow { color: #83d7a0; font: 700 11px/1 sans-serif; letter-spacing: .18em; }\n"
+   ".account-form, .account-card { display: grid; gap: 18px; border: 1px solid #3b4338; border-radius: 22px; background: rgb(24 29 23 / 92%); padding: 34px; box-shadow: 0 35px 90px rgb(0 0 0 / 35%); }\n"
+   ".account-form h1, .account-card h1 { margin: 0; font: 500 36px/1.05 Georgia, serif; } .account-form>p { margin: -8px 0 4px; color: #9da596; }\n"
+   ".account-form label { display: grid; gap: 7px; color: #c5cabe; font-size: 13px; } .account-form input { border: 1px solid #4b5547; border-radius: 10px; background: #111510; padding: 12px 13px; color: #f0f2e9; font: inherit; }\n"
+   ".primary, .text-button { min-height: 43px; border-radius: 10px; padding: 0 16px; font: 650 14px/1 sans-serif; cursor: pointer; } .primary { border: 0; background: #83d7a0; color: #102016; } .text-button { border: 1px solid #485044; background: transparent; color: #d7dbd1; }\n"
+   ".account-error { margin: 0; color: #ff9d91; } .account-id { color: #9da596; } .points { font: 500 46px/1 Georgia, serif; } .account-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }\n"
+   "@media (max-width: 850px) { .account-product { grid-template-columns: 1fr; padding: 76px 22px 32px; } .account-intro h2 { font-size: 52px; } }\n"))
+
+(def ^:private account-migration
+  {:name "create-product-profiles"
+   :sql "CREATE TABLE product_profiles (user_id TEXT PRIMARY KEY, display_name TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 0);"})
+
+(def ^:private resource-server
+  (str
+   "(ns runtime.server (:require [runtime.api :as api] [clojure.string :as str]))\n\n"
+   "(defn resource-view [] {:objects (api/blob-list)})\n\n"
+   "(defn upload! [{:keys [id name content-type content-base64]}]\n"
+   "  (let [stored (api/blob-put! {:id id :name name :content-type content-type :content-base64 content-base64})]\n"
+   "    (api/search-upsert! :objects id {:text (str name \" \" content-type) :metadata {:name name}})\n"
+   "    (api/publish! :resources/changed {:id id :operation :stored})\n"
+   "    (assoc (resource-view) :stored stored)))\n\n"
+   "(defn delete! [{:keys [id]}]\n"
+   "  (api/blob-delete! id)\n"
+   "  (api/search-delete! :objects id)\n"
+   "  (api/publish! :resources/changed {:id id :operation :deleted})\n"
+   "  (resource-view))\n\n"
+   "(defn search! [{:keys [query]}]\n"
+   "  {:results (api/search-query :objects (str/trim (or query \"\")) {:limit 20})})\n\n"
+   "(defn process! [{:keys [id]}]\n"
+   "  (let [object (api/blob-get id)]\n"
+   "    (api/search-upsert! :objects id {:text (str (:name object) \" \" id \" processed background result\") :metadata {:processed true}}))\n"
+   "  (api/publish! :resources/processed {:id id})\n"
+   "  {:processed id})\n\n"
+   "(defn schedule! [{:keys [id delay-ms]}]\n"
+   "  {:job (api/schedule-job! :resources/process {:id id} {:delay-ms (or delay-ms 0) :idempotency-key id :max-attempts 3})})\n\n"
+   "(defn job! [{:keys [id]}] {:job (api/job-status id)})\n\n"
+   "(defn import! [request]\n"
+   "  (let [id (str \"incoming-\" (hash (:body request)))]\n"
+   "    (api/search-upsert! :objects id {:text (str \"incoming webhook \" (pr-str (:body request))) :metadata {:source :public}})\n"
+   "    (api/publish! :resources/imported {:id id})\n"
+   "    {:status 202 :body {:accepted true :id id}}))\n\n"
+   "(api/register-action! :resources/list (fn [_] (resource-view)))\n"
+   "(api/register-action! :resources/upload upload!)\n"
+   "(api/register-action! :resources/delete delete!)\n"
+   "(api/register-action! :resources/search search!)\n"
+   "(api/register-action! :resources/schedule schedule!)\n"
+   "(api/register-action! :resources/job job!)\n"
+   "(api/register-job! :resources/process process!)\n"
+   "(api/register-ingress! :resource-import {} import!)\n"))
+
+(def ^:private resource-domain-test
+  (str
+   "(ns runtime.domain-test (:require [clojure.test :refer [deftest is] :as test] [runtime.test :as runtime-test]))\n\n"
+   "(deftest complete-resource-workbench-contract\n"
+   "  (let [uploaded (runtime-test/invoke! :resources/upload {:id \"test-object\" :name \"test.txt\" :content-type \"text/plain\" :content-base64 \"aGk=\"})\n"
+   "        searched (runtime-test/invoke! :resources/search {:query \"test\"})\n"
+   "        scheduled (runtime-test/invoke! :resources/schedule {:id \"test-object\"})\n"
+   "        processed (runtime-test/invoke-job! :resources/process {:id \"test-object\"})\n"
+   "        imported (runtime-test/invoke-ingress! :resource-import {:method :post :body {:title \"demo\"}})]\n"
+   "    (is (some #(= \"test-object\" (:id %)) (:objects uploaded)))\n"
+   "    (is (= \"test-object\" (get-in searched [:results 0 :id])))\n"
+   "    (is (string? (get-in scheduled [:job :id])))\n"
+   "    (is (= {:processed \"test-object\"} processed))\n"
+   "    (is (= 202 (:status imported)))))\n"))
+
+(def ^:private resource-client
+  (str
+   "(ns runtime.client (:require [runtime.api :as api] [clojure.string :as str]))\n\n"
+   "(api/initialize-state! {:resource/query \"\" :resource/events 0 :resource/status \"Ready\"})\n\n"
+   "(defn show-error! [error] (swap! api/page-state assoc :resource/status (or (.-message error) \"The request could not be completed.\")))\n\n"
+   "(defn refresh! [] (api/action! :resources/list {} :resource/data))\n"
+   "(api/register-event-handler! :resources/changed (fn [_] (swap! api/page-state update :resource/events inc) (refresh!)))\n"
+   "(api/register-event-handler! :resources/processed (fn [{:keys [id]}] (swap! api/page-state assoc :resource/status (str id \" processed\") :resource/events (inc (:resource/events @api/page-state)))))\n"
+   "(api/register-event-handler! :resources/imported (fn [{:keys [id]}] (swap! api/page-state assoc :resource/status (str id \" imported\") :resource/events (inc (:resource/events @api/page-state)))))\n\n"
+   "(defn upload-file! [event]\n"
+   "  (when-let [file (aget (.. event -target -files) 0)]\n"
+   "    (let [reader (js/FileReader.)]\n"
+   "      (set! (.-onload reader)\n"
+   "            (fn [_]\n"
+   "              (let [wire (str (.-result reader))\n"
+   "                    content (second (str/split wire #\",\" 2))\n"
+   "                    id (str \"asset-\" (.toString (js/Date.now) 36))]\n"
+   "                (swap! api/page-state assoc :resource/status \"Uploading\")\n"
+   "                (-> (api/action! :resources/upload {:id id :name (.-name file) :content-type (or (.-type file) \"application/octet-stream\") :content-base64 content} :resource/data)\n"
+   "                    (.then (fn [_] (swap! api/page-state assoc :resource/status \"Stored\")))\n"
+   "                    (.catch show-error!)))))\n"
+   "      (.readAsDataURL reader file))))\n\n"
+   "(defn run-search! [event]\n"
+   "  (api/prevent-default! event)\n"
+   "  (-> (api/action! :resources/search {:query (:resource/query @api/page-state)} :resource/search)\n"
+   "      (.catch show-error!)))\n\n"
+   "(defn start-work! [id delay-ms]\n"
+   "  (-> (api/action! :resources/schedule {:id id :delay-ms delay-ms})\n"
+   "      (.then (fn [value] (swap! api/page-state assoc :resource/job-id (get-in value [:result :job :id]) :resource/status \"Queued\")))\n"
+   "      (.catch show-error!)))\n\n"
+   "(api/start-interval! :resource/job-status 250\n"
+   "  (fn []\n"
+   "    (when-let [id (:resource/job-id @api/page-state)]\n"
+   "      (-> (api/action! :resources/job {:id id})\n"
+   "          (.then (fn [value]\n"
+   "                   (let [status (get-in value [:result :job :status])]\n"
+   "                     (swap! api/page-state assoc :resource/status (name status))\n"
+   "                     (when (contains? #{:completed :failed :cancelled} status)\n"
+   "                       (swap! api/page-state dissoc :resource/job-id)))))\n"
+   "          (.catch show-error!)))))\n\n"
+   "(defn page [_]\n"
+   "  (api/ensure-action! :resources/list {} :resource/data)\n"
+   "  (let [objects (:objects (:resource/data @api/page-state)) results (:results (:resource/search @api/page-state))]\n"
+   "    [:main.resource-product {:aria-label \"Resource workbench\"}\n"
+   "     [:header [:p \"SESSION RESOURCE PLANE\"] [:h1 \"Make the whole product live.\"] [:p \"Files, search, scheduled work, public input, and live updates share one recoverable workspace.\"]]\n"
+   "     [:section.resource-controls\n"
+   "      [:label.upload \"Upload object\" [:input {:type \"file\" :aria-label \"Upload object\" :on-change upload-file!}]]\n"
+   "      [:form {:on-submit run-search!} [:label \"Search objects\" [:input {:aria-label \"Search objects\" :value (:resource/query @api/page-state) :on-change #(swap! api/page-state assoc :resource/query (api/event-value %))}]] [:button {:type \"submit\"} \"Search\"]]\n"
+   "      [:output {:aria-label \"Resource status\"} (:resource/status @api/page-state)]\n"
+   "      [:output {:aria-label \"Live event count\"} (str (:resource/events @api/page-state))]]\n"
+   "     [:section.object-list {:aria-label \"Stored objects\"}\n"
+   "      (if (seq objects)\n"
+   "        (for [{:keys [id name size]} objects] ^{:key id} [:article [:div [:strong name] [:span (str size \" bytes\")]] [:button {:type \"button\" :on-click #(start-work! id 0)} \"Process in background\"] [:button {:type \"button\" :on-click #(start-work! id 300000)} \"Process later\"] [:button {:type \"button\" :on-click #(-> (api/action! :resources/delete {:id id} :resource/data) (.catch show-error!))} \"Delete\"]])\n"
+   "        [:p \"No stored objects yet.\"])]\n"
+   "     [:section.search-results {:aria-label \"Search results\"}\n"
+   "      (for [{:keys [id text]} results] ^{:key id} [:article [:strong id] [:p text]])]]))\n\n"
+   "(api/register-page! :home page)\n"))
+
+(def ^:private resource-css
+  (str
+   floating-dark-workspace-css
+   ":root { background: #0b0d0b; color: #eef1ea; }\n"
+   ".resource-product { min-height: 100dvh; display: grid; gap: 28px; align-content: start; padding: 64px clamp(28px, 7vw, 112px); background: #0b0d0b; color: #eef1ea; }\n"
+   ".resource-product header { max-width: 880px; } .resource-product header>p:first-child { color: #7fc79b; font: 700 11px/1 sans-serif; letter-spacing: .16em; } .resource-product h1 { margin: 16px 0; font: 500 clamp(48px, 8vw, 104px)/.9 Georgia, serif; letter-spacing: -.06em; } .resource-product header>p:last-child { max-width: 620px; color: #aab1a5; font-size: 18px; line-height: 1.5; }\n"
+   ".resource-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; } .resource-controls>*, .resource-controls form { min-height: 76px; border: 1px solid #343a32; border-radius: 14px; background: #151914; padding: 14px; } .resource-controls label, .resource-controls form { display: grid; gap: 8px; } .resource-controls input { min-width: 0; border: 1px solid #424a3f; border-radius: 8px; background: #0d100d; padding: 9px; color: inherit; } .resource-controls button, .object-list button { border: 0; border-radius: 8px; background: #79c797; padding: 9px 12px; color: #0a160e; font-weight: 700; cursor: pointer; }\n"
+   ".object-list, .search-results { display: grid; gap: 10px; } .object-list article, .search-results article { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #292e27; padding: 16px 0; } .object-list article>div { display: grid; gap: 4px; margin-right: auto; } .object-list span, .search-results p { color: #99a194; }\n"
+   "@media (max-width: 900px) { .resource-controls { grid-template-columns: 1fr 1fr; } } @media (max-width: 560px) { .resource-product { padding: 72px 18px 28px; } .resource-controls { grid-template-columns: 1fr; } }\n"))
+
 (defn- sidebar-change
   []
   (provider/change-result
@@ -411,6 +671,37 @@
     {:path "src/client/runtime/client.cljs" :content (gallery-client true)}]
    []))
 
+(defn- account-change
+  []
+  (provider/change-result
+   "Signup, sign-in, sign-out, authenticated reload, and member-owned progress are running."
+   "Add product accounts and member progress"
+   [{:path "src/shared/runtime/domain.cljc" :content account-domain}
+    {:path "src/server/runtime/server.clj" :content account-server}
+    {:path "test/runtime/domain_test.cljc" :content account-domain-test}
+    {:path "src/client/runtime/client.cljs" :content account-client}
+    {:path "styles/runtime.css" :content account-css}]
+   [account-migration]))
+
+(defn- resource-workbench-change
+  []
+  (provider/change-result
+   "Durable objects, search, background work, public input, and live updates are running in this product."
+   "Add the complete session resource workbench"
+   [{:path "src/server/runtime/server.clj" :content resource-server}
+    {:path "test/runtime/domain_test.cljc" :content resource-domain-test}
+    {:path "src/client/runtime/client.cljs" :content resource-client}
+    {:path "styles/runtime.css" :content resource-css}]
+   []))
+
+(defn- resource-checkpoint-change
+  []
+  (provider/change-result
+   "The current resource workspace is preserved as a checkpoint."
+   "Preserve the resource workbench"
+   [{:path "styles/runtime.css" :content resource-css}]
+   []))
+
 (defrecord FakeProvider [delay-ms calls])
 
 (defn create-provider
@@ -469,6 +760,13 @@
             (str/includes? lower "[[fake:client-render-error]]")
             (invalid-client-render-change)
 
+            (or (str/includes? lower "[[fake:resource-workbench]]")
+                (contains-any? lower ["resource workbench" "리소스 워크벤치"]))
+            (resource-workbench-change)
+
+            (str/includes? lower "[[fake:resource-checkpoint]]")
+            (resource-checkpoint-change)
+
             (contains-any? lower ["secret" "auth.json" "shell" "filesystem" "mcp" "비밀" "쉘"])
             {:kind :reply
              :assistant-message "That capability is outside this product runtime. I can change the product through its bounded UI, action, data, and public HTTP capabilities."
@@ -484,6 +782,10 @@
 
             (contains-any? lower ["gallery" "leaderboard" "voting" "vote" "갤러리" "리더보드" "투표"])
             (gallery-change)
+
+            (contains-any? lower ["login" "log in" "sign in" "signup" "sign up"
+                                  "account" "member" "로그인" "회원가입" "계정"])
+            (account-change)
 
             (contains-any? lower ["tetris" "테트리스"])
             (tetris-change)

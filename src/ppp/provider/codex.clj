@@ -157,7 +157,7 @@
 
 (defn request-prompt
   [{:keys [prompt source transcript-summary runtime-version connector-catalog
-           repair-feedback]}]
+           ingress-verifier-catalog repair-feedback]}]
   (str
    "You are the code-generation engine inside Programmable Programming Page.\n"
    "Use $ppp-validate-and-apply for every change and repair attempt.\n"
@@ -168,9 +168,10 @@
    "Choose the smallest affected runtime surface from the user's outcome. A visual, layout, local-state, timer, keyboard, Canvas, or browser-game change writes only src/client and styles; do not rewrite src/server, src/shared, tests, or migrations for it. Persistence, shared domain rules, or server business behavior must update the relevant server/shared/test source and migrations.\n"
    "Every later turn evolves the current source tree. Preserve unrelated working features and stored data unless the user explicitly asks to remove them; replacing one game must not erase a separate ranking feature.\n"
    "Do not request or use shell, filesystem access, Java interop, secrets, tools, or new dependencies.\n"
+   "PPP workspace access is not the same as an account inside the generated product. Ordinary signup, login, logout, member profiles, roles, ownership, and authenticated product behavior are supported outcomes, not security refusals. Use the typed product-auth capabilities from runtime.api; never store passwords or session tokens yourself. Keep public profile and role data in generated tables keyed by the public auth user id.\n"
    "Generated client source runs in an opaque-origin sandbox frame and may use normal JavaScript/DOM/browser interop. It cannot access the authenticated parent; host operations use runtime.api only.\n"
    "For every interactive server mutation, trace the UI handler through the three-argument runtime.api/action!, server response shape, target page-state key, visible rerender, and SQLite reload before returning it.\n"
-   "Preserve existing behavior unless the request changes it. Keep and update test/runtime/domain_test.cljc for every domain or business-rule change; those tests run against the staged SQLite database before commit. Use runtime.test/invoke! to exercise registered actions. Tests cover domain rules, not copy or DOM shape.\n"
+   "Preserve existing behavior unless the request changes it. Keep and update test/runtime/domain_test.cljc for every domain or business-rule change; those tests run against the staged SQLite database before commit. Use runtime.test/invoke! to exercise registered actions and runtime.test/invoke-as! for protected actions. Tests cover domain rules, not copy or DOM shape.\n"
    "Generated tests must remain valid after arbitrary legitimate user data changes. Create rollback-only fixture rows with distinctive values or compare mutation deltas to a captured baseline; never assume seeded row counts, existing scores, or an empty table remain unchanged after commit.\n"
    "For voting and weighted aggregates, tests must prove zero votes equals zero points, a public vote adds exactly 1, a judge vote adds exactly 3, and tie order is deterministic. A LEFT JOIN NULL row must contribute zero.\n"
    "Treat the runtime contracts below as executable API rules. Self-review every returned file against them before answering.\n"
@@ -178,6 +179,8 @@
    "CAPABILITY CATALOG (EDN)\n" (pr-str policy/capability-catalog) "\n\n"
    "NAMED CONNECTORS (model-safe EDN; no origins, secrets, or env names)\n"
    (pr-str (or connector-catalog [])) "\n\n"
+   "PUBLIC ROUTE VERIFIERS (model-safe EDN; no secrets or env names)\n"
+   (pr-str (or ingress-verifier-catalog [])) "\n\n"
    "CURRENT RUNTIME VERSION\n" runtime-version "\n\n"
    "TRANSCRIPT SUMMARY\n" (or transcript-summary "No earlier summary.") "\n\n"
    "CURRENT SOURCE TREE (EDN path to complete content)\n" (pr-str source) "\n\n"

@@ -112,6 +112,11 @@
                         :description "Issue lookup"
                         :methods [:get]
                         :path-prefixes ["/v1/issues"]}]
+   :ingress-verifier-catalog [{:alias :judge-hook
+                               :description "Judge result signature"
+                               :algorithm :hmac-sha256
+                               :header "x-judge-signature"
+                               :prefix "sha256="}]
    :thread-id nil})
 
 (deftest repair-feedback-is-separated-from-the-original-user-turn
@@ -198,12 +203,19 @@
         (is (str/includes? stdin
                            "replacing one game must not erase a separate ranking feature"))
         (is (str/includes? stdin ":issues"))
+        (is (str/includes? stdin ":judge-hook"))
+        (is (str/includes? stdin "x-judge-signature"))
         (is (str/includes? stdin "A registered action handler receives the submitted payload map directly"))
         (is (str/includes? stdin "create-projects"))
+        (is (str/includes? stdin "schedule-job! returns a public job map"))
+        (is (str/includes? stdin "pass (:id scheduled-job), never the whole map"))
+        (is (not (str/includes? stdin "returned string id")))
         (is (str/includes? runtime-skill "Repair a rejected attempt"))
         (is (str/includes? runtime-skill "smallest affected runtime surface"))
         (is (str/includes? runtime-skill "server SCI staging"))
+        (is (str/includes? runtime-skill "pass that string—not the whole map"))
         (is (not (str/includes? stdin "EXAMPLE_TOKEN")))
+        (is (not (str/includes? stdin "JUDGE_WEBHOOK_SECRET")))
         (is (= (str cwd) (get environment "HOME")))
         (is (= (:codex-home config) (get environment "CODEX_HOME")))
         (is (= "C.UTF-8" (get environment "LANG")))

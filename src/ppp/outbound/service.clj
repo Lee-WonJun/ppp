@@ -5,9 +5,12 @@
             [ppp.outbound.policy :as policy])
   (:import (java.net URLEncoder)
            (java.nio.charset StandardCharsets)
-           (java.nio.file Files LinkOption Path Paths)))
+           (java.nio.file Files LinkOption Path Paths)
+           (java.security MessageDigest)
+           (javax.crypto Mac)
+           (javax.crypto.spec SecretKeySpec)))
 
-(defrecord Service [client connectors env])
+(defrecord Service [client connectors ingress-verifiers env])
 
 (def ^:private connector-config-keys
   #{:description :base-url :allow :secret-headers :timeout-ms
@@ -145,7 +148,7 @@
   [path allowed-ports]
   (let [value (read-config-file! path)]
     (when-not (and (map? value)
-                   (every? #{:connectors} (keys value)))
+                   (every? #{:connectors :ingress-verifiers} (keys value)))
       (invalid-config!))
     (let [connectors (or (:connectors value) {})]
       (when-not (and (map? connectors) (<= (count connectors) 64))
@@ -154,6 +157,52 @@
             (mapv (fn [[alias connector]]
                     (normalize-connector! allowed-ports alias connector))
                   connectors)]
+        (when-not (= (count normalized)
+                     (count (distinct (map :alias normalized))))
+          (invalid-config!))
+        (into {} (map (juxt :alias identity)) normalized)))))
+
+(def ^:private ingress-verifier-keys
+  #{:description :algorithm :header :prefix :secret})
+
+(defn- normalize-ingress-verifier!
+  [alias value]
+  (when-not (and (map? value)
+                 (every? ingress-verifier-keys (keys value)))
+    (invalid-config!))
+  (let [alias (connector-alias! alias)
+        description (:description value)
+        algorithm (:algorithm value)
+        header (policy/normalize-header-name! (:header value))
+        prefix (or (:prefix value) "sha256=")
+        secret (:secret value)
+        env-name (:env secret)]
+    (when-not (and (string? description) (<= 1 (count description) 500)
+                   (= :hmac-sha256 algorithm)
+                   (string? prefix) (<= (count prefix) 32)
+                   (map? secret) (= #{:env} (set (keys secret)))
+                   (string? env-name)
+                   (re-matches #"[A-Z_][A-Z0-9_]*" env-name))
+      (invalid-config!))
+    {:alias alias
+     :description description
+     :algorithm algorithm
+     :header header
+     :prefix prefix
+     :secret-env env-name}))
+
+(defn load-ingress-verifiers!
+  [path]
+  (let [value (read-config-file! path)]
+    (when-not (and (map? value)
+                   (every? #{:connectors :ingress-verifiers} (keys value)))
+      (invalid-config!))
+    (let [verifiers (or (:ingress-verifiers value) {})]
+      (when-not (and (map? verifiers) (<= (count verifiers) 32))
+        (invalid-config!))
+      (let [normalized (mapv (fn [[alias verifier]]
+                               (normalize-ingress-verifier! alias verifier))
+                             verifiers)]
         (when-not (= (count normalized)
                      (count (distinct (map :alias normalized))))
           (invalid-config!))
@@ -173,6 +222,7 @@
           :allowed-ports outbound-allowed-ports})]
     (->Service http-client
                (load-connectors! connectors-file outbound-allowed-ports)
+               (load-ingress-verifiers! connectors-file)
                outbound-env)))
 
 (defn catalog
@@ -192,7 +242,55 @@
 (defn readiness
   [^Service service]
   {:ready? true
-   :connector-count (count (:connectors service))})
+   :connector-count (count (:connectors service))
+   :ingress-verifier-count (count (:ingress-verifiers service))})
+
+(defn ingress-catalog
+  "Return verifier contracts without secret values or environment names."
+  [^Service service]
+  (->> (:ingress-verifiers service)
+       vals
+       (sort-by (comp name :alias))
+       (mapv #(select-keys % [:alias :description :algorithm :header :prefix]))))
+
+(defn- hex-bytes
+  [value]
+  (when (and (string? value) (even? (count value))
+             (re-matches #"(?i)[0-9a-f]+" value))
+    (byte-array
+     (map (fn [[left right]]
+            (unchecked-byte
+             (Integer/parseInt (str left right) 16)))
+          (partition 2 value)))))
+
+(defn verify-ingress!
+  [^Service service alias headers ^bytes body]
+  (if (nil? alias)
+    true
+    (let [alias (if (keyword? alias) alias (keyword (str alias)))
+          verifier (get (:ingress-verifiers service) alias)]
+      (when-not verifier
+        (throw (ex-info "The public route verifier is not configured"
+                        {:code :ingress/verifier-unavailable :alias alias})))
+      (let [secret ((:env service) (:secret-env verifier))
+            supplied (get headers (:header verifier))
+            prefix (:prefix verifier)]
+        (when (str/blank? secret)
+          (throw (ex-info "The public route verifier is not ready"
+                          {:code :ingress/verifier-unavailable :alias alias})))
+        (let [signature (when (and (string? supplied)
+                                   (str/starts-with? supplied prefix))
+                          (hex-bytes (subs supplied (count prefix))))
+              mac (doto (Mac/getInstance "HmacSHA256")
+                    (.init (SecretKeySpec.
+                            (.getBytes ^String secret StandardCharsets/UTF_8)
+                            "HmacSHA256")))
+              expected (.doFinal mac body)]
+          (when-not (and signature
+                         (MessageDigest/isEqual expected signature))
+            (throw (ex-info "The public request signature did not match"
+                            {:code :ingress/signature-invalid :alias alias})))
+          true)))))
 
 (defn public-request!
   [^Service service request]

@@ -31,6 +31,8 @@
                          (when development?
                            "development-only-cookie-secret-change-before-sharing"))
      :cookie-secure? (parse-bool (env "PPP_COOKIE_SECURE" (str (not development?))))
+     :product-auth-session-seconds
+     (parse-int (env "PPP_PRODUCT_AUTH_SESSION_SECONDS" "604800"))
      :provider (keyword (env "PPP_AI_PROVIDER" "codex"))
      :codex-bin (env "PPP_CODEX_BIN" "codex")
      :codex-home (env "CODEX_HOME" (str (System/getProperty "user.home") "/.codex"))
@@ -42,17 +44,32 @@
      :queue-capacity (parse-int (env "PPP_QUEUE_CAPACITY" "8"))
      :require-client-ack? (parse-bool (env "PPP_REQUIRE_CLIENT_ACK" "true"))
      :client-ack-timeout-ms (parse-int (env "PPP_CLIENT_ACK_TIMEOUT_MS" "45000"))
+     :job-scheduler-enabled?
+     (parse-bool (env "PPP_JOB_SCHEDULER_ENABLED" "true"))
+     :job-poll-interval-ms (parse-int (env "PPP_JOB_POLL_INTERVAL_MS" "250"))
      :public-base-url (env "PPP_PUBLIC_BASE_URL" "http://localhost:8787")
      :prompt-limit 4000
      :provider-output-limit (* 512 1024)
      :source-file-limit 32
      :source-byte-limit (* 256 1024)
+     :blob-object-limit (* 4 1024 1024)
+     :blob-count-limit 64
+     :resource-value-limit (* 64 1024)
+     :product-event-limit (* 64 1024)
+     :runtime-request-limit (* 7 1024 1024)
+     :runtime-response-limit (* 7 1024 1024)
+     :job-count-limit 1000
+     :job-lease-ms 10000
+     :search-document-limit 10000
+     :search-candidate-limit 1000
      :session-db-limit (* 25 1024 1024)
      :checkpoint-limit (* 256 1024 1024)
      :instance-limit (* 2 1024 1024 1024)}))
 
 (defn validate!
-  [{:keys [access-code cookie-secret environment development?] :as config}]
+  [{:keys [access-code cookie-secret environment development?
+           product-auth-session-seconds]
+    :as config}]
   (when (str/blank? access-code)
     (throw (ex-info "PPP_ACCESS_CODE is required" {:environment environment})))
   (when (and (not development?) (< (count access-code) 16))
@@ -61,4 +78,10 @@
   (when (< (count (or cookie-secret "")) 32)
     (throw (ex-info "PPP_COOKIE_SECRET must contain at least 32 characters"
                     {:environment environment})))
+  (when (and (some? product-auth-session-seconds)
+             (not (<= 300 (long product-auth-session-seconds)
+                      (* 90 24 60 60))))
+    (throw (ex-info
+            "PPP_PRODUCT_AUTH_SESSION_SECONDS must be between 300 and 7776000"
+            {:environment environment})))
   config)

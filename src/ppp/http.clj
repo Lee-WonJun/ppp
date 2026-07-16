@@ -6,6 +6,7 @@
             [org.httpkit.server :as http-kit]
             [ppp.access :as access]
             [ppp.coordinator :as coordinator]
+            [ppp.runtime.auth :as product-auth]
             [ppp.session.store :as store]
             [ppp.shared.protocol :as protocol]
             [ppp.websocket :as ws]
@@ -14,14 +15,16 @@
            (java.net URLDecoder)
            (java.nio.charset StandardCharsets)
            (java.time Instant)
-           (java.util Date)))
+           (java.util Base64 Date)))
 
 (defn- json-value
   [value]
   (walk/postwalk
    (fn [item]
      (cond
-       (keyword? item) (name item)
+       (keyword? item) (if-let [keyword-namespace (namespace item)]
+                         (str keyword-namespace "/" (name item))
+                         (name item))
        (uuid? item) (str item)
        (instance? Instant item) (str item)
        (instance? Date item) (str (.toInstant ^Date item))
@@ -57,6 +60,103 @@
     (if (zero? (alength bytes))
       {}
       (json/read-str (String. bytes StandardCharsets/UTF_8) :key-fn keyword))))
+
+(defn- read-bounded-bytes
+  [request limit]
+  (let [body ^InputStream (:body request)
+        bytes (if body (.readNBytes body (inc limit)) (byte-array 0))]
+    (when (> (alength bytes) limit)
+      (throw (ex-info "Request body too large" {:code :request/body-too-large})))
+    bytes))
+
+(defn- normalized-headers
+  [request]
+  (into {}
+        (keep (fn [[header value]]
+                (when (and (string? header) (string? value)
+                           (<= (count header) 128) (<= (count value) 8192))
+                  [(str/lower-case header) value])))
+        (:headers request)))
+
+(defn- public-headers
+  [headers]
+  (into {}
+        (filter (fn [[header _]]
+                  (and (not (contains? #{"authorization" "cookie"
+                                         "proxy-authorization"}
+                                       header))
+                       (or (contains? #{"content-type" "user-agent"
+                                        "x-request-id" "x-event-type"}
+                                      header)
+                           (str/starts-with? header "x-webhook-")))))
+        (take 32 headers)))
+
+(defn- decode-query-part
+  [value]
+  (URLDecoder/decode (str/replace (str value) "+" "%20")
+                     StandardCharsets/UTF_8))
+
+(defn- public-query
+  [query-string]
+  (let [pairs (if (str/blank? query-string)
+                []
+                (str/split query-string #"&" -1))]
+    (when (> (count pairs) 64)
+      (throw (ex-info "Public request has too many query values"
+                      {:code :ingress/query-invalid})))
+    (reduce
+     (fn [result pair]
+       (let [[raw-name raw-value] (str/split pair #"=" 2)
+             name (decode-query-part raw-name)
+             value (decode-query-part (or raw-value ""))]
+         (when (or (str/blank? name) (> (count name) 128) (> (count value) 4096))
+           (throw (ex-info "Public request query is invalid"
+                           {:code :ingress/query-invalid})))
+         (update result name (fn [current]
+                               (cond
+                                 (nil? current) value
+                                 (vector? current) (conj current value)
+                                 :else [current value])))))
+     {}
+     pairs)))
+
+(defn- public-body
+  [headers ^bytes bytes]
+  (let [content-type (some-> (get headers "content-type")
+                             (str/split #";" 2) first str/lower-case)]
+    (cond
+      (zero? (alength bytes)) nil
+
+      (= "application/json" content-type)
+      (try
+        (json/read-str (String. bytes StandardCharsets/UTF_8) :key-fn keyword)
+        (catch Exception cause
+          (throw (ex-info "Public JSON body is invalid"
+                          {:code :ingress/json-invalid}
+                          cause))))
+
+      (or (str/starts-with? (or content-type "") "text/")
+          (= "application/x-www-form-urlencoded" content-type))
+      (String. bytes StandardCharsets/UTF_8)
+
+      :else
+      {:content-base64 (.encodeToString (Base64/getEncoder) bytes)})))
+
+(defn- ingress-rate-allowed!
+  [limiter key]
+  (locking limiter
+    (let [window (quot (System/currentTimeMillis) 60000)
+          entry (get @limiter key)
+          request-count (if (= window (:window entry)) (:count entry 0) 0)
+          allowed? (< request-count 60)]
+      (when (> (count @limiter) 10000)
+        (swap! limiter #(into {} (filter (fn [[_ value]]
+                                           (= window (:window value))) %))))
+      (swap! limiter assoc key {:window window
+                                :count (if allowed?
+                                         (inc request-count)
+                                         request-count)})
+      allowed?)))
 
 (defn- require-origin
   [config request handler]
@@ -190,11 +290,15 @@
     (contains? #{:runtime/stale-browser-version
                  :runtime/base-version-conflict} code) 409
     (= :provider/queue-full code) 429
+    (= :auth/temporarily-locked code) 429
+    (contains? #{:auth/invalid-credentials :auth/required} code) 401
+    (= :auth/identifier-taken code) 409
     (contains? #{:runtime/requester-not-connected
                  :provider/unavailable :provider/oauth-not-ready} code) 503
     (contains? #{:turn/prompt-invalid :protocol/tab-id-invalid
                  :protocol/request-id-invalid :session/invalid-id
-                 :checkpoint/version-invalid} code) 400
+                 :checkpoint/version-invalid :auth/identifier-invalid
+                 :auth/password-invalid} code) 400
     :else 422))
 
 (defn- safe-exception-message
@@ -214,6 +318,49 @@
 
     (= :checkpoint/not-found code)
     "That checkpoint does not exist."
+
+    (= :auth/identifier-taken code)
+    "That sign-in identifier is already in use."
+
+    (= :auth/invalid-credentials code)
+    "Those sign-in details did not match."
+
+    (= :auth/required code)
+    "Sign in before continuing."
+
+    (= :auth/temporarily-locked code)
+    "Sign in is temporarily unavailable. Try again shortly."
+
+    (= :auth/identifier-invalid code)
+    "Use a valid sign-in identifier."
+
+    (= :auth/password-invalid code)
+    "Use a password with at least 8 characters."
+
+    (= "blob" (namespace code))
+    (case code
+      :blob/not-found "That stored object no longer exists."
+      :blob/too-large "That object is larger than this workspace allows."
+      :blob/count-limit "This product has reached its stored object limit."
+      "That object could not be stored safely.")
+
+    (= "job" (namespace code))
+    (case code
+      :job/not-found "That background task no longer exists."
+      :job/count-limit "This product has reached its background task limit."
+      "That background task could not be completed safely.")
+
+    (= "search" (namespace code))
+    "That search request is outside this product's supported limits."
+
+    (= "event" (namespace code))
+    "That live update is outside this product's supported limits."
+
+    (= :storage/quota-exceeded code)
+    "This workspace has reached its storage limit. Existing product data is unchanged."
+
+    (= :runtime/response-too-large code)
+    "The product returned more information than this workspace can safely display."
 
     (and (keyword? code) (= "checkpoint" (namespace code)))
     "That checkpoint could not be safely restored."
@@ -248,17 +395,28 @@
                          (request-id request)))))))
 
 (defn- action-handler
-  [config coordinator session-id raw-action-id request]
+  [config coordinator product-auth-service session-id raw-action-id request]
   (protected-mutation
    config request
    (fn [request]
      (try
-       (let [payload (read-json-body request (* 1024 1024))
+       (let [payload (read-json-body request
+                                     (get config :runtime-request-limit
+                                          (* 7 1024 1024)))
              action-id (URLDecoder/decode (str raw-action-id)
-                                          StandardCharsets/UTF_8)]
-         (json-response 200
-                        (coordinator/invoke-action! coordinator session-id
-                                                    action-id payload)))
+                                          StandardCharsets/UTF_8)
+             auth-token (when product-auth-service
+                          (product-auth/request-token request session-id))
+             result (coordinator/invoke-action! coordinator session-id
+                                                action-id payload
+                                                {:auth-token auth-token})
+             effect (last (filter #(contains? #{:set :clear} (:op %))
+                                  (:effects result)))
+             headers (if (and product-auth-service effect)
+                       (product-auth/effect-headers product-auth-service
+                                                    session-id effect)
+                       {})]
+         (json-response 200 (dissoc result :effects) headers))
        (catch clojure.lang.ExceptionInfo cause
          (let [code (or (:code (ex-data cause)) :runtime/action-failed)]
            (error-response (exception-status code) code
@@ -268,6 +426,61 @@
          (error-response 400 :request/invalid-json
                          "The product action request could not be read."
                          (request-id request)))))))
+
+(defn- public-ingress-handler
+  [coordinator limiter session-id raw-route request]
+  (try
+    (let [method (:request-method request)
+          _ (when-not (contains? #{:get :post :put :patch :delete} method)
+              (throw (ex-info "Public request method is not supported"
+                              {:code :ingress/method-not-allowed})))
+          route (URLDecoder/decode (str raw-route) StandardCharsets/UTF_8)
+          remote (or (:remote-addr request) "unknown")
+          _ (when-not (ingress-rate-allowed! limiter [session-id route remote])
+              (throw (ex-info "Public route is receiving too many requests"
+                              {:code :ingress/rate-limited})))
+          bytes (read-bounded-bytes request (* 1024 1024))
+          headers (normalized-headers request)
+          public-request {:method method
+                          :query (public-query (:query-string request))
+                          :headers (public-headers headers)
+                          :body (public-body headers bytes)}
+          result (coordinator/invoke-ingress!
+                  coordinator session-id route public-request
+                  {:headers headers :raw-body bytes})
+          response (:result result)
+          status (:status response)
+          body (:body response)]
+      (when-not (and (map? response)
+                     (every? #{:status :body} (keys response))
+                     (int? status)
+                     (or (<= 200 status 299) (<= 400 status 599)))
+        (throw (ex-info "Generated public response is invalid"
+                        {:code :ingress/response-invalid})))
+      (json-response status body))
+    (catch clojure.lang.ExceptionInfo cause
+      (let [code (or (:code (ex-data cause)) :ingress/failed)
+            status (cond
+                     (= :runtime/ingress-not-found code) 404
+                     (= :request/body-too-large code) 413
+                     (= :ingress/rate-limited code) 429
+                     (= :ingress/method-not-allowed code) 405
+                     (= :ingress/signature-invalid code) 401
+                     (= :ingress/verifier-unavailable code) 503
+                     :else 422)
+            message (cond
+                      (= status 404) "That public product route does not exist."
+                      (= status 413) "The public request is too large."
+                      (= status 429) "This public product route is busy. Try again shortly."
+                      (= status 405) "That request method is not supported."
+                      (= status 401) "The public request could not be verified."
+                      (= status 503) "This public product route is not ready."
+                      :else "The public product request could not be completed.")]
+        (error-response status code message (request-id request))))
+    (catch Exception _cause
+      (error-response 400 :ingress/request-invalid
+                      "The public product request could not be read."
+                      (request-id request)))))
 
 (defn- checkpoints-handler
   [config session-store session-id request]
@@ -348,8 +561,10 @@
       (resource-response resource-fn resource-name))))
 
 (defn create-handler
-  [{:keys [config session-store coordinator websocket readiness resource-fn]}]
+  [{:keys [config session-store coordinator websocket product-auth readiness
+           resource-fn]}]
   (let [resource-fn (or resource-fn io/resource)
+        ingress-limiter (atom {})
         router
         (ring/router
          [["/api/access" {:post #(access-handler config %)}]
@@ -370,9 +585,25 @@
            {:post #(turn-handler config coordinator
                                  (get-in % [:path-params :id]) %)}]
           ["/api/sessions/:id/actions/:action-id"
-           {:post #(action-handler config coordinator
+           {:post #(action-handler config coordinator product-auth
                                    (get-in % [:path-params :id])
                                    (get-in % [:path-params :action-id]) %)}]
+          ["/public/sessions/:id/:route"
+           {:get #(public-ingress-handler coordinator ingress-limiter
+                                          (get-in % [:path-params :id])
+                                          (get-in % [:path-params :route]) %)
+            :post #(public-ingress-handler coordinator ingress-limiter
+                                           (get-in % [:path-params :id])
+                                           (get-in % [:path-params :route]) %)
+            :put #(public-ingress-handler coordinator ingress-limiter
+                                          (get-in % [:path-params :id])
+                                          (get-in % [:path-params :route]) %)
+            :patch #(public-ingress-handler coordinator ingress-limiter
+                                            (get-in % [:path-params :id])
+                                            (get-in % [:path-params :route]) %)
+            :delete #(public-ingress-handler coordinator ingress-limiter
+                                             (get-in % [:path-params :id])
+                                             (get-in % [:path-params :route]) %)}]
           ["/ws" {:get #(websocket-handler config websocket %)}]
           ["/healthz" {:get (fn [_] (json-response 200 {:status "ok"}))}]
           ["/readyz"

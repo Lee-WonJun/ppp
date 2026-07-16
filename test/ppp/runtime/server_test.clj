@@ -1,9 +1,11 @@
 (ns ppp.runtime.server-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [ppp.runtime.auth :as auth]
             [ppp.runtime.policy :as policy]
+            [ppp.runtime.resources :as resources]
             [ppp.runtime.server :as server]
             [ppp.runtime.sqlite :as sqlite]
             [ppp.session.store :as store]
@@ -20,6 +22,20 @@
   {:file-name "000001-create-notes.sql"
    :name "create-notes"
    :sql "CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL);"})
+
+(def auth-profile-migration
+  {:file-name "000001-create-product-profiles.sql"
+   :name "create-product-profiles"
+   :sql "CREATE TABLE product_profiles (user_id TEXT PRIMARY KEY, display_name TEXT NOT NULL);"})
+
+(defn- product-auth-service
+  []
+  (auth/create-service
+   {:cookie-secret "server-runtime-auth-test-secret-with-more-than-32-characters"
+    :cookie-secure? false
+    :product-auth-session-seconds 3600}
+   {:hash-options {:memory-kib 7168 :iterations 1 :parallelism 1}
+    :allow-weak-test-parameters? true}))
 
 (defn- test-root
   []
@@ -83,6 +99,169 @@
       (finally
         (fs/delete-tree! root)))))
 
+(deftest resource-plane-runs-through-actions-jobs-ingress-and-post-commit-effects
+  (let [root (test-root)]
+    (try
+      (let [session-id (random-uuid)
+            runtime
+            (server/stage!
+             {:source-map
+              (assoc
+               (source-map
+                (str
+                 "(ns runtime.server (:require [runtime.api :as api]))\n"
+                 "(defn seed! [_]\n"
+                 "  (api/blob-put! {:id \"hello\" :name \"hello.txt\" :content-type \"text/plain\" :content-base64 \"aGVsbG8=\"})\n"
+                 "  (api/search-upsert! :notes \"hello\" {:text \"안녕 live product\" :metadata {:kind :demo} :vector [1.0 0.0]})\n"
+                 "  (let [job (api/schedule-job! :notes/enrich {:id \"hello\"} {:idempotency-key \"hello\"})]\n"
+                 "    (api/publish! :notes/changed {:id \"hello\"})\n"
+                 "    {:job job :objects (api/blob-list) :matches (api/search-query :notes \"안녕\")}))\n"
+                 "(defn enrich! [{:keys [id]}]\n"
+                 "  (api/search-upsert! :notes id {:text \"안녕 enriched\" :metadata {:kind :job}})\n"
+                 "  (api/publish! :notes/enriched {:id id})\n"
+                 "  {:enriched id})\n"
+                 "(defn hook! [request]\n"
+                 "  (api/publish! :hooks/received {:method (:method request)})\n"
+                 "  {:status 202 :body {:accepted true :request-body (:body request)}})\n"
+                 "(api/register-action! :resources/seed seed!)\n"
+                 "(api/register-job! :notes/enrich enrich!)\n"
+                 "(api/register-ingress! :hook {} hook!)\n"))
+               "test/runtime/domain_test.cljc"
+               (str
+                "(ns runtime.domain-test (:require [clojure.test :refer [deftest is]] [runtime.test :as runtime-test]))\n"
+                "(deftest complete-resource-contract\n"
+                "  (let [seeded (runtime-test/invoke! :resources/seed {})\n"
+                "        job-result (runtime-test/invoke-job! :notes/enrich {:id \"hello\"})\n"
+                "        ingress-result (runtime-test/invoke-ingress! :hook {:method :post :body {:value 1}})]\n"
+                "    (is (= \"hello\" (get-in seeded [:objects 0 :id])))\n"
+                "    (is (= {:enriched \"hello\"} job-result))\n"
+                "    (is (= 202 (:status ingress-result)))))\n"))
+              :database-path (.resolve root "resources.sqlite")
+              :session-id session-id
+              :version 0
+              :timeout-ms 1000
+              :response-limit (* 7 1024 1024)})
+            registry (server/create-registry)]
+        (is (= [:notes/enrich] (server/job-ids runtime)))
+        (is (= [:hook] (server/ingress-routes runtime)))
+        (server/activate! registry session-id runtime)
+        (let [result (server/invoke! registry session-id :resources/seed {})]
+          (is (= "hello" (get-in result [:result :objects 0 :id])))
+          (is (= "hello" (get-in result [:result :matches 0 :id])))
+          (is (= [{:op :product-event
+                   :topic :notes/changed
+                   :payload {:id "hello"}}]
+                 (:effects result))))
+        (let [claimed (server/claim-job! registry session-id)
+              result (server/run-job! registry session-id claimed)]
+          (is (= :notes/enrich (:handler claimed)))
+          (is (= {:enriched "hello"} (:result result)))
+          (is (= :notes/enriched (get-in result [:effects 0 :topic]))))
+        (let [result (server/invoke-ingress! registry session-id :hook
+                                             {:method :post :body {:value 1}})]
+          (is (= 202 (get-in result [:result :status])))
+          (is (= {:value 1} (get-in result [:result :body :request-body])))
+          (is (= :hooks/received (get-in result [:effects 0 :topic])))))
+      (finally
+        (fs/delete-tree! root)))))
+
+(deftest database-quota-rolls-back-a-resource-replacement
+  (let [root (test-root)]
+    (try
+      (let [database-path (.resolve root "resource-quota.sqlite")
+            runtime
+            (server/stage!
+             {:source-map
+              (source-map
+               (str
+                "(ns runtime.server (:require [runtime.api :as api]))\n"
+                "(defn store! [{:keys [content]}] (api/blob-put! {:id \"kept\" :name \"kept.bin\" :content-type \"application/octet-stream\" :content-base64 content}))\n"
+                "(defn objects [_] {:objects (api/blob-list)})\n"
+                "(api/register-action! :objects/store store!)\n"
+                "(api/register-action! :objects/list objects)\n"))
+              :database-path database-path
+              :version 1})
+            registry (server/create-registry)
+            session-id (random-uuid)]
+        (server/activate! registry session-id runtime)
+        (server/invoke! registry session-id :objects/store {:content "AQ=="})
+        (let [before (sqlite/logical-hash (:database runtime))
+              page-count (:page_count
+                          (sqlite/execute-one! (:database runtime)
+                                               ["PRAGMA page_count"]))
+              page-size (:page_size
+                         (sqlite/execute-one! (:database runtime)
+                                              ["PRAGMA page_size"]))
+              bounded (assoc runtime :database-size-limit
+                             (+ (* page-count page-size) page-size))]
+          (server/activate! registry session-id bounded)
+          (let [cause (exception
+                       #(server/invoke! registry session-id :objects/store
+                                        {:content (apply str (repeat 150000 "A"))}))]
+            (is (= :storage/quota-exceeded (:code (ex-data cause)))))
+          (is (= before (sqlite/logical-hash (:database bounded))))
+          (is (= 1 (get-in (server/invoke! registry session-id :objects/list {})
+                           [:result :objects 0 :size])))))
+      (finally
+        (fs/delete-tree! root)))))
+
+(deftest actions-cannot-schedule-an-unregistered-background-handler
+  (let [root (test-root)]
+    (try
+      (let [runtime
+            (server/stage!
+             {:source-map
+              (source-map
+               (str
+                "(ns runtime.server (:require [runtime.api :as api]))\n"
+                "(api/register-action! :jobs/invalid (fn [_] (api/schedule-job! :jobs/missing {})))\n"))
+              :database-path (.resolve root "unregistered-job.sqlite")
+              :version 1})
+            registry (server/create-registry)
+            session-id (random-uuid)]
+        (server/activate! registry session-id runtime)
+        (is (= :job/handler-not-found
+               (:code (ex-data
+                       (exception #(server/invoke! registry session-id
+                                                   :jobs/invalid {}))))))
+        (is (nil? (server/claim-job! registry session-id))))
+      (finally
+        (fs/delete-tree! root)))))
+
+(deftest a-durable-job-whose-handler-was-removed-becomes-terminal
+  (let [root (test-root)]
+    (try
+      (let [database-path (.resolve root "removed-job-handler.sqlite")
+            runtime-one
+            (server/stage!
+             {:source-map
+              (source-map
+               (str
+                "(ns runtime.server (:require [runtime.api :as api]))\n"
+                "(api/register-job! :jobs/old (fn [_] {:ok true}))\n"
+                "(api/register-action! :jobs/schedule (fn [_] (api/schedule-job! :jobs/old {} {:max-attempts 1})))\n"))
+              :database-path database-path
+              :version 1})
+            registry (server/create-registry)
+            session-id (random-uuid)]
+        (server/activate! registry session-id runtime-one)
+        (let [job-id (get-in (server/invoke! registry session-id :jobs/schedule {})
+                             [:result :id])
+              runtime-two (server/stage! {:source-map store/initial-source
+                                          :database-path database-path
+                                          :version 2})]
+          (server/activate! registry session-id runtime-two)
+          (let [claimed (server/claim-job! registry session-id)
+                cause (exception #(server/run-job! registry session-id claimed))]
+            (is (= job-id (:id claimed)))
+            (is (= :job/handler-not-found (:code (ex-data cause))))
+            (is (= :failed
+                   (:status (resources/job-status (:resource-service runtime-two)
+                                                  (:database runtime-two)
+                                                  job-id)))))))
+      (finally
+        (fs/delete-tree! root)))))
+
 (deftest generated-domain-tests-run-against-staged-actions-and-always-roll-back
   (let [root (test-root)
         server-source
@@ -102,6 +281,92 @@
         (server/activate! registry session-id runtime)
         (is (= [] (get-in (server/invoke! registry session-id :notes/list {})
                           [:result :notes]))))
+      (finally
+        (fs/delete-tree! root)))))
+
+(deftest generated-product-identity-is-atomic-private-and-request-scoped
+  (let [root (test-root)
+        session-id (random-uuid)
+        auth-service (product-auth-service)
+        server-source
+        (str
+         "(ns runtime.server (:require [runtime.api :as api]))\n"
+         "(defn signup [{:keys [identifier password display-name]}] (let [user (api/auth-register! {:identifier identifier :password password})] (api/execute! \"INSERT INTO product_profiles (user_id, display_name) VALUES (?, ?)\" [(:id user) display-name]) {:user user :profile {:display-name display-name}}))\n"
+         "(defn login [{:keys [identifier password]}] {:user (api/auth-login! {:identifier identifier :password password})})\n"
+         "(defn logout [_] (api/auth-logout!) {:signed-out true})\n"
+         "(defn me [_] (let [user (api/auth-require-user!) profile (first (api/query! \"SELECT display_name FROM product_profiles WHERE user_id = ?\" [(:id user)]))] {:user user :profile profile}))\n"
+         "(api/register-action! :accounts/signup signup)\n"
+         "(api/register-action! :accounts/login login)\n"
+         "(api/register-action! :accounts/logout logout)\n"
+         "(api/register-action! :accounts/me me)\n")
+        test-source
+        (str
+         "(ns runtime.domain-test (:require [clojure.test :refer [deftest is]] [runtime.test :as runtime-test]))\n"
+         "(deftest account-contract (let [created (runtime-test/invoke! :accounts/signup {:identifier \"stage-owner\" :password \"stage password\" :display-name \"Stage Owner\"}) user (:user created)] (is (string? (:id user))) (is (= \"Stage Owner\" (get-in (runtime-test/invoke-as! (:id user) :accounts/me {}) [:profile :display_name])))))\n")]
+    (try
+      (let [runtime
+            (server/stage!
+             {:source-map (assoc (source-map server-source)
+                                 "test/runtime/domain_test.cljc" test-source)
+              :database-path (.resolve root "product-auth.sqlite")
+              :migrations [auth-profile-migration]
+              :version 1
+              :session-id session-id
+              :auth-service auth-service})
+            registry (server/create-registry)]
+        (server/activate! registry session-id runtime)
+        (let [created (server/invoke! registry session-id :accounts/signup
+                                      {:identifier "Owner"
+                                       :password "owner password"
+                                       :display-name "Product Owner"})
+              token (get-in created [:effects 0 :token])
+              user (get-in created [:result :user])]
+          (is (string? token))
+          (is (= "Owner" (:identifier user)))
+          (is (nil? (:password user)))
+          (is (nil? (:token (:result created))))
+          (is (= "Product Owner"
+                 (get-in (server/invoke! registry session-id :accounts/me {}
+                                         {:auth-token token})
+                         [:result :profile :display_name])))
+
+          (testing "a failed product write rolls back the account and its cookie effect"
+            (is (some? (exception
+                        #(server/invoke! registry session-id :accounts/signup
+                                         {:identifier "rolled-back"
+                                          :password "rolled back password"
+                                          :display-name nil}))))
+            (is (= ["Owner"]
+                   (mapv :identifier (auth/identity-state (:database runtime))))))
+
+          (testing "logout revokes the token and protected actions remain protected"
+            (is (= :clear
+                   (get-in (server/invoke! registry session-id :accounts/logout {}
+                                           {:auth-token token})
+                           [:effects 0 :op])))
+            (is (= :auth/required
+                   (:code
+                    (ex-data
+                     (exception
+                      #(server/invoke! registry session-id :accounts/me {}
+                                       {:auth-token token}))))))))
+
+        (testing "login throttling survives the rejected action transaction"
+          (dotimes [_ 5]
+            (is (= :auth/invalid-credentials
+                   (:code
+                    (ex-data
+                     (exception
+                      #(server/invoke! registry session-id :accounts/login
+                                       {:identifier "owner"
+                                        :password "wrong password"})))))))
+          (is (= :auth/temporarily-locked
+                 (:code
+                  (ex-data
+                   (exception
+                    #(server/invoke! registry session-id :accounts/login
+                                     {:identifier "owner"
+                                      :password "owner password"}))))))))
       (finally
         (fs/delete-tree! root)))))
 

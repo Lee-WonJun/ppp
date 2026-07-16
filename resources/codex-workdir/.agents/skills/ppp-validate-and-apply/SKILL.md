@@ -19,6 +19,11 @@ Act as the source generator in a host-controlled validate, stage, and apply loop
    - Persistence, registered server actions, or domain/business-rule changes
      must update the relevant server/shared source, rollback-only domain tests,
      and migrations when schema is needed.
+   - Accounts inside the generated product are ordinary supported product
+     behavior and are distinct from PPP workspace access. Use the supplied
+     typed product-auth capabilities for signup, sign-in, sign-out, current
+     user, password changes, and deletion. Never refuse a normal product login
+     request merely because the parent workspace has its own access gate.
    - A later request evolves the complete current product. Preserve unrelated
      features and stored data unless the user explicitly asks to remove them.
      Replacing a browser game must not discard an independent ranking feature.
@@ -33,8 +38,19 @@ Act as the source generator in a host-controlled validate, stage, and apply loop
    - Register exactly the required page, sidebar, and server actions.
    - Treat action input as the submitted payload map directly.
    - Use only static parameterized SQL through the supplied wrappers.
+   - Never create generated password-hash or login-token tables. Call
+     `api/auth-register!`, `api/auth-login!`, `api/auth-logout!`,
+     `api/auth-current-user`, `api/auth-require-user!`,
+     `api/auth-change-password!`, or `api/auth-delete-account!`. These return
+     only public user claims; the host applies login cookies after the whole
+     action transaction succeeds. Store profiles, roles, preferences, and
+     owned records in normal generated tables keyed by the public user `:id`.
    - Preserve the host-owned state and recovery sidebar contract.
    - Treat `api/page-state` as the host-owned reactive atom value. Read it with `@api/page-state` and update it with `swap!` or `reset!`; never call it as a function.
+   - Declare new state defaults with one top-level `api/initialize-state!` map.
+     The host applies defaults only for missing keys after activation. Do not
+     rely on arbitrary top-level `swap!` mutations, because rejected staging
+     must leave the active product state unchanged.
    - Keep every value whose change must redraw the UI or survive runtime replacement in `api/page-state`. Local atoms are allowed only for disposable implementation details.
    - For local interactions such as games, navigation, and form drafts, update `api/page-state` directly. For server actions whose response changes the UI, use the three-argument `api/action!` and render from its target key.
    - Trace every interactive mutation end to end before returning it: rendered
@@ -53,7 +69,34 @@ Act as the source generator in a host-controlled validate, stage, and apply loop
      submission, and other persisted CRUD before returning the files.
    - Client code runs inside a disposable opaque-origin browser frame. Use normal JavaScript interop and browser APIs for timers, animation frames, keyboard input, Canvas/WebGL, audio, workers, WebAssembly, observers, refs, and other frontend behavior.
    - The authenticated parent DOM, cookies, CSRF state, and recovery handle are outside the frame. Do not access `js/parent` or `js/top`; use `runtime.api/action!` and supplied sidebar callbacks for host operations.
-   - Browser listeners and timers may live for the frame lifetime and are cleaned up when the frame is rejected or replaced. `api/start-interval!` remains an optional keyed convenience, not the limit of available browser behavior.
+   - Browser listeners and timers may live for the frame lifetime and are cleaned up when the frame is rejected or replaced. When using the optional keyed convenience, call `api/start-interval!` exactly once at source evaluation. It registers during staging, begins callbacks only after activation, and must not be repeatedly called from render.
+   - Use the Kernel resource plane for general product resources:
+     - `api/blob-put!` receives `{:id :name :content-type :content-base64}`;
+       `api/blob-get`, `api/blob-list`, and `api/blob-delete!` expose data and
+       metadata without any filesystem path. Default bounds are 4 MiB and 64
+       objects per session.
+     - `api/publish!` receives a keyword topic and plain bounded payload. It is
+       delivered only after the enclosing action, job, or ingress commits.
+       Treat it as a refresh hint and keep durable truth in SQLite/resources.
+     - Register a job once at source evaluation with
+       `api/register-job!`. Schedule it inside an action with
+       `api/schedule-job!`, using bounded `:delay-ms`, `:max-attempts`, and an
+       optional `:idempotency-key`. Scheduling returns a public job map such as
+       `{:id string :handler keyword :status keyword}`. Store or return
+       `(:id scheduled-job)` and pass that string—not the whole map—to
+       `api/job-status` or `api/cancel-job!`. The host owns timers, leases,
+       retries, and crash recovery; generated code must not create a server
+       thread.
+     - Register a public route once with `api/register-ingress!`. Its handler
+       receives bounded `{:method :query :headers :body}` and returns exactly
+       `{:status integer :body plain-value}`. Use only a verifier alias present
+       in the supplied ingress catalog; never request its secret or env name.
+     - Use `api/search-upsert!`, `api/search-delete!`, and `api/search-query`
+       for Unicode full-text and optional finite-vector search. Every collection
+       is scoped to the current product session.
+     - These resource mutations participate in the same SQLite transaction,
+       quota, checkpoint, and restore as ordinary product data. Never build a
+       second unbounded table or polling loop to evade their contracts.
 5. Check each migration for valid ordered SQL and never edit an already committed migration.
 6. Keep `test/runtime/domain_test.cljc` executable and update it for every
    domain or business-rule change:
@@ -61,6 +104,14 @@ Act as the source generator in a host-controlled validate, stage, and apply loop
    - Use `runtime.test/invoke!` to call registered actions against the staged
      SQLite database. The host runs the tests before commit and always rolls
      their writes back.
+   - Use `runtime.test/invoke-as!` with a public user id to exercise a protected
+     action. Create that user through the generated signup action inside the
+     same rollback-only test.
+   - For each resource-bearing change, invoke at least one registered action
+     plus every new job and ingress handler with `runtime.test/invoke!`,
+     `runtime.test/invoke-job!`, and `runtime.test/invoke-ingress!`. Assert the
+     durable read model and business outcome; the host rolls the complete test
+     transaction back.
    - Assert observable invariants, action response shapes, initial state,
      mutation deltas, and persistence through the corresponding read action.
      Do not assert copy, CSS classes, DOM nesting, private call order, or minor

@@ -5,13 +5,18 @@
             [ppp.provider.core :as provider]
             [ppp.provider.fake :as fake]
             [ppp.provider.queue :as provider-queue]
+            [ppp.runtime.auth :as auth]
+            [ppp.runtime.resources :as resources]
             [ppp.runtime.server :as server]
             [ppp.runtime.sqlite :as sqlite]
             [ppp.session.store :as store]
+            [ppp.shared.protocol :as protocol]
             [ppp.util.fs :as fs]
             [ppp.websocket :as websocket])
-  (:import (java.nio.file Files)
-           (java.nio.file.attribute FileAttribute)))
+  (:import (java.nio.charset StandardCharsets)
+           (java.nio.file Files)
+           (java.nio.file.attribute FileAttribute)
+           (java.util Base64)))
 
 (defn- test-context
   ([] (test-context {}))
@@ -34,7 +39,18 @@
          provider (or (:test/provider overrides) (fake/create-provider))
          queue (provider-queue/create-queue config)
          registry (server/create-registry)
+         auth-service (auth/create-service
+                       (merge {:cookie-secret
+                               "coordinator-auth-test-secret-with-more-than-32-characters"
+                               :cookie-secure? false
+                               :product-auth-session-seconds 3600}
+                              config)
+                       {:hash-options {:memory-kib 7168
+                                       :iterations 1
+                                       :parallelism 1}
+                        :allow-weak-test-parameters? true})
          outbound-service (outbound/create-service {})
+         resource-service (resources/create-service config)
          sent (atom [])
          bundle-fn (atom nil)
          hub (websocket/create-hub
@@ -51,6 +67,8 @@
                        :provider provider
                        :provider-queue queue
                        :registry registry
+                       :product-auth auth-service
+                       :resource-service resource-service
                        :outbound outbound-service
                        :hub hub})]
      (reset! bundle-fn #(coordinator/runtime-bundle coordinator %))
@@ -59,6 +77,8 @@
       :store session-store
       :queue queue
       :registry registry
+      :product-auth auth-service
+      :resource-service resource-service
       :hub hub
       :sent sent
       :coordinator coordinator})))
@@ -86,6 +106,190 @@
           :request-tab-id tab-id
           :base-version version})]
     (coordinator/await-turn! (:coordinator context) (:request-id submission) 10000)))
+
+(deftest generated-product-accounts-survive-reload-and-restore-revokes-live-logins
+  (let [context (test-context)]
+    (try
+      (let [session (coordinator/create-session! (:coordinator context))
+            session-id (:id session)
+            tab-id (random-uuid)
+            account-change (submit-and-await! context session-id tab-id 0
+                                              "로그인, 회원가입을 구현해줘")]
+        (is (= {:kind :change :runtime-version 1} account-change))
+        (let [created
+              (coordinator/invoke-action!
+               (:coordinator context) session-id :accounts/signup
+               {:identifier "owner"
+                :password "owner password"
+                :display-name "Owner"})
+              token (get-in created [:effects 0 :token])]
+          (is (= "Owner" (get-in created [:result :profile :display_name])))
+          (is (= true
+                 (get-in (coordinator/invoke-action!
+                          (:coordinator context) session-id :accounts/status {}
+                          {:auth-token token})
+                         [:result :signed-in?])))
+
+          (let [visual-change (submit-and-await! context session-id tab-id 1
+                                                 "다크테마로 바꿔줘")]
+            (is (= {:kind :change :runtime-version 2} visual-change)))
+          (is (some #(= 2 (:runtime-version %))
+                    (store/list-checkpoints (:store context) session-id)))
+
+          (let [submission
+                (coordinator/submit-restore!
+                 (:coordinator context) session-id
+                 {:checkpoint-version 2
+                  :request-tab-id tab-id
+                  :base-version 2})
+                restored (coordinator/await-turn! (:coordinator context)
+                                                  (:request-id submission) 10000)]
+            (is (= :restore (:kind restored))))
+
+          (let [after-restore
+                (coordinator/invoke-action!
+                 (:coordinator context) session-id :accounts/status {}
+                 {:auth-token token})]
+            (is (false? (get-in after-restore [:result :signed-in?])))
+            (is (= :clear (get-in after-restore [:effects 0 :op]))))
+          (is (= ["owner"]
+                 (mapv :identifier
+                       (auth/identity-state
+                        (sqlite/datasource
+                         (store/current-db-path (:store context) session-id))))))
+          (is (= "owner"
+                 (get-in (coordinator/invoke-action!
+                          (:coordinator context) session-id :accounts/login
+                          {:identifier "owner" :password "owner password"})
+                         [:result :user :identifier])))))
+      (finally
+        (close-context! context)))))
+
+(deftest checkpoint-restore-rewinds-blobs-and-search-and-cancels-restored-work
+  (let [context (test-context)]
+    (try
+      (let [session (coordinator/create-session! (:coordinator context))
+            session-id (:id session)
+            database (sqlite/datasource
+                      (store/current-db-path (:store context) session-id))
+            service (:resource-service context)
+            encode #(.encodeToString
+                     (Base64/getEncoder)
+                     (.getBytes ^String % StandardCharsets/UTF_8))
+            original-job
+            (do
+              (resources/blob-put! service database nil
+                                   {:id "brief"
+                                    :name "brief.txt"
+                                    :content-type "text/plain"
+                                    :content-base64 (encode "checkpoint value")})
+              (resources/search-upsert! service database :briefs "brief"
+                                        {:text "checkpoint searchable value"
+                                         :metadata {:version :checkpoint}})
+              (resources/schedule-job! service database :brief/index
+                                       {:id "brief"}
+                                       {:delay-ms 60000
+                                        :idempotency-key "checkpoint"}))
+            tab-id (random-uuid)
+            changed (submit-and-await! context session-id tab-id 0
+                                       "다크테마로 바꿔줘")]
+        (is (= {:kind :change :runtime-version 1} changed))
+        (is (some #(= 1 (:runtime-version %))
+                  (store/list-checkpoints (:store context) session-id)))
+
+        (let [live-database (sqlite/datasource
+                             (store/current-db-path (:store context) session-id))
+              later-job
+              (do
+                (resources/blob-put! service live-database nil
+                                     {:id "brief"
+                                      :name "brief.txt"
+                                      :content-type "text/plain"
+                                      :content-base64 (encode "later value")})
+                (resources/search-upsert! service live-database :briefs "later"
+                                          {:text "later only document"
+                                           :metadata {:version :later}})
+                (resources/schedule-job! service live-database :brief/index
+                                         {:id "later"}
+                                         {:delay-ms 60000
+                                          :idempotency-key "later"}))
+              submission
+              (coordinator/submit-restore!
+               (:coordinator context) session-id
+               {:checkpoint-version 1
+                :request-tab-id tab-id
+                :base-version 1})
+              restored (coordinator/await-turn! (:coordinator context)
+                                                (:request-id submission) 10000)
+              restored-database
+              (sqlite/datasource (store/current-db-path (:store context) session-id))
+              loaded (resources/blob-get service restored-database "brief")]
+          (is (= :restore (:kind restored)))
+          (is (= "checkpoint value"
+                 (String. (.decode (Base64/getDecoder)
+                                   ^String (:content-base64 loaded))
+                          StandardCharsets/UTF_8)))
+          (is (= ["brief"]
+                 (mapv :id (resources/search-query service restored-database
+                                                   :briefs "checkpoint" {}))))
+          (is (empty? (resources/search-query service restored-database
+                                              :briefs "later" {})))
+          (is (= :cancelled
+                 (:status (resources/job-status service restored-database
+                                                (:id original-job)))))
+          (is (= :job/not-found
+                 (exception-code
+                  #(resources/job-status service restored-database
+                                         (:id later-job)))))))
+      (finally
+        (close-context! context)))))
+
+(deftest rolled-back-resource-actions-neither-mutate-nor-publish
+  (let [context (test-context)]
+    (try
+      (let [session-id (:id (coordinator/create-session! (:coordinator context)))
+            database-path (store/current-db-path (:store context) session-id)
+            source-map
+            (assoc store/initial-source
+                   "src/server/runtime/server.clj"
+                   (str
+                    "(ns runtime.server (:require [runtime.api :as api]))\n"
+                    "(defn fail! [_]\n"
+                    "  (api/blob-put! {:id \"rolled-back\" :name \"rolled-back.txt\" :content-type \"text/plain\" :content-base64 \"bm8=\"})\n"
+                    "  (api/publish! :resource/should-not-escape {:id \"rolled-back\"})\n"
+                    "  (throw (ex-info \"reject transaction\" {:code :resource/rejected})))\n"
+                    "(api/register-action! :resource/fail fail!)\n"))
+            runtime (server/stage! {:source-map source-map
+                                    :session-id session-id
+                                    :database-path database-path
+                                    :resource-service (:resource-service context)
+                                    :version 0
+                                    :run-tests? false})
+            channel :rollback-channel
+            tab-id (random-uuid)
+            request-id (random-uuid)
+            before (sqlite/logical-hash (sqlite/datasource database-path))]
+        (server/activate! (:registry context) session-id runtime)
+        (websocket/open! (:hub context) channel)
+        (websocket/receive!
+         (:hub context) channel
+         (websocket/encode-message
+          (protocol/envelope {:session-id session-id
+                              :request-id request-id
+                              :runtime-version 0
+                              :type :session/subscribe
+                              :payload {:tab-id tab-id :current-version 0}})))
+        (reset! (:sent context) [])
+        (is (= :resource/rejected
+               (exception-code
+                #(coordinator/invoke-action! (:coordinator context) session-id
+                                             :resource/fail {}))))
+        (is (= before (sqlite/logical-hash (sqlite/datasource database-path))))
+        (is (empty? (resources/blob-list (:resource-service context)
+                                         (sqlite/datasource database-path))))
+        (is (empty? @(:sent context))))
+      (finally
+        (close-context! context)))))
 
 (deftest failure-messages-explain-the-stage-without-exposing-internals
   (let [message-for (ns-resolve 'ppp.coordinator 'user-safe-failure)

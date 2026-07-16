@@ -3,7 +3,9 @@
             [clojure.string :as str]
             [clojure.test]
             [next.jdbc :as jdbc]
+            [ppp.runtime.auth :as auth]
             [ppp.runtime.policy :as policy]
+            [ppp.runtime.resources :as resources]
             [ppp.runtime.sqlite :as sqlite]
             [sci.core :as sci])
   (:import (clojure.lang LineNumberingPushbackReader)
@@ -38,8 +40,10 @@
    'sci.lang.Type {:class sci.lang.Type :closed true}
    'sci.lang.Var {:class sci.lang.Var :closed true}})
 
-(defrecord ServerRuntime [version context actions database database-path
-                          deadline phase connection timeout-ms response-limit])
+(defrecord ServerRuntime [version context actions jobs ingresses database database-path
+                          deadline phase connection request-context effects
+                          session-id auth-service resource-service timeout-ms
+                          response-limit database-size-limit])
 (defrecord Registry [active])
 
 (defn create-registry
@@ -124,8 +128,17 @@
                      :operation kind})))
   sql)
 
+(defn- assert-registered-job!
+  [jobs handler]
+  (when-not (and (keyword? handler) (contains? @jobs handler))
+    (throw (ex-info "Background task handler is not registered in this product version"
+                    {:code :job/handler-not-found :handler handler})))
+  handler)
+
 (defn- runtime-api
-  [{:keys [actions phase connection allowed-sql public-http-fn connector-http-fn]}]
+  [{:keys [actions jobs ingresses phase connection request-context effects
+           session-id auth-service resource-service allowed-sql public-http-fn
+           connector-http-fn]}]
   (let [public-http-fn
         (or public-http-fn
             (fn [_request]
@@ -153,49 +166,276 @@
        (swap! actions assoc action-id handler)
        action-id)
 
+     'register-job!
+     (fn [handler-id handler]
+       (ensure-phase! phase :staging :register-job!)
+       (when-not (and (keyword? handler-id)
+                      (<= (count (str handler-id)) 96)
+                      (ifn? handler))
+         (throw (ex-info "Invalid generated background task registration"
+                         {:code :runtime/invalid-job})))
+       (when (contains? @jobs handler-id)
+         (throw (ex-info "Generated background task is registered more than once"
+                         {:code :runtime/duplicate-job :handler-id handler-id})))
+       (when (>= (count @jobs) 32)
+         (throw (ex-info "Generated runtime registered too many background tasks"
+                         {:code :runtime/too-many-jobs})))
+       (swap! jobs assoc handler-id handler)
+       handler-id)
+
+     'register-ingress!
+     (fn [route options handler]
+       (ensure-phase! phase :staging :register-ingress!)
+       (when-not (and (keyword? route)
+                      (<= (count (str route)) 96)
+                      (map? options)
+                      (every? #{:verification} (keys options))
+                      (or (nil? (:verification options))
+                          (keyword? (:verification options)))
+                      (ifn? handler))
+         (throw (ex-info "Invalid generated public route registration"
+                         {:code :runtime/invalid-ingress})))
+       (when (contains? @ingresses route)
+         (throw (ex-info "Generated public route is registered more than once"
+                         {:code :runtime/duplicate-ingress :route route})))
+       (when (>= (count @ingresses) 16)
+         (throw (ex-info "Generated runtime registered too many public routes"
+                         {:code :runtime/too-many-ingresses})))
+       (swap! ingresses assoc route {:options options :handler handler})
+       route)
+
      'query!
      (fn
        ([sql]
-        (ensure-phase! phase #{:action :test} :query!)
+        (ensure-phase! phase #{:action :test :job :ingress} :query!)
         (assert-declared-sql! allowed-sql :query sql)
         (sqlite/query! (.get ^ThreadLocal connection) sql []))
        ([sql params]
-        (ensure-phase! phase #{:action :test} :query!)
+        (ensure-phase! phase #{:action :test :job :ingress} :query!)
         (assert-declared-sql! allowed-sql :query sql)
         (sqlite/query! (.get ^ThreadLocal connection) sql (vec params))))
 
      'execute!
      (fn
        ([sql]
-        (ensure-phase! phase #{:action :test} :execute!)
+        (ensure-phase! phase #{:action :test :job :ingress} :execute!)
         (assert-declared-sql! allowed-sql :execute sql)
         (sqlite/mutate! (.get ^ThreadLocal connection) sql []))
        ([sql params]
-        (ensure-phase! phase #{:action :test} :execute!)
+        (ensure-phase! phase #{:action :test :job :ingress} :execute!)
         (assert-declared-sql! allowed-sql :execute sql)
         (sqlite/mutate! (.get ^ThreadLocal connection) sql (vec params))))
 
      'public-http!
      (fn [request]
-       (ensure-phase! phase :action :public-http!)
+       (ensure-phase! phase #{:action :job :ingress} :public-http!)
        (public-http-fn request))
 
      'connector-http!
      (fn [alias request]
-       (ensure-phase! phase :action :connector-http!)
-       (connector-http-fn alias request))}))
+       (ensure-phase! phase #{:action :job :ingress} :connector-http!)
+       (connector-http-fn alias request))
+
+     'blob-put!
+     (fn [object]
+       (ensure-phase! phase #{:action :test :job :ingress} :blob-put!)
+       (resources/blob-put! resource-service
+                            (.get ^ThreadLocal connection)
+                            (:user (.get ^ThreadLocal request-context))
+                            object))
+
+     'blob-get
+     (fn [id]
+       (ensure-phase! phase #{:action :test :job :ingress} :blob-get)
+       (resources/blob-get resource-service (.get ^ThreadLocal connection) id))
+
+     'blob-list
+     (fn []
+       (ensure-phase! phase #{:action :test :job :ingress} :blob-list)
+       (resources/blob-list resource-service (.get ^ThreadLocal connection)))
+
+     'blob-delete!
+     (fn [id]
+       (ensure-phase! phase #{:action :test :job :ingress} :blob-delete!)
+       (resources/blob-delete! resource-service (.get ^ThreadLocal connection) id))
+
+     'publish!
+     (fn [topic payload]
+       (ensure-phase! phase #{:action :test :job :ingress} :publish!)
+       (swap! (.get ^ThreadLocal effects) conj
+              (resources/event-effect resource-service topic payload))
+       nil)
+
+     'schedule-job!
+     (fn
+       ([handler payload]
+        (ensure-phase! phase #{:action :test :job :ingress} :schedule-job!)
+        (assert-registered-job! jobs handler)
+        (resources/schedule-job! resource-service
+                                 (.get ^ThreadLocal connection)
+                                 handler payload {}))
+       ([handler payload options]
+        (ensure-phase! phase #{:action :test :job :ingress} :schedule-job!)
+        (assert-registered-job! jobs handler)
+        (resources/schedule-job! resource-service
+                                 (.get ^ThreadLocal connection)
+                                 handler payload options)))
+
+     'job-status
+     (fn [id]
+       (ensure-phase! phase #{:action :test :job :ingress} :job-status)
+       (resources/job-status resource-service (.get ^ThreadLocal connection) id))
+
+     'cancel-job!
+     (fn [id]
+       (ensure-phase! phase #{:action :test :job :ingress} :cancel-job!)
+       (resources/cancel-job! resource-service (.get ^ThreadLocal connection) id))
+
+     'search-upsert!
+     (fn [collection document-id document]
+       (ensure-phase! phase #{:action :test :job :ingress} :search-upsert!)
+       (resources/search-upsert! resource-service (.get ^ThreadLocal connection)
+                                 collection document-id document))
+
+     'search-delete!
+     (fn [collection document-id]
+       (ensure-phase! phase #{:action :test :job :ingress} :search-delete!)
+       (resources/search-delete! resource-service (.get ^ThreadLocal connection)
+                                 collection document-id))
+
+     'search-query
+     (fn
+       ([collection query]
+        (ensure-phase! phase #{:action :test :job :ingress} :search-query)
+        (resources/search-query resource-service (.get ^ThreadLocal connection)
+                                collection query {}))
+       ([collection query options]
+        (ensure-phase! phase #{:action :test :job :ingress} :search-query)
+        (resources/search-query resource-service (.get ^ThreadLocal connection)
+                                collection query options)))
+
+     'auth-register!
+     (fn [credentials]
+       (ensure-phase! phase #{:action :test} :auth-register!)
+       (when-not auth-service
+         (throw (ex-info "Product accounts are unavailable in this runtime"
+                         {:code :runtime/auth-unavailable})))
+       (let [{:keys [user effect]}
+             (auth/register! auth-service (.get ^ThreadLocal connection)
+                             session-id credentials)]
+         (swap! (.get ^ThreadLocal effects) conj effect)
+         user))
+
+     'auth-login!
+     (fn [credentials]
+       (ensure-phase! phase #{:action :test} :auth-login!)
+       (when-not auth-service
+         (throw (ex-info "Product accounts are unavailable in this runtime"
+                         {:code :runtime/auth-unavailable})))
+       (let [{:keys [user effect]}
+             (auth/login! auth-service (.get ^ThreadLocal connection)
+                          session-id credentials)]
+         (swap! (.get ^ThreadLocal effects) conj effect)
+         user))
+
+     'auth-logout!
+     (fn []
+       (ensure-phase! phase #{:action :test} :auth-logout!)
+       (when-not auth-service
+         (throw (ex-info "Product accounts are unavailable in this runtime"
+                         {:code :runtime/auth-unavailable})))
+       (let [{:keys [effect]}
+             (auth/logout! auth-service (.get ^ThreadLocal connection)
+                           (.get ^ThreadLocal request-context))]
+         (swap! (.get ^ThreadLocal effects) conj effect)
+         nil))
+
+     'auth-current-user
+     (fn []
+       (ensure-phase! phase #{:action :test} :auth-current-user)
+       (:user (.get ^ThreadLocal request-context)))
+
+     'auth-require-user!
+     (fn []
+       (ensure-phase! phase #{:action :test} :auth-require-user!)
+       (or (:user (.get ^ThreadLocal request-context))
+           (throw (ex-info "Sign in before continuing."
+                           {:code :auth/required}))))
+
+     'auth-change-password!
+     (fn [credentials]
+       (ensure-phase! phase #{:action :test} :auth-change-password!)
+       (when-not auth-service
+         (throw (ex-info "Product accounts are unavailable in this runtime"
+                         {:code :runtime/auth-unavailable})))
+       (let [context (.get ^ThreadLocal request-context)
+             {:keys [user effect]}
+             (auth/change-password!
+              auth-service (.get ^ThreadLocal connection) session-id context
+              (:token-hash context) credentials)]
+         (swap! (.get ^ThreadLocal effects) conj effect)
+         (.set ^ThreadLocal request-context
+               (assoc context :user user :token-hash nil :invalid-token? false))
+         user))
+
+     'auth-delete-account!
+     (fn [credentials]
+       (ensure-phase! phase #{:action :test} :auth-delete-account!)
+       (when-not auth-service
+         (throw (ex-info "Product accounts are unavailable in this runtime"
+                         {:code :runtime/auth-unavailable})))
+       (let [{:keys [effect]}
+             (auth/delete-account! auth-service (.get ^ThreadLocal connection)
+                                   (.get ^ThreadLocal request-context) credentials)]
+         (swap! (.get ^ThreadLocal effects) conj effect)
+         (.set ^ThreadLocal request-context
+               {:user nil :token-hash nil :invalid-token? false})
+         nil))}))
 
 (defn- test-api
-  [{:keys [actions phase]}]
-  {'invoke!
-   (fn [action-id request]
-     (ensure-phase! phase :test :runtime.test/invoke!)
-     (let [action (get @actions action-id)]
-       (when-not action
-         (throw (ex-info "Generated test referenced an unknown action"
-                         {:code :runtime/test-action-not-found
-                          :action-id action-id})))
-       (action request)))})
+  [{:keys [actions jobs ingresses phase request-context auth-service connection]}]
+  (letfn [(action-for [action-id]
+            (or (get @actions action-id)
+                (throw (ex-info "Generated test referenced an unknown action"
+                                {:code :runtime/test-action-not-found
+                                 :action-id action-id}))))]
+    {'invoke!
+     (fn [action-id request]
+       (ensure-phase! phase :test :runtime.test/invoke!)
+       ((action-for action-id) request))
+
+     'invoke-as!
+     (fn [user-id action-id request]
+       (ensure-phase! phase :test :runtime.test/invoke-as!)
+       (when-not auth-service
+         (throw (ex-info "Product accounts are unavailable in this runtime"
+                         {:code :runtime/auth-unavailable})))
+       (let [previous (.get ^ThreadLocal request-context)]
+         (try
+           (.set ^ThreadLocal request-context
+                 (auth/test-context! auth-service
+                                     (.get ^ThreadLocal connection) user-id))
+           ((action-for action-id) request)
+           (finally
+             (.set ^ThreadLocal request-context previous)))))
+
+     'invoke-job!
+     (fn [handler-id payload]
+       (ensure-phase! phase :test :runtime.test/invoke-job!)
+       (if-let [handler (get @jobs handler-id)]
+         (handler payload)
+         (throw (ex-info "Generated test referenced an unknown background task"
+                         {:code :runtime/test-job-not-found
+                          :handler-id handler-id}))))
+
+     'invoke-ingress!
+     (fn [route request]
+       (ensure-phase! phase :test :runtime.test/invoke-ingress!)
+       (if-let [handler (get-in @ingresses [route :handler])]
+         (handler request)
+         (throw (ex-info "Generated test referenced an unknown public route"
+                         {:code :runtime/test-ingress-not-found
+                          :route route}))))}))
 
 (def ^:private clojure-test-symbols
   '[deftest is testing
@@ -284,7 +524,7 @@
 
 (defn- run-generated-tests!
   [{:keys [context test-sources database deadline phase connection timeout-ms
-           test-reports]}]
+           request-context effects test-reports]}]
   (let [namespaces (mapv (fn [[path source]] (source-namespace path source))
                          test-sources)
         vars (mapcat #(test-vars context %) namespaces)]
@@ -296,7 +536,9 @@
       (jdbc/with-transaction [transaction database-connection {:rollback-only true}]
         (let [deadline-value (+ (System/nanoTime)
                                 (* (long timeout-ms) 1000000))]
-          (enter-scope! phase deadline connection :test deadline-value transaction)
+          (enter-scope! phase deadline connection request-context effects
+                        :test deadline-value transaction
+                        {:user nil :token-hash nil :invalid-token? false} (atom []))
           (try
             (let [results
                   (sqlite/with-progress-deadline
@@ -317,15 +559,20 @@
               {:test-count (count results)
                :assertion-count assertion-count})
             (finally
-              (leave-scope! phase deadline connection))))))))
+              (leave-scope! phase deadline connection request-context effects))))))))
 
 (defn- enter-scope!
   [^ThreadLocal phase ^ThreadLocal deadline ^ThreadLocal connection-value
-   phase-value deadline-value database-connection]
+   ^ThreadLocal request-context ^ThreadLocal effects
+   phase-value deadline-value database-connection auth-context effect-state]
   (.set phase phase-value)
   (.set deadline deadline-value)
   (when database-connection
-    (.set connection-value database-connection)))
+    (.set connection-value database-connection))
+  (when auth-context
+    (.set request-context auth-context))
+  (when effect-state
+    (.set effects effect-state)))
 
 (defn- leave-scope!
   [& thread-locals]
@@ -338,6 +585,14 @@
          seen #{}]
     (when (and current (not (contains? seen current)))
       (or (:code (ex-data current))
+          (recur (.getCause ^Throwable current) (conj seen current))))))
+
+(defn- exception-data-value
+  [cause key]
+  (loop [current cause
+         seen #{}]
+    (when (and current (not (contains? seen current)))
+      (or (get (ex-data current) key)
           (recur (.getCause ^Throwable current) (conj seen current))))))
 
 (defn- stage-database
@@ -361,8 +616,11 @@
 
 (defn stage!
   [{:keys [source-map database-path version timeout-ms response-limit
-           public-http-fn connector-http-fn run-tests?]
-    :or {timeout-ms 2000 response-limit (* 1024 1024) run-tests? true}
+           public-http-fn connector-http-fn run-tests? session-id auth-service
+           resource-service clear-auth-sessions? clear-operational-jobs?
+           database-size-limit]
+    :or {timeout-ms 2000 response-limit (* 1024 1024)
+         database-size-limit (* 25 1024 1024) run-tests? true}
     :as options}]
   (let [missing (remove #(contains? source-map %) required-source-paths)]
     (when (seq missing)
@@ -374,10 +632,22 @@
                     {:code :runtime/invalid-version :version version})))
   (stage-database (assoc options :timeout-ms timeout-ms))
   (let [actions (atom {})
+        jobs (atom {})
+        ingresses (atom {})
         deadline (ThreadLocal.)
         phase (ThreadLocal.)
         connection (ThreadLocal.)
+        request-context (ThreadLocal.)
+        effects (ThreadLocal.)
         database (sqlite/init! database-path)
+        resource-service (or resource-service (resources/create-service {}))
+        _ (resources/ensure-schema! resource-service database)
+        _ (when auth-service
+            (auth/ensure-schema! auth-service database))
+        _ (when (and auth-service clear-auth-sessions?)
+            (auth/clear-operational-state! database))
+        _ (when clear-operational-jobs?
+            (resources/cancel-operational-jobs! resource-service database))
         selected (->> source-map
                       (filter (fn [[path _]]
                                 (or (str/starts-with? path "src/shared/")
@@ -394,12 +664,25 @@
         test-reports (atom [])
         allowed-sql (declared-action-sql selected)
         api (runtime-api {:actions actions
+                          :jobs jobs
+                          :ingresses ingresses
                           :phase phase
                           :connection connection
+                          :request-context request-context
+                          :effects effects
+                          :session-id session-id
+                          :auth-service auth-service
+                          :resource-service resource-service
                           :allowed-sql allowed-sql
                           :public-http-fn public-http-fn
                           :connector-http-fn connector-http-fn})
-        test-namespace (test-api {:actions actions :phase phase})
+        test-namespace (test-api {:actions actions
+                                  :jobs jobs
+                                  :ingresses ingresses
+                                  :phase phase
+                                  :request-context request-context
+                                  :auth-service auth-service
+                                  :connection connection})
         clojure-test-namespace (clojure-test-api test-reports)
         string-namespace (string-api)
         _ (assert-capability-catalog! api string-namespace test-namespace
@@ -418,8 +701,9 @@
               (when (> (System/nanoTime) limit)
                 (throw (ex-info "Generated runtime exceeded its time limit"
                                 {:code :runtime/timeout})))))})]
-    (enter-scope! phase deadline connection :staging
-                  (+ (System/nanoTime) (* (long timeout-ms) 1000000)) nil)
+    (enter-scope! phase deadline connection request-context effects
+                  :staging
+                  (+ (System/nanoTime) (* (long timeout-ms) 1000000)) nil nil nil)
     (try
       (doseq [[path source] selected]
         (try
@@ -446,12 +730,16 @@
                                :deadline deadline
                                :phase phase
                                :connection connection
+                               :request-context request-context
+                               :effects effects
                                :test-reports test-reports
                                :timeout-ms timeout-ms}))
-      (->ServerRuntime version context @actions database database-path
-                       deadline phase connection timeout-ms response-limit)
+      (->ServerRuntime version context @actions @jobs @ingresses database database-path
+                       deadline phase connection request-context effects
+                       session-id auth-service resource-service timeout-ms
+                       response-limit database-size-limit)
       (finally
-        (leave-scope! phase deadline connection)))))
+        (leave-scope! phase deadline connection request-context effects)))))
 
 (defn activate!
   [^Registry registry session-id runtime]
@@ -497,6 +785,25 @@
   [runtime]
   (vec (sort (keys (:actions runtime)))))
 
+(defn job-ids
+  [runtime]
+  (vec (sort (keys (:jobs runtime)))))
+
+(defn ingress-routes
+  [runtime]
+  (vec (sort (keys (:ingresses runtime)))))
+
+(defn ingress-options
+  [^Registry registry session-id route]
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))
+        registration (get (:ingresses runtime) route)]
+    (when-not registration
+      (throw (ex-info "Generated public route not found"
+                      {:code :runtime/ingress-not-found :route route})))
+    (:options registration)))
+
 (defn- validate-action-result!
   [result limit]
   (try
@@ -514,45 +821,145 @@
                       cause))))
   result)
 
-(defn invoke!
-  [^Registry registry session-id action-id request]
-  (let [runtime (runtime-for registry session-id)]
-    (when-not runtime
+(defn- active-runtime!
+  [^Registry registry session-id]
+  (or (runtime-for registry session-id)
       (throw (ex-info "Session runtime is not active"
-                      {:code :runtime/not-active})))
-    (let [action (get (:actions runtime) action-id)]
-      (when-not action
-        (throw (ex-info "Generated action not found"
-                        {:code :runtime/action-not-found :action-id action-id})))
-      (with-open [^Connection database-connection
-                  (jdbc/get-connection (:database runtime))]
-        (sqlite/configure! database-connection)
-        (jdbc/with-transaction [transaction database-connection]
-          (let [deadline-value (+ (System/nanoTime)
-                                  (* (long (:timeout-ms runtime)) 1000000))]
-            (enter-scope! (:phase runtime) (:deadline runtime) (:connection runtime)
-                          :action deadline-value transaction)
-            (try
-              (let [result
-                    (sqlite/with-progress-deadline
-                      transaction deadline-value
-                      #(action request))]
-                {:runtime-version (:version runtime)
-                 :result (validate-action-result! result (:response-limit runtime))})
-              (catch SQLException cause
-                (if (> (System/nanoTime) deadline-value)
-                  (throw (ex-info "Generated action exceeded its time limit"
-                                  {:code :runtime/timeout}
-                                  cause))
-                  (throw (ex-info "Generated action database operation failed"
-                                  {:code :runtime/action-database-failed}
-                                  cause))))
-              (catch Exception cause
-                (throw (ex-info "Generated action failed"
-                                {:code (or (exception-code cause)
-                                           :runtime/action-failed)}
-                                cause)))
-              (finally
-                (leave-scope! (:phase runtime)
-                              (:deadline runtime)
-                              (:connection runtime))))))))))
+                      {:code :runtime/not-active}))))
+
+(defn- invoke-handler!
+  [runtime phase-value handler request {:keys [auth-token after-result]}]
+  (try
+    (with-open [^Connection database-connection
+                (jdbc/get-connection (:database runtime))]
+      (sqlite/configure! database-connection)
+      (jdbc/with-transaction [transaction database-connection]
+        (let [deadline-value (+ (System/nanoTime)
+                                (* (long (:timeout-ms runtime)) 1000000))
+              auth-context
+              (if (and (= :action phase-value) (:auth-service runtime))
+                (auth/resolve-context! (:auth-service runtime) transaction
+                                       (:session-id runtime) auth-token)
+                {:user nil :token-hash nil :invalid-token? false})
+              effect-state (atom (cond-> []
+                                   (:invalid-token? auth-context)
+                                   (conj {:op :clear})))]
+          (enter-scope! (:phase runtime) (:deadline runtime)
+                        (:connection runtime) (:request-context runtime)
+                        (:effects runtime) phase-value deadline-value transaction
+                        auth-context effect-state)
+          (try
+            (let [result
+                  (sqlite/with-progress-deadline
+                    transaction deadline-value
+                    #(handler request))
+                  result (validate-action-result! result (:response-limit runtime))]
+              (let [page-count (:page_count
+                                (sqlite/execute-one! transaction
+                                                     ["PRAGMA page_count"]))
+                    page-size (:page_size
+                               (sqlite/execute-one! transaction
+                                                    ["PRAGMA page_size"]))]
+                (when (> (* (long page-count) (long page-size))
+                         (long (:database-size-limit runtime)))
+                  (throw (ex-info "Session database exceeds its storage limit"
+                                  {:code :storage/quota-exceeded
+                                   :limit (:database-size-limit runtime)}))))
+              (when after-result
+                (after-result transaction result))
+              (cond-> {:runtime-version (:version runtime)
+                       :result result}
+                (seq @effect-state) (assoc :effects @effect-state)))
+            (catch SQLException cause
+              (if (> (System/nanoTime) deadline-value)
+                (throw (ex-info "Generated runtime work exceeded its time limit"
+                                {:code :runtime/timeout :phase phase-value}
+                                cause))
+                (throw (ex-info "Generated runtime database operation failed"
+                                {:code (keyword "runtime"
+                                                (str (name phase-value)
+                                                     "-database-failed"))
+                                 :phase phase-value}
+                                cause))))
+            (catch Exception cause
+              (throw (ex-info
+                      "Generated runtime work failed"
+                      (cond-> {:code (or (exception-code cause)
+                                         (keyword "runtime"
+                                                  (str (name phase-value) "-failed")))
+                               :phase phase-value}
+                        (exception-data-value cause :auth/login-attempt)
+                        (assoc :auth/login-attempt
+                               (exception-data-value cause :auth/login-attempt)))
+                      cause)))
+            (finally
+              (leave-scope! (:phase runtime)
+                            (:deadline runtime)
+                            (:connection runtime)
+                            (:request-context runtime)
+                            (:effects runtime)))))))
+    (catch clojure.lang.ExceptionInfo cause
+      (when-let [attempt (:auth/login-attempt (ex-data cause))]
+        (when-let [service (:auth-service runtime)]
+          (try
+            (auth/record-login-failure! service (:database runtime) attempt)
+            (catch Exception _
+              nil))))
+      (throw cause))))
+
+(defn invoke!
+  ([^Registry registry session-id action-id request]
+   (invoke! registry session-id action-id request {}))
+  ([^Registry registry session-id action-id request {:keys [auth-token]}]
+   (let [runtime (active-runtime! registry session-id)
+         action (get (:actions runtime) action-id)]
+     (when-not action
+       (throw (ex-info "Generated action not found"
+                       {:code :runtime/action-not-found :action-id action-id})))
+     (invoke-handler! runtime :action action request {:auth-token auth-token}))))
+
+(defn invoke-ingress!
+  [^Registry registry session-id route request]
+  (let [runtime (active-runtime! registry session-id)
+        {:keys [options handler]} (get (:ingresses runtime) route)]
+    (when-not handler
+      (throw (ex-info "Generated public route not found"
+                      {:code :runtime/ingress-not-found :route route})))
+    (assoc (invoke-handler! runtime :ingress handler request {})
+           :route-options options)))
+
+(defn claim-job!
+  [^Registry registry session-id]
+  (let [runtime (active-runtime! registry session-id)]
+    (with-open [^Connection connection (jdbc/get-connection (:database runtime))]
+      (sqlite/configure! connection)
+      (jdbc/with-transaction [transaction connection]
+        ;; Claim old jobs too. If a later product version removed the named
+        ;; handler, run-job! records a bounded retry/terminal failure instead
+        ;; of leaving the durable task pending forever.
+        (resources/claim-next-job! (:resource-service runtime) transaction nil)))))
+
+(defn run-job!
+  [^Registry registry session-id {:keys [id handler payload] :as claimed-job}]
+  (let [runtime (active-runtime! registry session-id)
+        job-handler (get (:jobs runtime) handler)]
+    (when-not job-handler
+      (resources/fail-job! (:resource-service runtime) (:database runtime) id
+                           :job/handler-not-found)
+      (throw (ex-info "Generated background task handler is unavailable"
+                      {:code :job/handler-not-found :job-id id})))
+    (try
+      (assoc
+       (invoke-handler!
+        runtime :job job-handler payload
+        {:after-result
+         (fn [transaction result]
+           (resources/complete-job! (:resource-service runtime) transaction id result))})
+       :job claimed-job)
+      (catch Exception cause
+        (let [code (or (exception-code cause) :job/failed)
+              job (resources/fail-job! (:resource-service runtime)
+                                       (:database runtime) id code)]
+          (throw (ex-info "Generated background task failed"
+                          {:code code :job job}
+                          cause)))))))

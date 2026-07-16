@@ -73,7 +73,7 @@
 
 (def server-message-types
   #{:turn/queued :turn/progress :turn/completed :turn/failed
-    :runtime/stage :runtime/activate :runtime/resync})
+    :runtime/stage :runtime/activate :runtime/resync :product/event})
 
 (defn- version-pair-valid?
   [{:keys [base-version target-version]}]

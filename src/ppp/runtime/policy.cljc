@@ -55,6 +55,15 @@
    "future-call"
    "pmap"])
 
+(def client-forbidden-source-fragments
+  ["js/eval" "js/Function" "js/process"])
+
+(defn- forbidden-fragments-for
+  [path]
+  (if (str/starts-with? path "src/client/")
+    client-forbidden-source-fragments
+    forbidden-source-fragments))
+
 (def forbidden-style-patterns [])
 
 (defn validate-runtime-css
@@ -116,7 +125,8 @@
 (defn validate-write
   [{:keys [path content]}]
   (let [path (normalize-source-path path)
-        expected-ns (get fixed-entrypoints path)]
+        expected-ns (get fixed-entrypoints path)
+        forbidden-fragments (forbidden-fragments-for path)]
     (cond
       (not (allowed-source-path? path))
       {:code :source/path-not-allowed :path path}
@@ -127,10 +137,10 @@
       (and expected-ns (not (namespace-declared? content expected-ns)))
       {:code :source/entrypoint-namespace :path path :expected expected-ns}
 
-      (some #(str/includes? content %) forbidden-source-fragments)
+      (some #(str/includes? content %) forbidden-fragments)
       {:code :source/forbidden-capability
        :path path
-       :fragment (some #(when (str/includes? content %) %) forbidden-source-fragments)}
+       :fragment (some #(when (str/includes? content %) %) forbidden-fragments)}
 
       (and (str/starts-with? path "styles/")
            (validate-runtime-css content))
@@ -306,9 +316,14 @@
    :server
    {:namespaces
     {'runtime.api
-     ['register-action! 'query! 'execute! 'public-http! 'connector-http!]
+     ['register-action! 'query! 'execute! 'public-http! 'connector-http!
+      'auth-register! 'auth-login! 'auth-logout! 'auth-current-user
+      'auth-require-user! 'auth-change-password! 'auth-delete-account!
+      'blob-put! 'blob-get 'blob-list 'blob-delete! 'publish!
+      'register-job! 'schedule-job! 'job-status 'cancel-job!
+      'register-ingress! 'search-upsert! 'search-delete! 'search-query]
      'runtime.test
-     ['invoke!]
+     ['invoke! 'invoke-as! 'invoke-job! 'invoke-ingress!]
      'clojure.string
      ['blank? 'trim 'triml 'trimr 'lower-case 'upper-case
       'includes? 'starts-with? 'ends-with? 'split 'split-lines 'join 'replace]
@@ -321,7 +336,8 @@
    {:namespaces
     {'runtime.api
      ['register-page! 'register-sidebar! 'navigate! 'action! 'ensure-action!
-      'start-interval! 'stop-interval! 'page-state 'event-value 'prevent-default!]
+      'initialize-state! 'start-interval! 'stop-interval! 'page-state
+      'register-event-handler! 'event-value 'prevent-default!]
      'clojure.string
      ['blank? 'trim 'triml 'trimr 'lower-case 'upper-case
       'includes? 'starts-with? 'ends-with? 'split 'split-lines 'join 'replace]}
@@ -340,23 +356,37 @@
     ["A registered action handler receives the submitted payload map directly, never a {:params ...} wrapper."
      "query! and execute! work only inside action handlers and only with literal SQL also present in source."
      "Use query! for one SELECT and execute! for INSERT, UPDATE, or DELETE with positional ? parameters."
+     "Product accounts are session-owned Kernel resources. Use auth-register!, auth-login!, auth-logout!, auth-current-user, auth-require-user!, auth-change-password!, and auth-delete-account!; never implement password storage or session tokens in generated tables."
+     "auth-register! and auth-login! accept {:identifier string :password string} and return only public {:id :identifier :created-at} claims. Login cookies are applied by the host only after the entire action transaction succeeds."
+     "Keep roles, profiles, preferences, ownership, and authorization rules in ordinary generated tables keyed by the public user :id. auth-require-user! supplies that id without exposing credentials, cookies, or Kernel tables."
+     "Use blob-put!, blob-get, blob-list, and blob-delete! for durable session-owned binary objects. Content crosses the action bridge as bounded base64; no filesystem path is exposed."
+     "blob-put! accepts {:id :name :content-type :content-base64}; blob-get and blob-delete! accept an id; blob-list takes no arguments. Objects are limited to 4 MiB and 64 per session by default."
+     "publish! accepts a keyword topic and bounded plain payload. It is an effect: the Kernel broadcasts it only after the enclosing action, job, or ingress transaction commits. Never use it as durable state; reconnect through a read action."
+     "Register a job once at source evaluation with (register-job! :reports/build handler). Inside an action, job, or ingress call (schedule-job! :reports/build payload {:delay-ms n :max-attempts n :idempotency-key string}). schedule-job! returns a public job map such as {:id string :handler keyword :status keyword}; pass (:id scheduled-job), never the whole map, to job-status or cancel-job!. The Kernel owns timing, leases, retries, and threads."
+     "Register a public route once at source evaluation with (register-ingress! :route-name options handler). The handler receives bounded {:method :query :headers :body} and returns exactly {:status integer :body plain-value}; options may name a developer-owned :verifier alias from the supplied catalog."
+     "search-upsert! accepts collection, document id, and {:text string :metadata plain-map :vector optional-finite-number-vector}; search-delete! accepts collection and id; search-query accepts collection, query string, and optional {:vector :limit :text-weight :vector-weight}. Search is session-local and Unicode-aware."
+     "Blob, job, ingress, event, and search operations share the enclosing SQLite transaction, database quota, checkpoint, and restore boundary. Do not duplicate them with generated tables merely to bypass their limits."
      "Return plain EDN/Transit values. Register every action exactly once with a keyword id."]
     :tests
     ["Keep test/runtime/domain_test.cljc and update it whenever domain or business behavior changes."
      "Use clojure.test deftest/is/testing for observable business rules and runtime.test/invoke! to exercise registered server actions against the staged SQLite database."
+     "For authenticated behavior, create an account through its registered action, retain the returned public user id, and call runtime.test/invoke-as! with user-id, action-id, and payload."
+     "Use runtime.test/invoke-job! and runtime.test/invoke-ingress! to prove observable generated handler rules inside the same rollback-only staged database."
      "Tests execute before commit in a transaction that is always rolled back. Do not test copy, CSS classes, DOM nesting, private call order, or incidental implementation details."
      "For persisted mutations, assert the initial result, one mutation delta, and reconstruction through the read action. For weighted voting: no votes score 0, public adds exactly 1, judge adds exactly 3, and ties have deterministic order."
      "A LEFT JOIN aggregate must explicitly map the synthetic NULL joined row to zero; never let CASE ELSE award points when the joined vote id or type is NULL."]
     :client
     ["The page component argument contains only host context such as :session-id; product state lives in @api/page-state."
      "api/page-state is the host-owned reactive atom value, not a function: dereference it with @api/page-state and update it with swap! or reset!."
+     "Declare new product-state defaults once with api/initialize-state! at source evaluation. Activation fills only missing keys, preserves existing user values, and discards other staging-time state mutations."
      "Keep durable, replacement-safe product state in api/page-state. Local atoms are allowed for disposable implementation details, but changes that must redraw or survive replacement belong in api/page-state."
      "Use (swap! api/page-state assoc ...) for local navigation, form fields, and voter choice; do not invent server actions for local UI state."
      "Use (api/ensure-action! :items/list {} :items/data) during render to load once per runtime version."
      "Use (api/action! :votes/create {:project-id id :voter-type voter-type} :items/data) in events; the third argument stores the response at that page-state key."
      "Generated client code runs in a disposable opaque-origin iframe. Normal in-frame JavaScript interop, DOM, timers, requestAnimationFrame, keyboard events, Canvas/WebGL, audio, workers, WebAssembly, refs, and resource elements are available."
      "The frame has no authenticated cookies or direct parent DOM access. Never attempt to read or modify the parent/top document; use runtime.api action and sidebar callbacks for host operations."
-     "Prefer frame-lifetime browser listeners and timers for rich interactions. Replacing or rejecting the frame cleans them up automatically; api/start-interval! remains an optional keyed convenience."
+     "Register product event callbacks once with register-event-handler! during source evaluation. Events are ephemeral hints; reconstruct durable truth through a server action after reconnect."
+     "Prefer frame-lifetime browser listeners and timers for rich interactions. Replacing or rejecting the frame cleans them up automatically. Call api/start-interval! once at source evaluation when using the keyed convenience; it registers during staging, starts callbacks only after activation, and does not need to be called from render."
      "Preserve a working sidebar with session selector, new session, conversation, checkpoints, Message composer, and send/restore callbacks."]
     :safe-example
     {:server
@@ -364,4 +394,6 @@
      :client
      "(defn vote! [id] (api/action! :votes/create {:project-id id :voter-type (or (:voter-type @api/page-state) \"public\")} :projects/data))\n(defn page [_] (api/ensure-action! :projects/list {} :projects/data) (let [projects (:projects (:projects/data @api/page-state)) route (or (:route @api/page-state) :gallery) step (or (:local-step @api/page-state) 0)] [:main [:output (str step)] [:button {:on-click #(swap! api/page-state update :local-step (fnil inc 0))} \"Advance\"] [:button {:on-click #(swap! api/page-state assoc :route :leaderboard)} \"Leaderboard\"] (for [[rank project] (map-indexed vector projects)] ^{:key (:id project)} [:article [:span (str (inc rank))] [:button {:on-click #(vote! (:id project))} \"Vote\"]])]))"
      :migration
-     "{:name \"create-projects\" :sql \"CREATE TABLE projects (...); INSERT INTO projects (...) VALUES (...);\"}"}}})
+     "{:name \"create-projects\" :sql \"CREATE TABLE projects (...); INSERT INTO projects (...) VALUES (...);\"}"
+     :resources
+     "(defn process! [{:keys [id]}] (api/search-upsert! :objects id {:text (str id \" processed\") :metadata {:processed true}}) (api/publish! :objects/processed {:id id}) {:processed id})\n(defn upload! [{:keys [id name content-type content-base64]}] (let [object (api/blob-put! {:id id :name name :content-type content-type :content-base64 content-base64})] (api/search-upsert! :objects id {:text name :metadata {:name name}}) (api/publish! :objects/changed {:id id}) {:object object}))\n(api/register-action! :objects/upload upload!)\n(api/register-job! :objects/process process!)"}}})

@@ -16,7 +16,8 @@
 ;; Every edge before activation either leaves current untouched or restores the
 ;; before-current backup. The request tab's exact ACK is the only browser vote.
 
-(defrecord Coordinator [config store provider provider-queue registry outbound hub jobs])
+(defrecord Coordinator [config store provider provider-queue registry product-auth
+                        resource-service outbound hub jobs])
 
 (defn- parse-protocol-uuid
   [value code]
@@ -125,7 +126,9 @@
 
 (defn- runtime-capabilities
   [^Coordinator coordinator]
-  {:public-http-fn #(outbound/public-request! (:outbound coordinator) %)
+  {:auth-service (:product-auth coordinator)
+   :resource-service (:resource-service coordinator)
+   :public-http-fn #(outbound/public-request! (:outbound coordinator) %)
    :connector-http-fn #(outbound/connector-request! (:outbound coordinator) %1 %2)})
 
 (defn- stage-active-runtime!
@@ -137,11 +140,15 @@
          (merge
           (runtime-capabilities coordinator)
           {:source-map (store/current-source-map (:store coordinator) session-id)
+           :session-id session-id
            :database-path (store/current-db-path (:store coordinator) session-id)
            :version (:runtime-version manifest)
            :run-tests? false
            :timeout-ms 2000
-           :response-limit (* 1024 1024)}))]
+           :database-size-limit (get (:config coordinator) :session-db-limit
+                                     (* 25 1024 1024))
+           :response-limit (get (:config coordinator)
+                                :runtime-response-limit (* 7 1024 1024))}))]
     (server/activate! (:registry coordinator) session-id runtime)))
 
 (defn initialize!
@@ -152,8 +159,10 @@
   coordinator)
 
 (defn create-coordinator
-  [{:keys [config store provider provider-queue registry outbound hub]}]
-  (->Coordinator config store provider provider-queue registry outbound hub (atom {})))
+  [{:keys [config store provider provider-queue registry product-auth
+           resource-service outbound hub]}]
+  (->Coordinator config store provider provider-queue registry product-auth
+                 resource-service outbound hub (atom {})))
 
 (defn create-session!
   ([coordinator]
@@ -258,6 +267,7 @@
                (merge
                 (runtime-capabilities coordinator)
                 {:source-map (store/stage-source-map stage)
+                 :session-id (:session-id request)
                  :source-database-path
                  (store/current-db-path (:store coordinator) (:session-id request))
                  :database-path (:database stage)
@@ -265,7 +275,11 @@
                  :version target-version
                  :run-tests? true
                  :timeout-ms 2000
-                 :response-limit (* 1024 1024)})))]
+                 :database-size-limit (get (:config coordinator) :session-db-limit
+                                           (* 25 1024 1024))
+                 :response-limit (get (:config coordinator)
+                                      :runtime-response-limit
+                                      (* 7 1024 1024))})))]
         {:stage stage
          :server-runtime staged-runtime
          :impact impact
@@ -412,10 +426,17 @@
              (merge
               (runtime-capabilities coordinator)
               {:source-map (store/stage-source-map stage)
+               :session-id (:session-id request)
                :database-path (:database stage)
+               :clear-auth-sessions? true
+               :clear-operational-jobs? true
                :version target-version
                :timeout-ms 2000
-               :response-limit (* 1024 1024)}))]
+               :database-size-limit (get (:config coordinator) :session-db-limit
+                                         (* 25 1024 1024))
+               :response-limit (get (:config coordinator)
+                                    :runtime-response-limit
+                                    (* 7 1024 1024))}))]
         {:stage stage :server-runtime staged-runtime})
       (catch Exception cause
         (store/discard-stage! stage)
@@ -577,6 +598,8 @@
            :thread-id thread-id
            :transcript-summary (:transcript-summary session)
            :connector-catalog (outbound/catalog (:outbound coordinator))
+           :ingress-verifier-catalog
+           (outbound/ingress-catalog (:outbound coordinator))
            :source (store/current-source-map (:store coordinator)
                                              (:session-id request))}
     feedback (assoc :repair-feedback feedback)))
@@ -772,12 +795,60 @@
      (provider-queue/await! submission timeout-ms))))
 
 (defn invoke-action!
-  [^Coordinator coordinator session-id action-id payload]
+  ([coordinator session-id action-id payload]
+   (invoke-action! coordinator session-id action-id payload {}))
+  ([^Coordinator coordinator session-id action-id payload request-context]
+   (let [session-id (store/parse-session-id session-id)
+         action-id (if (keyword? action-id) action-id (keyword (str action-id)))
+         result
+         (store/with-session-lock
+           (:store coordinator) session-id
+           #(server/invoke! (:registry coordinator) session-id action-id payload
+                            request-context))]
+     (doseq [{:keys [op topic payload]} (:effects result)
+             :when (= :product-event op)]
+       (websocket/publish-product-event! (:hub coordinator) session-id
+                                         (:runtime-version result) topic payload))
+     result)))
+
+(defn invoke-ingress!
+  [^Coordinator coordinator session-id route request
+   {:keys [headers raw-body]}]
   (let [session-id (store/parse-session-id session-id)
-        action-id (if (keyword? action-id) action-id (keyword (str action-id)))]
-    (store/with-session-lock
-      (:store coordinator) session-id
-      #(server/invoke! (:registry coordinator) session-id action-id payload))))
+        route (if (keyword? route) route (keyword (str route)))
+        result
+        (store/with-session-lock
+          (:store coordinator) session-id
+          #(let [options (server/ingress-options (:registry coordinator)
+                                                 session-id route)]
+             (outbound/verify-ingress! (:outbound coordinator)
+                                       (:verification options) headers raw-body)
+             (server/invoke-ingress! (:registry coordinator) session-id route
+                                     request)))]
+    (doseq [{:keys [op topic payload]} (:effects result)
+            :when (= :product-event op)]
+      (websocket/publish-product-event! (:hub coordinator) session-id
+                                        (:runtime-version result) topic payload))
+    result))
+
+(defn run-one-due-job!
+  "Run at most one due generated job. The caller may poll this operation; no
+  generated source receives a thread, executor, or process handle."
+  [^Coordinator coordinator]
+  (some
+   (fn [{:keys [id]}]
+     (store/with-session-lock
+       (:store coordinator) id
+       (fn []
+         (when-let [claimed (server/claim-job! (:registry coordinator) id)]
+           (let [result (server/run-job! (:registry coordinator) id claimed)]
+             (doseq [{:keys [op topic payload]} (:effects result)
+                     :when (= :product-event op)]
+               (websocket/publish-product-event! (:hub coordinator) id
+                                                 (:runtime-version result)
+                                                 topic payload))
+             (assoc result :session-id id))))))
+   (store/list-sessions (:store coordinator))))
 
 (defn readiness
   [^Coordinator coordinator]

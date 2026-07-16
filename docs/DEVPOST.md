@@ -88,6 +88,12 @@ Codex is the source-generation and reasoning provider behind each conversation t
 
 For a change, Codex writes complete CLJ, CLJS, CLJC, CSS, test, and migration contents. PPP does not trust the result directly. It validates the schema, paths, capabilities, SQL, quotas, server runtime, browser render, and version acknowledgement before committing.
 
+If the active generated product later fails, PPP keeps a bounded, redacted
+reason from that exact sandbox frame. On the next relevant user turn, Codex can
+read the volatile evidence through an isolated temporary Skill. Normal prompts
+remain free of diagnostic text, the evidence is never added to product history
+or logs, and parent/extension noise is excluded.
+
 The hackathon and trusted self-host mode reuse the owner's ChatGPT/Codex OAuth
 login to avoid per-turn API cost. OAuth is stored in a separate volume and
 treated as a password. The hosted judge instance admits at most 100 real Codex
@@ -127,6 +133,8 @@ We intentionally avoided a low-code DSL. Codex writes real Clojure-family source
 - [x] Sidebar self-replacement with immutable Safe Mode recovery.
 - [x] Deterministic fake-provider CI and 24-run live Codex evaluation.
 - [x] Non-root Linux amd64 self-host image with no embedded credentials.
+- [x] On-demand active-product failure evidence without persistent telemetry
+  or parent-window collection.
 
 Unchecked items must not appear as completed claims in the submitted text.
 
@@ -214,4 +222,4 @@ Hero image should show the running generated product and sidebar together, not a
 - [ ] Owner explicitly approves deployment and submission.
 
 Local release closure and the exact owner approval queue are tracked in
-`docs/RELEASE.md` and `tickets/PPP-022.md`.
+`docs/RELEASE.md` and `tickets/PPP-023.md`.

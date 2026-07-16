@@ -24,16 +24,18 @@ Local completeness does not authorize remote or public state changes.
 - Eight-turn complete-product evolution: `artifacts/evolution-eval/20260716-141959/report.edn`.
 - Real Codex stable composer smoke: Enter sends once, Shift+Enter remains a
   newline, and the composer returns to an editable state.
-- Clean candidate-copy release gate: 174 JVM tests/1,262 assertions, 25 CLJS
-  tests/110 assertions, 25 normal Chromium tests, two production restart
-  phases across three fresh browser contexts, Docker smoke, and a clean
-  secret scan.
+- Clean candidate-copy release gate: 178 JVM tests/1,297 assertions, 27 CLJS
+  tests/125 assertions, 25 normal Chromium tests plus one intentional skip,
+  two production restart phases across three fresh browser contexts, Docker
+  smoke, and a clean 189-file candidate scan.
 - Shared judge workspace evidence:
   `artifacts/evidence/ppp-022-shared-judge-workspace.md`.
+- On-demand active-product diagnostic evidence:
+  `artifacts/evidence/ppp-023-on-demand-client-diagnostics.md`.
 - Enter-based packaged demo: `artifacts/demo/20260716-004803/report.edn`, three
   of three fresh-volume runs passed.
 - Aggregated bounded record: `artifacts/release/20260716-local/report.edn`.
-- Repository baseline: PPP-022 implementation and closure are recorded in
+- Repository baseline: PPP-023 implementation and closure are recorded in
   intentional local commits. Nothing was pushed.
 - Stable owner surface: `http://localhost:8787/` opens shared-password sign-in
   and Projects. Codex OAuth readiness, zero development sessions, zero

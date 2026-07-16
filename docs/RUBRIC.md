@@ -1,6 +1,6 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-022 shared judge workspace complete
+Status: PPP-023 on-demand client diagnostics complete
 Last updated: 2026-07-17
 
 ## 1. Scoring model
@@ -105,6 +105,7 @@ Scoring anchors:
 | E-12 | PPP-020 product-auth and capability-coverage report | Generated signup/login/reload/protected action/logout, credential safety, restore revocation, and real-provider non-refusal. |
 | E-13 | PPP-021 complete resource-plane report | Durable blob, search, job, ingress, event, restore, security, compiled-browser, and real-provider composition. |
 | E-14 | PPP-022 shared judge workspace report | Production password login/logout, shared Projects, persistent rolling provider budget, exhausted-state continuity, restart, browser, and package evidence. |
+| E-15 | PPP-023 on-demand client diagnostics report | Exact active-frame capture, parent/extension exclusion, volatile transport, provider Skill disclosure, redaction, browser repair evidence, and full release gate. |
 
 ## 7. Automated release gate
 
@@ -145,6 +146,7 @@ Each property runs at least 1,000 generated sequences unless a documented cost a
 | PBT-15 | Text/vector search remains session-local, bounded, and deterministically ordered for equal scores and arbitrary Unicode documents. |
 | PBT-16 | Real-provider starts never exceed the configured rolling limit, expire exactly at the boundary, and retain the same decision across restart. |
 | PBT-17 | Shared-password failures remain isolated by kernel-observed remote address, reveal no match detail, and recover after the rolling window. |
+| PBT-18 | Arbitrary client diagnostic shapes and strings either normalize into the strict bounded/redacted allowlist or are rejected; no accepted record can add a newline, exceed a field/ring bound, or enter ordinary provider stdin, history, or logs. |
 
 ## 9. Live Codex evaluation
 
@@ -250,6 +252,7 @@ Tests assert semantic roles and persistent outcomes. They do not assert exact co
 | Event after rollback or stale runtime | discard; no browser receives the payload. |
 | Shared-password guessing | Generic response plus per-remote rolling throttle; no secret or partial-match signal. |
 | Provider rolling capacity exhausted | Reject only new AI turns with bounded retry guidance; product actions, data, history, restore, Safe Mode, and logout remain available. |
+| Generated product interaction fails | Preserve a bounded active-frame reason for the next turn; exclude parent/extension noise; keep it out of visible UI, history, ordinary provider stdin, and logs. |
 
 A critical path with no validation, no explicit failure handling, or a silent fallback blocks release regardless of total score.
 
@@ -269,15 +272,16 @@ All conditions are required:
 - Devpost fields and Codex session ID are recorded;
 - actual deployment has separate owner approval.
 
-The evaluator records the current complete baseline below. PPP-022 E-14 and
-the expanded automated, production-browser, and live gates pass. Publication remains blocked only on
-the owner-controlled video, public links, deployment, and submission approval.
+The evaluator records the current complete baseline below. PPP-023 E-15 and
+the expanded automated, production-browser, and live gates pass. Publication
+remains blocked only on the owner-controlled video, public links, deployment,
+and submission approval.
 
 ## 13. Release assessment
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` (174 JVM/1,262 assertions, 25 CLJS/110 assertions, 25 normal Chromium tests, two production restart phases across three fresh contexts, Docker smoke, clean secret scan); eight-step live Codex evolution 8/8 with retained repair coverage; `artifacts/evidence/ppp-022-shared-judge-workspace.md`; PPP-007 through PPP-022 evidence | pass |
+| Technical implementation | 25/25 | isolated `bb verify` (178 JVM/1,297 assertions, 27 CLJS/125 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases across three fresh contexts, Docker smoke, clean 189-file candidate scan); eight-step live Codex evolution 8/8 with retained repair coverage; `artifacts/evidence/ppp-023-on-demand-client-diagnostics.md`; PPP-007 through PPP-023 evidence | pass |
 | Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests | pass |
 | Impact | 24/25 | `docs/PRD.md`; exact persistent Gallery demo; source/history handoff; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |

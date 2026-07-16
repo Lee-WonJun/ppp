@@ -6,12 +6,13 @@ Programmable Programming Page (PPP) is a self-hostable live product workspace fo
 
 The user never needs to install a development environment, clone a repository, inspect files, understand Git, or operate an AI coding agent. Developers still receive a complete source tree, domain tests, and an append-only record of every accepted change.
 
-Status: the complete session resource plane and shared judge workspace are
-implemented. External publication remains owner-controlled. Automated
-verification, production-configured shared-access browser tests, the 24-case
-live Codex evaluation, the eight-step cumulative real-product evolution gate,
-and three consecutive packaged demo rehearsals are the release evidence; exact
-current counts are recorded in `docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
+Status: the complete session resource plane, shared judge workspace, and
+on-demand generated-product diagnostics are implemented. External publication
+remains owner-controlled. Automated verification, production-configured
+shared-access browser tests, the 24-case live Codex evaluation, the eight-step
+cumulative real-product evolution gate, and three consecutive packaged demo
+rehearsals are the release evidence; exact current counts are recorded in
+`docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
 
 In the conversation composer, Enter sends and Shift+Enter inserts a newline.
 
@@ -137,6 +138,13 @@ shell, filesystem, Java interop, dependency installation, MCP, skills,
 credentials, or unrestricted network access. Generated browser code may use
 ordinary JavaScript and web APIs only inside its disposable opaque-origin
 frame, never in the authenticated parent.
+
+When that generated product fails, the active frame retains only a bounded,
+redacted action/runtime/Promise/console/network reason. The next explicit user
+turn may expose that volatile evidence to Codex through an isolated temporary
+Skill. It is absent from normal turns, visible conversation, history, logs, and
+the parent browser environment; extension noise such as MetaMask failures is
+not collected.
 
 ## Project documents
 

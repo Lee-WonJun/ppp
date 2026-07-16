@@ -5,7 +5,8 @@
             [sci.core :as sci]))
 
 (defrecord ClientRuntime
-           [version context page sidebar css state state-key phase pending ensured timers])
+           [version context page sidebar css state state-key initial-state
+            phase pending ensured timers event-handlers budget runtime-error-fn])
 
 (defonce state-root (r/atom {:base {}}))
 (defonce base-state (r/cursor state-root [:base]))
@@ -271,7 +272,8 @@
       (.finally (fn [] (swap! pending disj target-key)))))
 
 (defn- runtime-api
-  [{:keys [registrations phase state pending ensured timers budget runtime-error-fn]
+  [{:keys [registrations phase state initial-state pending ensured timers budget
+           runtime-error-fn]
     :as options}]
   {'register-page!
    (fn [page-id component]
@@ -303,6 +305,34 @@
      (swap! state assoc :route route)
      route)
 
+   'initialize-state!
+   (fn [defaults]
+     (ensure-phase! phase :evaluating :initialize-state!)
+     (when-not (and (map? defaults)
+                    (<= (count defaults) 256)
+                    (<= (count (pr-str defaults)) 65536))
+       (throw (ex-info "Generated initial state is outside the supported bounds"
+                       {:code :runtime/client-initial-state-invalid})))
+     (swap! initial-state merge defaults)
+     (swap! state #(merge defaults %))
+     nil)
+
+   'register-event-handler!
+   (fn [topic handler]
+     (ensure-phase! phase :evaluating :register-event-handler!)
+     (when-not (and (keyword? topic) (<= (count (str topic)) 96) (ifn? handler))
+       (throw (ex-info "Invalid generated product event registration"
+                       {:code :runtime/client-invalid-event-handler})))
+     (when (contains? (:events @registrations) topic)
+       (throw (ex-info "Generated product event is registered more than once"
+                       {:code :runtime/client-duplicate-event-handler
+                        :topic topic})))
+     (when (>= (count (:events @registrations)) 64)
+       (throw (ex-info "Generated runtime registered too many product events"
+                       {:code :runtime/client-event-handler-limit})))
+     (swap! registrations assoc-in [:events topic] handler)
+     topic)
+
    'action!
    (fn
      ([action-id payload]
@@ -324,36 +354,29 @@
    'start-interval!
    (fn [timer-id interval-ms callback]
      (validate-interval! timer-id interval-ms callback)
-     (case @phase
-       :active
-       (when-not (contains? @timers timer-id)
-         (when (>= (count @timers) maximum-intervals)
-           (throw (ex-info "Generated runtime has too many intervals"
-                           {:code :runtime/client-interval-limit
-                            :limit maximum-intervals})))
-         (let [handle
-               (js/setInterval
-                (fn []
-                  (when (= :active @phase)
-                    (try
-                      (reset-execution-budget! budget)
-                      (callback)
-                      (catch :default error
-                        (stop-interval-entry! timers timer-id)
-                        (runtime-error-fn error)))))
-                interval-ms)]
-           (swap! timers assoc timer-id handle)))
-
-       :evaluating
-       nil
-
-       :staging
-       nil
-
-       (throw (ex-info "Generated interval is unavailable for this runtime"
-                       {:code :runtime/client-capability-phase
-                        :capability :start-interval!
-                        :phase @phase})))
+     (let [current-phase @phase]
+       (if (contains? #{:evaluating :staging :active} current-phase)
+         (when-not (contains? @timers timer-id)
+           (when (>= (count @timers) maximum-intervals)
+             (throw (ex-info "Generated runtime has too many intervals"
+                             {:code :runtime/client-interval-limit
+                              :limit maximum-intervals})))
+           (let [handle
+                 (js/setInterval
+                  (fn []
+                    (when (= :active @phase)
+                      (try
+                        (reset-execution-budget! budget)
+                        (callback)
+                        (catch :default error
+                          (stop-interval-entry! timers timer-id)
+                          (runtime-error-fn error)))))
+                  interval-ms)]
+             (swap! timers assoc timer-id handle)))
+         (throw (ex-info "Generated interval is unavailable for this runtime"
+                         {:code :runtime/client-capability-phase
+                          :capability :start-interval!
+                          :phase current-phase}))))
      timer-id)
 
    'stop-interval!
@@ -444,7 +467,8 @@
       (throw (ex-info "Required client runtime source is missing"
                       {:code :runtime/client-missing-entrypoint :path path}))))
   (let [{:keys [state-key state]} (new-state-slot!)
-        registrations (atom {:pages {} :sidebar nil})
+        initial-state (atom {})
+        registrations (atom {:pages {} :sidebar nil :events {}})
         phase (atom :evaluating)
         pending (r/atom #{})
         ensured (atom #{})
@@ -453,6 +477,7 @@
         api (runtime-api {:registrations registrations
                           :phase phase
                           :state state
+                          :initial-state initial-state
                           :pending pending
                           :ensured ensured
                           :timers timers
@@ -475,7 +500,7 @@
           (sci/eval-string+ context source {:file path}))
         (when-let [error (policy/validate-runtime-css (css-text source-map))]
           (throw (ex-info "Generated CSS can load an external resource" error)))
-        (let [{:keys [pages sidebar]} @registrations
+        (let [{:keys [pages sidebar events]} @registrations
               sidebar (if sidebar-enabled? sidebar (fn [_] nil))]
           (when-not (and (= #{:home} (set (keys pages)))
                          (or (not sidebar-enabled?) (ifn? sidebar)))
@@ -485,7 +510,9 @@
                              :sidebar? (boolean sidebar)})))
           (reset! phase :staging)
           (->ClientRuntime version context (:home pages) sidebar
-                           (css-text source-map) state state-key phase pending ensured timers)))
+                           (css-text source-map) state state-key initial-state
+                           phase pending ensured timers events budget
+                           runtime-error-fn)))
       (catch :default cause
         (clear-intervals! timers)
         (remove-state-slot! state-key)
@@ -544,7 +571,7 @@
                       {:code :runtime/client-not-staged :version version})))
     (let [previous @active-runtime
           preserved-state @(active-page-state)]
-      (reset! (:state runtime) preserved-state)
+      (reset! (:state runtime) (merge @(:initial-state runtime) preserved-state))
       (reset! (:phase runtime) :active)
       (when previous
         (reset! (:phase previous) :inactive)
@@ -554,6 +581,19 @@
       (when (and previous (not= (:state-key previous) (:state-key runtime)))
         (remove-state-slot! (:state-key previous)))
       runtime)))
+
+(defn deliver-event!
+  [topic value]
+  (when-let [runtime @active-runtime]
+    (when-let [handler (get (:event-handlers runtime) topic)]
+      (try
+        (ensure-phase! (:phase runtime) :active :product-event)
+        (reset-execution-budget! (:budget runtime))
+        (handler value)
+        true
+        (catch :default error
+          ((:runtime-error-fn runtime) error)
+          false)))))
 
 (defn reset-runtime!
   []

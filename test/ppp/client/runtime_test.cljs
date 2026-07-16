@@ -72,6 +72,27 @@
         (is (= {:draft "kept" :filter :judges}
                @(runtime/active-page-state)))))))
 
+(deftest declared-state-defaults-apply-only-after-activation-and-never-overwrite-users
+  (reset! runtime/base-state {:account/mode :login :existing true})
+  (let [staged
+        (runtime/stage-source!
+         {:version 1
+          :source-map
+          (source-map
+           (page-source
+            "Account product"
+            "(api/initialize-state! {:account/mode :signup :account/name \"\"})"
+            "(swap! api/page-state assoc :staging-only true)"))})]
+    (is (= {:account/mode :login :existing true} @runtime/base-state))
+    (is (= "" (:account/name @(:state staged))))
+    (is (= true (:staging-only @(:state staged))))
+    (runtime/retain-stage! staged)
+    (runtime/activate! 1)
+    (is (= {:account/mode :login
+            :account/name ""
+            :existing true}
+           @(runtime/active-page-state)))))
+
 (deftest failed-stage-cannot-change-active-runtime
   (let [first-runtime
         (runtime/stage-source!
@@ -246,29 +267,54 @@
   (async done
          (let [client
                (str "(ns runtime.client (:require [runtime.api :as api]))\n"
+                    "(api/start-interval! :game/tick 50\n"
+                    "  #(swap! api/page-state update :game/ticks (fnil inc 0)))\n"
                     "(defn page [_]\n"
-                    "  (api/start-interval! :game/tick 50\n"
-                    "    #(swap! api/page-state update :game/ticks (fnil inc 0)))\n"
                     "  [:main (str (or (:game/ticks @api/page-state) 0))])\n"
                     "(api/register-page! :home page)")
                staged (runtime/stage-source!
                        {:version 9 :source-map (source-map client)})
                state-key (:state-key staged)]
            (runtime/retain-stage! staged)
-           (runtime/activate! 9)
-           ((:page staged) {})
            (is (= 1 (count @(:timers staged))))
            (js/setTimeout
             (fn []
-              (is (pos? (or (:game/ticks @(runtime/active-page-state)) 0)))
-              (runtime/reset-runtime!)
-              (is (empty? @(:timers staged)))
+              (is (nil? (:game/ticks @(:state staged))))
+              (runtime/activate! 9)
               (js/setTimeout
                (fn []
-                 (is (not (contains? @runtime/state-root state-key)))
-                 (done))
-               90))
-            130))))
+                 (is (pos? (or (:game/ticks @(runtime/active-page-state)) 0)))
+                 (runtime/reset-runtime!)
+                 (is (empty? @(:timers staged)))
+                 (js/setTimeout
+                  (fn []
+                    (is (not (contains? @runtime/state-root state-key)))
+                    (done))
+                  90))
+               130))
+            90))))
+
+(deftest product-events-run-only-in-the-active-runtime-and-use-reactive-state
+  (let [errors (atom [])
+        client
+        (str "(ns runtime.client (:require [runtime.api :as api]))\n"
+             "(api/initialize-state! {:events/count 0})\n"
+             "(api/register-event-handler! :scores/changed\n"
+             "  (fn [{:keys [delta]}]\n"
+             "    (swap! api/page-state update :events/count + delta)))\n"
+             "(api/register-page! :home\n"
+             "  (fn [_] [:main [:output (str (:events/count @api/page-state))]]))")
+        staged (runtime/stage-source! {:version 14
+                                       :source-map (source-map client)
+                                       :runtime-error-fn #(swap! errors conj %)})]
+    (is (nil? (runtime/deliver-event! :scores/changed {:delta 2})))
+    (runtime/retain-stage! staged)
+    (runtime/activate! 14)
+    (is (true? (runtime/deliver-event! :scores/changed {:delta 2})))
+    (is (= 2 (:events/count @(runtime/active-page-state))))
+    (is (= "2" (get-in ((:page @runtime/active-runtime) {}) [1 1])))
+    (is (nil? (runtime/deliver-event! :unknown {})))
+    (is (empty? @errors))))
 
 (deftest generated-interval-policy-rejects-unsafe-schedules
   (let [client

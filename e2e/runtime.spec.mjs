@@ -60,10 +60,10 @@ function browserPlatformSource() {
 
       (.addEventListener js/window "keydown" key-handler)
 
-      (def tick-handle
-        (js/setInterval
-          #(swap! api/page-state update :automatic-ticks (fnil inc 0))
-          80))
+      (api/start-interval!
+        :platform/automatic-tick
+        80
+        #(swap! api/page-state update :automatic-ticks (fnil inc 0)))
 
       (defn canvas-ref! [canvas]
         (when (and canvas (not (:canvas-ready @api/page-state)))

@@ -13,7 +13,7 @@
 
 (def ^:private no-links (into-array LinkOption [LinkOption/NOFOLLOW_LINKS]))
 
-(def initial-source
+(def ^:private initial-source-template
   {"src/server/runtime/server.clj"
    "(ns runtime.server\n  (:require [runtime.api :as api]))\n\n(api/register-action!\n :ping\n (fn [_request]\n   {:ok true :message \"The runtime is ready.\"}))\n"
 
@@ -31,6 +31,43 @@
 
    "test/runtime/domain_test.cljc"
    "(ns runtime.domain-test\n  (:require [clojure.test :refer [deftest is]]\n            [runtime.domain :as domain]))\n\n(deftest title-rule\n  (is (domain/valid-title? \"A product\"))\n  (is (not (domain/valid-title? \"\"))))\n"})
+
+(def ^:private initial-progress-source
+  (str
+   "(defn progress-status [phase detail]\n"
+   "  [:p.runtime-progress\n"
+   "   {:role \"status\" :aria-label (str phase \". \" detail)}\n"
+   "   [:span.runtime-progress-phase phase]\n"
+   "   [:span.runtime-progress-dots {:aria-hidden true}\n"
+   "    [:span.runtime-progress-dots-fill \"...\"]]\n"
+   "   [:span.runtime-progress-separator {:aria-hidden true} \" · \"]\n"
+   "   [:span.runtime-progress-detail detail]])\n\n"))
+
+(def ^:private initial-progress-css
+  (str
+   ".runtime-progress { display: flex; align-items: baseline; min-width: 0; margin: 16px 0 0; overflow: hidden; white-space: nowrap; }\n"
+   ".runtime-progress-phase, .runtime-progress-dots, .runtime-progress-separator { flex: none; }\n"
+   ".runtime-progress-phase { font-weight: 600; }\n"
+   ".runtime-progress-dots { display: inline-block; width: 1.5em; overflow: hidden; }\n"
+   ".runtime-progress-dots-fill { display: inline-block; width: 0; overflow: hidden; animation: runtime-progress-dots 1.2s linear infinite; }\n"
+   ".runtime-progress-detail { min-width: 0; overflow: hidden; text-overflow: ellipsis; }\n"
+   "@keyframes runtime-progress-dots { 0%, 24% { width: 0; } 25%, 49% { width: .5em; } 50%, 74% { width: 1em; } 75%, 100% { width: 1.5em; } }\n"
+   "@media (prefers-reduced-motion: reduce) { .runtime-progress-dots-fill { width: 1.5em; animation: none; } }\n"))
+
+(defn- with-progress-status-contract
+  [source]
+  (-> source
+      (str/replace "(defn sidebar "
+                   (str initial-progress-source "(defn sidebar "))
+      (str/replace "draft busy? progress\n"
+                   "draft busy? progress progress-detail\n")
+      (str/replace "(when progress\n      [:p.runtime-progress progress])"
+                   "(when progress\n      [progress-status progress progress-detail])")))
+
+(def initial-source
+  (-> initial-source-template
+      (update "src/client/runtime/sidebar.cljs" with-progress-status-contract)
+      (update "styles/runtime.css" str initial-progress-css)))
 
 (defrecord Store [^Path sessions-root config locks])
 
@@ -198,10 +235,13 @@
 
 (defn list-sessions
   [^Store store]
-  (->> (fs/list-tree (:sessions-root store))
-       (filter #(and (fs/regular-file? %)
-                     (= "session.edn" (str (.getFileName ^Path %)))))
-       (map fs/read-edn)
+  (->> (fs/list-children (:sessions-root store))
+       (keep (fn [^Path directory]
+               (when (and (fs/directory? directory)
+                          (not (fs/symbolic-link? directory)))
+                 (let [session-path (.resolve directory "session.edn")]
+                   (when (fs/regular-file? session-path)
+                     (fs/read-edn session-path))))))
        (sort-by :updated-at #(compare %2 %1))
        vec))
 

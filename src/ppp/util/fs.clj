@@ -5,7 +5,9 @@
             [clojure.walk :as walk])
   (:import (java.io BufferedInputStream BufferedOutputStream PushbackReader)
            (java.nio.charset StandardCharsets)
-           (java.nio.file CopyOption Files LinkOption OpenOption Path StandardCopyOption)
+           (java.nio.file CopyOption FileVisitResult Files LinkOption
+                          NoSuchFileException OpenOption Path SimpleFileVisitor
+                          StandardCopyOption)
            (java.nio.file.attribute FileAttribute)
            (java.security MessageDigest)
            (java.time Instant)
@@ -30,6 +32,10 @@
 (defn regular-file?
   [^Path path]
   (Files/isRegularFile path no-links))
+
+(defn directory?
+  [^Path path]
+  (Files/isDirectory path no-links))
 
 (defn symbolic-link?
   [^Path path]
@@ -106,15 +112,46 @@
   [^Path path]
   (sha256-bytes (Files/readAllBytes path)))
 
+(defn list-children
+  "List only direct children without following symlinks. A root that vanishes
+  concurrently is equivalent to an empty directory."
+  [^Path root]
+  (if-not (directory? root)
+    []
+    (try
+      (with-open [stream (Files/newDirectoryStream root)]
+        (->> (iterator-seq (.iterator stream))
+             (sort-by str)
+             vec))
+      (catch NoSuchFileException _
+        []))))
+
 (defn list-tree
+  "Walk a tree without following symlinks. SQLite may create and unlink WAL or
+  SHM companions while quota/readiness scans are running; disappearing entries
+  are skipped, while every other I/O failure remains visible."
   [^Path root]
   (if-not (exists? root)
     []
-    (with-open [stream (Files/walk root (make-array java.nio.file.FileVisitOption 0))]
-      (->> (iterator-seq (.iterator stream))
-           (remove #(= root %))
-           (sort-by str)
-           vec))))
+    (let [paths (java.util.ArrayList.)
+          visitor
+          (proxy [SimpleFileVisitor] []
+            (preVisitDirectory [directory _attributes]
+              (when-not (= root directory)
+                (.add paths directory))
+              FileVisitResult/CONTINUE)
+            (visitFile [file _attributes]
+              (.add paths file)
+              FileVisitResult/CONTINUE)
+            (visitFileFailed [_file cause]
+              (if (instance? NoSuchFileException cause)
+                FileVisitResult/CONTINUE
+                (throw cause))))]
+      (try
+        (Files/walkFileTree root visitor)
+        (->> paths (sort-by str) vec)
+        (catch NoSuchFileException _
+          [])))))
 
 (defn delete-tree!
   [^Path root]
@@ -159,9 +196,12 @@
   [^Path root]
   (assert-no-symlinks! root)
   (reduce (fn [total ^Path path]
-            (if (regular-file? path)
-              (+ total (Files/size path))
-              total))
+            (try
+              (if (regular-file? path)
+                (+ total (Files/size path))
+                total)
+              (catch NoSuchFileException _
+                total)))
           0
           (list-tree root)))
 

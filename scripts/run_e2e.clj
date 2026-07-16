@@ -51,8 +51,10 @@
                                :err :inherit})]
   (try
     (wait-for-server! server)
-    (process/shell {:extra-env {"PPP_E2E_BASE_URL" base-url}}
-                   "npx" "playwright" "test" "--reporter=line")
+    (apply process/shell
+           {:extra-env {"PPP_E2E_BASE_URL" base-url}}
+           (into ["npx" "playwright" "test" "--reporter=line"]
+                 *command-line-args*))
     (finally
       (process/destroy-tree server)
       (fs/delete-tree data-root))))

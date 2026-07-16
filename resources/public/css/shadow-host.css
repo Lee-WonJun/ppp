@@ -135,6 +135,66 @@ input:focus-visible {
   color: var(--ppp-muted);
 }
 
+.ppp-fallback-progress {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  margin: 16px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ppp-fallback-progress-phase,
+.ppp-fallback-progress-dots,
+.ppp-fallback-progress-separator {
+  flex: none;
+}
+
+.ppp-fallback-progress-phase {
+  font-weight: 600;
+}
+
+.ppp-fallback-progress-dots {
+  display: inline-block;
+  width: 1.5em;
+  overflow: hidden;
+}
+
+.ppp-fallback-progress-dots-fill {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  animation: ppp-progress-dots 1.2s linear infinite;
+}
+
+.ppp-fallback-progress-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes ppp-progress-dots {
+  0%,
+  24% {
+    width: 0;
+  }
+
+  25%,
+  49% {
+    width: 0.5em;
+  }
+
+  50%,
+  74% {
+    width: 1em;
+  }
+
+  75%,
+  100% {
+    width: 1.5em;
+  }
+}
+
 .ppp-fallback-checkpoints,
 .ppp-safe-checkpoints {
   display: grid;
@@ -263,5 +323,10 @@ input:focus-visible {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .ppp-fallback-progress-dots-fill {
+    width: 1.5em;
+    animation: none !important;
   }
 }

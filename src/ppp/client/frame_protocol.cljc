@@ -2,7 +2,7 @@
   #?(:cljs (:require [cognitect.transit :as transit])))
 
 (def protocol-version 1)
-(def max-wire-characters (* 1024 1024))
+(def max-wire-characters (* 7 1024 1024))
 
 #?(:cljs (defonce writer (transit/writer :json)))
 #?(:cljs (defonce reader (transit/reader :json)))
@@ -14,6 +14,7 @@
     :host/sidebar-open
     :host/action-result
     :host/action-error
+    :host/product-event
     :host/set-state
     :host/dispose})
 

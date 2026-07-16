@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [ppp.client.composer :as composer]
             [ppp.client.frame-host :as frame]
+            [ppp.client.progress :as work-progress]
             [ppp.client.transport :as transport]
             [reagent.core :as r]
             [reagent.dom.client :as rdom]))
@@ -28,10 +29,22 @@
            :messages []
            :checkpoints []
            :progress nil
+           :progress-detail nil
            :draft ""
            :draft-revision 0
            :message nil
            :runtime-error nil}))
+
+(defn- set-progress!
+  ([phase]
+   (set-progress! phase nil))
+  ([phase detail]
+   (if phase
+     (let [copy (work-progress/presentation phase detail)]
+       (swap! app-state assoc
+              :progress (:label copy)
+              :progress-detail (:detail copy)))
+     (swap! app-state assoc :progress nil :progress-detail nil))))
 
 (declare create-session!
          handle-server-message!
@@ -47,6 +60,22 @@
    (cond-> {"content-type" "application/json"}
      csrf-token (assoc "x-ppp-csrf" csrf-token))))
 
+(defn- response-data!
+  [response value]
+  (let [data (js->clj value :keywordize-keys true)]
+    (if (.-ok response)
+      data
+      (let [raw-code (get-in data [:error :code])]
+        (throw
+         (ex-info
+          (or (get-in data [:error :message])
+              "The workspace request failed.")
+          {:code (cond
+                   (keyword? raw-code) raw-code
+                   (string? raw-code) (keyword raw-code)
+                   :else nil)
+           :status (.-status response)}))))))
+
 (defn- fetch-json!
   [url {:keys [method body csrf-token]
         :or {method "GET"}}]
@@ -57,17 +86,9 @@
                  :credentials "same-origin"
                  :headers (json-headers csrf-token)}
           body (assoc :body (js/JSON.stringify (clj->js body))))))
-      (.then
-       (fn [response]
-         (-> (.json response)
-             (.then
-              (fn [value]
-                (let [data (js->clj value :keywordize-keys true)]
-                  (if (.-ok response)
-                    data
-                    (throw (js/Error.
-                            (or (get-in data [:error :message])
-                                "The workspace request failed."))))))))))))
+      (.then (fn [response]
+               (-> (.json response)
+                   (.then #(response-data! response %)))))))
 
 (defn- clear-fragment!
   []
@@ -165,8 +186,8 @@
     (when-not (str/blank? draft)
       (append-message! :user draft)
       (swap! app-state #(-> %
-                            (with-draft "")
-                            (assoc :progress "Generating")))
+                            (with-draft "")))
+      (set-progress! :generating)
       (if (and session-id (some? version) (transport/connected?))
         (-> (fetch-json!
              (str "/api/sessions/" (js/encodeURIComponent session-id) "/turns")
@@ -177,10 +198,10 @@
               :csrf-token csrf-token})
             (.catch
              (fn [error]
-               (swap! app-state assoc :progress nil)
+               (set-progress! nil)
                (append-message! :assistant (.-message error) "Not applied"))))
         (do
-          (swap! app-state assoc :progress nil)
+          (set-progress! nil)
           (append-message!
            :assistant
            "The live connection is still opening. Wait a moment and try again."
@@ -207,7 +228,7 @@
   (let [{:keys [session-id csrf-token progress]} @app-state
         version (current-base-version)]
     (when (and session-id (nil? progress) (some? version) (transport/connected?))
-      (swap! app-state assoc :progress "Validating")
+      (set-progress! :validating "Checking the selected checkpoint")
       (-> (fetch-json!
            (str "/api/sessions/" (js/encodeURIComponent session-id) "/restores")
            {:method "POST"
@@ -217,13 +238,13 @@
             :csrf-token csrf-token})
           (.catch
            (fn [error]
-             (swap! app-state assoc :progress nil)
+             (set-progress! nil)
              (append-message! :assistant (.-message error) "Not restored")))))))
 
 (defn- frame-sidebar-model
   []
   (let [{:keys [sessions session-id messages checkpoints draft draft-revision
-                progress]} @app-state]
+                progress progress-detail]} @app-state]
     {:sessions sessions
      :session-id session-id
      :messages messages
@@ -231,7 +252,8 @@
      :draft draft
      :draft-revision draft-revision
      :busy? (some? progress)
-     :progress progress}))
+     :progress progress
+     :progress-detail progress-detail}))
 
 (defn- handle-frame-sidebar-event!
   [event value]
@@ -245,7 +267,8 @@
 
 (defn- fallback-sidebar
   []
-  (let [{:keys [sessions session-id messages checkpoints draft progress runtime-error]}
+  (let [{:keys [sessions session-id messages checkpoints draft progress
+                progress-detail runtime-error]}
         @app-state]
     [:aside.ppp-fallback-sidebar {:aria-label "Product conversation"}
      [:header.ppp-fallback-header
@@ -281,7 +304,16 @@
         [:div.ppp-fallback-empty
          [:strong "Start with the outcome."]
          [:p "Describe a product, a rule, or a visual change."]])
-      (when progress [:p.ppp-fallback-progress progress])]
+      (when progress
+        [:p.ppp-fallback-progress
+         {:role "status"
+          :aria-label (work-progress/accessible-label
+                       {:label progress :detail progress-detail})}
+         [:span.ppp-fallback-progress-phase progress]
+         [:span.ppp-fallback-progress-dots {:aria-hidden true}
+          [:span.ppp-fallback-progress-dots-fill "..."]]
+         [:span.ppp-fallback-progress-separator {:aria-hidden true} " · "]
+         [:span.ppp-fallback-progress-detail progress-detail]])]
      (when (seq checkpoints)
        [:section.ppp-fallback-checkpoints {:aria-label "Checkpoints"}
         [:strong "Checkpoints"]
@@ -463,12 +495,6 @@
            (when detail (str " Reason: " detail "."))
            " Your saved session is unchanged."))))
 
-(def progress-labels
-  {:generating "Generating"
-   :validating "Validating"
-   :applying "Applying"
-   :applied "Applied"})
-
 (defn- stage-from-message!
   [{:keys [session-id request-id payload]}]
   (let [{:keys [tab-id transaction-id base-version target-version files]} payload
@@ -542,10 +568,12 @@
   [{:keys [type payload runtime-version] :as message}]
   (case type
     :turn/queued
-    (swap! app-state assoc :progress "Generating")
+    (set-progress! :generating
+                   (when (pos? (or (:position payload) 0))
+                     "Waiting for the current request"))
 
     :turn/progress
-    (swap! app-state assoc :progress (get progress-labels (:phase payload) "Working"))
+    (set-progress! (:phase payload))
 
     :runtime/stage
     (stage-from-message! message)
@@ -556,9 +584,13 @@
     :runtime/resync
     (resync-from-message! message)
 
+    :product/event
+    (when (= runtime-version (frame/active-version))
+      (frame/deliver-product-event! (:topic payload) (:value payload)))
+
     :turn/completed
     (do
-      (swap! app-state assoc :progress nil)
+      (set-progress! nil)
       (append-message!
        :assistant
        (if (= :clarify (:kind payload))
@@ -570,7 +602,7 @@
 
     :turn/failed
     (do
-      (swap! app-state assoc :progress nil)
+      (set-progress! nil)
       (append-message! :assistant (:message payload) "Not applied")
       (when (= :runtime/stale-browser-version (:code payload))
         (load-session-runtime! (:session-id @app-state))))
@@ -813,6 +845,9 @@
                :submitPrompt (fn [value]
                                (set-draft! value)
                                (submit-draft!))
+               :setProgress (fn [phase]
+                              (set-progress!
+                               (when phase (keyword (str phase)))))
                :snapshot (fn []
                            (clj->js
                             {:version (frame/active-version)
@@ -821,6 +856,7 @@
                              :session-id (:session-id @app-state)
                              :messages (:messages @app-state)
                              :progress (:progress @app-state)
+                             :progress-detail (:progress-detail @app-state)
                              :connection (:connection @app-state)
                              :safe-mode (:safe-mode? @app-state)
                              :sidebar-open (:sidebar-open? @app-state)

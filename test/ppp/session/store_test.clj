@@ -66,6 +66,27 @@
       (finally
         (fs/delete-tree! root)))))
 
+(deftest session-listing-and-tree-scans-tolerate-transient-sqlite-companions
+  (let [{:keys [root store]} (test-context)]
+    (try
+      (let [sessions (vec (repeatedly 3 #(store/create-session! store)))
+            session-id (:id (first sessions))
+            transient-path (.resolve (.getParent (store/current-db-path store session-id))
+                                     "app.sqlite-wal")
+            churn
+            (future
+              (dotimes [index 1000]
+                (fs/atomic-write-string! transient-path (str index))
+                (Files/deleteIfExists transient-path)))]
+        (is (every? true?
+                    (repeatedly 500
+                                #(and (= 3 (count (store/list-sessions store)))
+                                      (vector? (fs/list-tree
+                                                (:sessions-root store)))))))
+        (is (nil? (deref churn 10000 ::timeout))))
+      (finally
+        (fs/delete-tree! root)))))
+
 (deftest current-source-must-match-its-manifest
   (let [{:keys [root store]} (test-context)]
     (try

@@ -94,9 +94,15 @@
   (-> (js/Promise.resolve ((:action-fn @callbacks) action-id payload))
       (.then #(post! runtime :host/action-result
                      {:request-id request-id :value %}))
-      (.catch #(post! runtime :host/action-error
-                      {:request-id request-id
-                       :message "The product action failed."}))))
+      (.catch (fn [cause]
+                (let [data (ex-data cause)]
+                  (post! runtime :host/action-error
+                         {:request-id request-id
+                          :code (:code data)
+                          :status (:status data)
+                          :message (or (ex-message cause)
+                                       (.-message cause)
+                                       "The product action failed.")}))))))
 
 (defn- receive!
   [event]
@@ -281,6 +287,12 @@
            {:model ((:sidebar-model-fn @callbacks))})
     (post! runtime :host/sidebar-open
            {:open? ((:sidebar-open-fn @callbacks))}))
+  nil)
+
+(defn deliver-product-event!
+  [topic value]
+  (when-let [runtime @active-runtime]
+    (post! runtime :host/product-event {:topic topic :value value}))
   nil)
 
 (defn reset-runtime!

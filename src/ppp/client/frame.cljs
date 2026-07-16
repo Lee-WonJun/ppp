@@ -266,12 +266,13 @@
       (runtime-failed! error))))
 
 (defn- action-result!
-  [{:keys [request-id value message]} success?]
+  [{:keys [request-id value message code status]} success?]
   (when-let [{:keys [resolve reject]} (get @pending-actions request-id)]
     (swap! pending-actions dissoc request-id)
     (if success?
       (resolve value)
-      (reject (js/Error. (or message "The product action failed."))))))
+      (reject (ex-info (or message "The product action failed.")
+                       {:code code :status status})))))
 
 (defn- receive!
   [event]
@@ -294,6 +295,10 @@
                 (schedule-render-flush!))
               :host/action-result (action-result! payload true)
               :host/action-error (action-result! payload false)
+              :host/product-event
+              (do
+                (runtime/deliver-event! (:topic payload) (:value payload))
+                (schedule-render-flush!))
               :host/set-state
               (when-let [client-runtime @displayed-runtime]
                 (reset! (:state client-runtime) (:state payload))

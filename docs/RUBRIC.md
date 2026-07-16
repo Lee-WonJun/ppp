@@ -1,6 +1,6 @@
 # Evaluation Rubric and Release Gate
 
-Status: internal score passed; owner-controlled publication gates remain
+Status: PPP-021 complete resource plane passed
 Last updated: 2026-07-16
 
 ## 1. Scoring model
@@ -24,7 +24,7 @@ A plausible explanation without executable evidence receives no more than half c
 | Full-stack live change | 6 | One turn changes client UI, server action, and SQLite-backed behavior without refresh or restart. |
 | Atomic staging | 5 | Source/SQL policy, staged DB, server SCI, hidden browser render, exact request-tab ACK, commit, and rejection tests. |
 | Persistence and recovery | 5 | Append-only history, checkpoints with source and DB, restore round-trip, crash journal idempotence. |
-| Bounded AI runtime | 4 | Codex JSON schema, read-only no-tool process, SCI allowlist, SQL and path policy, refusal/escape evidence. |
+| Bounded AI runtime | 4 | Codex JSON schema, read-only no-tool process, SCI boundary, SQL/path policy, broad session-owned product capabilities, and host/cross-session escape evidence. |
 | Engineering quality | 3 | Clear modules, pinned dependencies, `bb` entrypoint, meaningful domain/PBT coverage, useful error codes. |
 | Packaged reproducibility | 2 | Clean Linux amd64 Docker build and smoke using documented volumes and fake provider. |
 
@@ -97,11 +97,13 @@ Scoring anchors:
 | E-04 | Browser screenshots listed in `DESIGN.md` | Visual, responsive, failure, and Safe Mode review. |
 | E-05 | Session history fixture after demo | Actual CLJ/CLJS/CLJC/CSS/SQL, before/after, checkpoint source and DB. |
 | E-06 | Docker inspection | amd64, non-root, volumes, health, no embedded OAuth/session data. |
-| E-07 | Six-turn `bb eval-evolution` report | One real Codex thread evolves client-only and server-data features with browser and SQLite outcomes. |
+| E-07 | Eight-step `bb eval-evolution` report | One real Codex thread evolves client-only, server-data, identity, and complete resource-plane features with browser and SQLite outcomes. |
 | E-08 | Public repository secret scan | No credentials or access code in tracked/image content. |
 | E-09 | Three-minute video and subtitle file | Submission story, timing, and accessibility. |
 | E-10 | Devpost draft and feedback session ID | Required fields and product positioning. |
 | E-11 | PPP-016 local release record and clean repository baseline | Current docs, packaged demo, clean-copy gate, safe evidence set, and local commit agree. |
+| E-12 | PPP-020 product-auth and capability-coverage report | Generated signup/login/reload/protected action/logout, credential safety, restore revocation, and real-provider non-refusal. |
+| E-13 | PPP-021 complete resource-plane report | Durable blob, search, job, ingress, event, restore, security, compiled-browser, and real-provider composition. |
 
 ## 7. Automated release gate
 
@@ -134,6 +136,13 @@ Each property runs at least 1,000 generated sequences unless a documented cost a
 | PBT-06 | Arbitrary URL, redirect, and DNS results cannot reach private or reserved networks. |
 | PBT-07 | Public/judge weights and deterministic tie policy hold for generated voting sequences. |
 | PBT-08 | A stale browser version never commits and receives current manifest resync. |
+| PBT-09 | A product-auth cookie or token from one arbitrary session UUID never authenticates another session. |
+| PBT-10 | Expired, revoked, credential-version-stale, and post-restore product sessions never yield a current user. |
+| PBT-11 | Arbitrary accepted blob bytes round-trip with the same size and SHA-256, reject every over-limit object/path-shaped input, and restore with the chosen checkpoint. |
+| PBT-12 | Product events dispatch only after commit to exact active session/runtime subscribers; rollback, stale runtime, and another session observe none. |
+| PBT-13 | A job idempotency key creates at most one logical job; lease recovery, retry, cancellation, and restore never execute beyond the bounded policy. |
+| PBT-14 | Arbitrary ingress IDs, methods, bodies, rates, sessions, and signatures cannot bypass route ownership, bounds, or configured verification. |
+| PBT-15 | Text/vector search remains session-local, bounded, and deterministically ordered for equal scores and arbitrary Unicode documents. |
 
 ## 9. Live Codex evaluation
 
@@ -164,8 +173,9 @@ LIVE-03, LIVE-04, and LIVE-05 must each pass 3/3 before recording the video.
 ### 9.1 Real product-evolution loop
 
 `bb eval-evolution` is a separate explicit OAuth gate. In one fresh session and
-one resumed Codex thread it must apply successive visual, browser-game,
-SQLite-backed ranking, server-rule, and game-replacement requests. The report
+one resumed Codex thread it must apply eight successive visual, browser-game,
+SQLite-backed ranking, server-rule, game-replacement, and product-account
+requests. The report
 must prove client-only turns did not touch generated server/shared/test source
 or migrations, server-data turns passed server and generated-domain stages,
 the game advances from timers and keyboard input, ranking data survives reload,
@@ -173,6 +183,27 @@ the changed server rule changes an observable result, and replacing the game
 removes the former game while preserving the unrelated ranking feature. This
 gate is not part of CI or `bb verify` because it intentionally consumes live
 OAuth provider work.
+
+The evolution gate also includes one owner-regression prompt that adds signup
+and login around an existing game. It must produce a real server/data/client
+change, preserve the game, remain signed in after reload, enforce one protected
+action, and log out. Refusing because access management is outside the page is
+an automatic failure.
+
+Its eighth turn adds a resource workbench to the existing signed-in game. The
+real generated change must store and reload one binary asset, index and find a
+record, schedule a delayed score update that completes without another user
+action, publish that completion to another tab, and accept one bounded public
+ingress request without removing the game, ranking, or account behavior.
+
+If a committed turn reaches the browser but misses one of these semantic
+outcomes, the evaluator supplies a bounded, non-secret browser failure to the
+same Codex thread and permits at most five repair changes. It never rewrites or
+hides the failed version. The final report groups the contiguous initial and
+repair events under the same scenario, requires every event to pass source and
+client staging, requires every server repair to pass the existing generated
+domain tests, and proves complete version and thread coverage. This is a repair
+gate, not permission to weaken the requested outcome or its semantic selector.
 
 ## 10. Browser demo gate
 
@@ -188,6 +219,10 @@ The packaged demo must pass three times consecutively with a newly created data 
 8. create and switch session;
 9. restore old and new checkpoints;
 10. break sidebar fixture and Safe Mode recovery.
+11. add generated-product signup/login, reload authenticated, exercise one
+    protected action, log out, and prove a second browser context is isolated.
+12. add and exercise binary upload, search, delayed work, cross-tab event, and
+    public ingress, then restore and prove the declared durable/ephemeral policy.
 
 Tests assert semantic roles and persistent outcomes. They do not assert exact copy, CSS classes, DOM nesting, progress-event count, or pixel snapshots.
 
@@ -205,6 +240,12 @@ Tests assert semantic roles and persistent outcomes. They do not assert exact co
 | Corrupt checkpoint | restore rejected; current product unchanged. |
 | SSRF or connector violation | request blocked before connection or secret injection. |
 | Storage quota | new AI change rejected; history and restore remain. |
+| Product credential error | generic recoverable product message; no password, identifier existence, hash, token, or cookie disclosure. |
+| Cross-session or restored auth token | fail closed, clear the matching product cookie when possible, preserve PPP access and current product data. |
+| Blob/search resource violation | reject before mutation; preserve the previous bytes/index and active product. |
+| Job timeout/crash/duplicate | lease and bounded retry or terminal failure; idempotency key prevents duplicate logical scheduling. |
+| Ingress invalid signature/rate/body | reject before generated handler execution with no session mutation or event. |
+| Event after rollback or stale runtime | discard; no browser receives the payload. |
 
 A critical path with no validation, no explicit failure handling, or a silent fallback blocks release regardless of total score.
 
@@ -224,13 +265,15 @@ All conditions are required:
 - Devpost fields and Codex session ID are recorded;
 - actual deployment has separate owner approval.
 
-The evaluator records current evidence-backed scores below. Publication still requires the owner-controlled video, public links, and deployment approval even when the internal score passes.
+The evaluator records the current complete baseline below. PPP-021 E-13 and
+the expanded automated/live gates pass. Publication remains blocked only on
+the owner-controlled video, public links, deployment, and submission approval.
 
 ## 13. Release assessment
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | clean-copy `bb verify` (132 JVM/750 assertions, 21 CLJS/89 assertions, Chromium 11/11, Docker smoke); `artifacts/live-eval/20260715-222618/report.edn`; `artifacts/evolution-eval/20260715-234942/report.edn`; `artifacts/demo/20260716-004803/report.edn`; `artifacts/release/20260716-local/report.edn`; PPP-007 through PPP-016 evidence | pass |
+| Technical implementation | 25/25 | isolated `bb verify` (163 JVM/985 assertions, 25 CLJS/110 assertions, Chromium 23/23, Docker smoke, clean 176-file secret scan); eight-step live Codex evolution 8/8 with retained repair coverage; `artifacts/evidence/ppp-021-resource-plane.md`; PPP-007 through PPP-021 evidence; Chromium 23/23 directly against stable 8787 | pass |
 | Design | 23/25 | `DESIGN.md`; blank, sidebar, floating, mobile, sandbox, and Safe Mode screenshots under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests | pass |
 | Impact | 24/25 | `docs/PRD.md`; exact persistent Gallery demo; source/history handoff; verified Docker workflow; hosted workspace remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |

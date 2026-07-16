@@ -1,11 +1,11 @@
 # Security Model
 
 Status: release-blocking source of truth
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## 1. Security objective
 
-PPP intentionally evaluates AI-generated source. Server code remains capability-limited. Browser code instead receives normal frontend power inside an opaque-origin sandbox, while the authenticated parent, credentials, recovery controls, and server authority remain outside that sandbox.
+PPP intentionally evaluates AI-generated source. Server code remains capability-limited. Browser code instead receives normal frontend power inside an opaque-origin sandbox, while the authenticated parent, credentials, recovery controls, and host authority remain outside that sandbox. Capabilities should make session-owned product behavior broad; they are not a reason to ban ordinary app categories. The security objective is containment of effects outside the session, not artificial weakness inside it.
 
 PPP never exposes a public Clojure REPL, nREPL, shell, filesystem, JavaScript evaluator, or JVM evaluator endpoint.
 
@@ -30,6 +30,8 @@ It is not a public multi-tenant SaaS. Before public signup, identity, tenancy, p
 | Connector secrets | Access to developer-owned external systems. |
 | Session source and prompts | Private product strategy disclosure. |
 | SQLite data and checkpoints | User data disclosure or corruption. |
+| Generated-product password hashes and login sessions | Product-account takeover or cross-user data access. |
+| Session blobs, search documents, jobs, and ingress state | Product data disclosure, repeated side effects, or public input abuse. |
 | Fixed kernel and capability catalog | Escape from bounded generated runtime. |
 | History and journal | Loss of auditability and recovery. |
 
@@ -39,6 +41,8 @@ It is not a public multi-tenant SaaS. Before public signup, identity, tenancy, p
 - Authorized user or judge: may submit arbitrary natural language and use generated actions.
 - AI provider: receives bounded prompt, source, and transcript context.
 - Generated program: untrusted code even when produced by the configured provider.
+- Generated-product user: an identity belonging to one generated product; it
+  has no implied PPP workspace or host authority.
 - Public HTTP origin: untrusted network peer.
 - Attacker: may obtain the public URL, submit malicious prompts after gaining access, or control a public DNS/HTTP target.
 
@@ -51,6 +55,8 @@ public browser
 immutable JVM kernel
     | validated capability calls only
     +------> server SCI ------> per-session SQLite
+    |            |                  +--> reserved product credentials
+    |            +--> public product-user claims only
     |
     +------> Codex process in skill-only read-only workdir
     |
@@ -71,6 +77,10 @@ Generated source remains untrusted on both sides of the network.
 | Prompt asks AI to read credentials or host files | No provider tools, skill-only workdir, cleared environment, stdin-only context. | Live refusal scenario and process-vector unit test. |
 | Generated server code invokes JVM or shell | SCI class map empty, namespace allowlist, static forbidden-symbol validation. | Unit fixtures and evaluator escape tests. |
 | Generated client code tries to reach parent auth or recovery UI | Opaque sandbox origin, no `allow-same-origin`, no parent object passed, validated source-window/channel bridge. | Parent isolation Playwright tests. |
+| Generated code reads passwords, hashes, login tokens, or forges a user | Kernel-owned Argon2id and token service, reserved tables, typed claims/effects only. | Product-auth unit, SCI, HTTP, and browser isolation tests. |
+| A product login crosses into another PPP session | UUID-derived cookie name and path, session-keyed token digest, distinct database lookup. | 1,000-sequence cross-session auth property. |
+| Checkpoint restore resurrects a revoked login | Restore keeps credential state but deletes every active auth session and attempt before activation. | Restore/auth integration property. |
+| Credential guessing exhausts or enumerates accounts | Bounded input, same unknown/wrong hash path and public error, per-identifier throttling. | Hash-path contract and throttle tests. |
 | Path traversal crosses sessions | UUID parsing, normalized descendant check, no symlinks. | 1,000-sequence path property test. |
 | SQL reaches kernel tables or filesystem | Statement allowlist, `_ppp_` denylist, no ATTACH/PRAGMA/extensions/file functions. | Migration and action PBT. |
 | SSRF reaches loopback, private network, metadata, or DNS-rebinding target | HTTPS only, custom resolver, public-IP pinning, redirect revalidation. | URL/DNS/redirect property tests. |
@@ -80,6 +90,11 @@ Generated source remains untrusted on both sides of the network.
 | Crash splits source and SQLite | Prepared journal, before backup, metadata comparison, idempotent startup recovery. | Crash property test. |
 | Stored prompt/source leaks through logs | Structured allowlisted log fields only. | Captured-log secret test. |
 | Storage exhaustion deletes recovery state | No automatic pruning; reject new AI changes only. | Quota integration test. |
+| Blob payload escapes into a host path or exceeds storage | Reserved SQLite bytes, base64/size/count validation, no path parameter, database quota. | Blob property and restore tests. |
+| Rolled-back work emits a realtime event | Effect accumulator dispatched only after successful transaction, exact session/runtime broadcast. | Action/job/ingress rollback and cross-session event tests. |
+| Job duplicates or repeats after crash/restore | Idempotency key, lease, bounded retry, terminal status, restore cancellation. | Clocked job properties and restart/restore integration. |
+| Public ingress bypasses access or invokes another session | Parsed UUID/route registry, body/rate limits, optional constant-time HMAC verifier, session runtime lookup. | Public HTTP, verifier, rate-limit, and path properties. |
+| Search query reaches another session or pathological compute | Per-database reserved index, escaped FTS terms, document/dimension/candidate/limit bounds. | Text/vector determinism and session isolation properties. |
 
 ## 7. Access gate
 
@@ -102,6 +117,11 @@ Production refuses startup without `PPP_ACCESS_CODE` and a cookie secret of at l
 
 The access gate is sufficient only for the trusted hackathon release. It is not a substitute for hosted identity and tenancy.
 
+It is also not the account system of a generated product. A game or internal
+tool inside an authorized PPP session may have its own users. Those users are
+scoped to the generated product database and receive no access to PPP sessions,
+history, provider controls, or recovery UI.
+
 ## 8. CSRF and WebSocket
 
 - Bootstrap returns a session-bound CSRF token.
@@ -111,6 +131,8 @@ The access gate is sufficient only for the trusted hackathon release. It is not 
 - First client message must subscribe with protocol version, session ID, and tab ID.
 - Unknown message types and oversized frames close the connection.
 - A socket can acknowledge only a stage sent to that exact tab and session.
+- Product-auth cookies are accepted only after PPP access, Origin, and CSRF
+  checks pass. They never authorize turn, restore, WebSocket, or session APIs.
 
 ## 9. Codex OAuth exception
 
@@ -153,6 +175,10 @@ Allowed:
 - action registration;
 - parameterized query and mutation wrappers;
 - restricted HTTP wrappers.
+- typed product registration, login, logout, password maintenance, current-user,
+  and required-user wrappers.
+- typed blob, product-event, durable-job, ingress-registration, and
+  full-text/vector-search wrappers.
 
 Denied:
 
@@ -161,6 +187,8 @@ Denied:
 - namespaces for IO, shell, readers that load tagged code, dynamic evaluation, and dependency loading;
 - host Vars or registry atoms except through wrappers;
 - unbounded output or evaluation time.
+- raw credential hashes, login tokens, cookies, response headers, or an
+  assignable authenticated-user context.
 
 ### Browser
 
@@ -181,19 +209,100 @@ Denied:
 
 The iframe sandbox and bridge validation are authoritative. SCI still bounds source evaluation and provides the registration/action API, but it is not used to remove normal frontend programming features.
 
-## 12. Source and filesystem
+## 12. Product identity and session management
+
+Product authentication is a Kernel capability because secure password storage,
+opaque sessions, and response cookies require authority that generated code
+must not receive.
+
+```text
+generated form
+  -> opaque frame action bridge
+  -> PPP access + Origin + CSRF
+  -> resolve session-scoped product cookie
+  -> generated action sees public current-user claims
+  -> typed auth effect (optional)
+  -> Kernel sets/clears HttpOnly product cookie
+```
+
+Controls:
+
+- Passwords use Argon2id with unique `SecureRandom` salts. The production
+  baseline follows the [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+  and [RFC 9106](https://www.rfc-editor.org/info/rfc9106/).
+- Password input is length-bounded before expensive hashing. Passwords are
+  never written to exceptions, logs, history, source, or response bodies.
+- Unknown identifiers and wrong passwords execute the same verification class
+  and return one public error, following the
+  [OWASP Authentication guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html).
+- Login attempts are throttled per normalized identifier. Throttle state does
+  not reveal whether the identifier exists.
+- Login tokens contain 256 random bits. The database stores only an HMAC-SHA256
+  digest bound to the PPP session ID.
+- Cookies are UUID-scoped, `HttpOnly`, `SameSite=Strict`, path-restricted to the
+  matching generated action endpoint, and `Secure` outside development. Path
+  limits delivery but is not treated as an isolation boundary; the keyed token
+  and matching database are authoritative. See
+  [MDN secure cookie configuration](https://developer.mozilla.org/en-US/docs/Web/Security/Practical_implementation_guides/Cookies).
+- Registration and credential changes rotate the login session. Password
+  change and account deletion revoke every prior token.
+- A checkpoint restore revokes every product login before activation, avoiding
+  resurrection of captured or previously revoked tokens.
+- Generated product roles and profiles live in normal generated tables keyed
+  by the public auth user ID. Only the Kernel can assert that ID.
+
+The generated client never receives a bearer token. This follows the
+[OWASP session guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+to prefer HttpOnly cookies over browser storage for authentication material.
+
+## 12.1 Session resource plane
+
+The resource plane expands product behavior without expanding host authority:
+
+- blobs are bytes in reserved SQLite rows; generated values never contain a
+  host path and one object is capped at 4 MiB;
+- search documents and FTS internals are reserved, session-local, and reachable
+  only through bounded typed operations;
+- jobs are data plus a named handler. Only the Kernel creates scheduler threads,
+  claims leases, applies retry timing, and invokes the current session runtime;
+- ingress is a fixed Kernel route that selects an already registered generated
+  handler. Generated code cannot bind ports, add arbitrary paths, set cookies,
+  redirect, or choose response headers;
+- product events are post-commit effects. They contain no authority, are not
+  replayed, and are routed only to current tabs of the exact session/runtime.
+
+Blob/search/job tables remain under the `_ppp_` denylist. Resource payloads
+must be Transit/JSON representable, bounded before storage or broadcast, and
+excluded from application logs. Restore keeps durable blob/search content but
+cancels every restored pending/running job. This avoids repeating historical
+outbound effects. In-memory ingress rate buckets and product events intentionally
+do not restore.
+
+## 13. Source and filesystem
 
 - Generated paths are forward-slash normalized relative paths.
 - Reject absolute paths, empty components, `..`, backslashes after normalization, control characters, and disallowed extensions.
 - Resolve beneath a known root and verify the normalized absolute candidate starts with that root.
 - Use UUID parsing before constructing session paths.
 - Do not follow symlinks during scans, copies, quota calculations, or deletion.
+- Enumerate sessions from direct UUID-shaped directories only. Recursive
+  no-follow scans tolerate only entries that disappear concurrently (for
+  example SQLite WAL/SHM companions); every other I/O error remains visible.
 - Atomic writes use a same-directory temporary file and atomic rename where supported.
 - Session source and prompts never enter Codex workdir as files.
 
-## 13. SQLite boundary
+## 14. SQLite boundary
 
 Kernel tables begin with `_ppp_`. Generated source cannot reference that prefix in any casing.
+
+Reserved `_ppp_auth_*` tables may be read and written only by the product-auth
+service. Generated SQL cannot enumerate their schema or infer credential data
+through an auth capability response.
+
+Reserved `_ppp_blobs`, `_ppp_jobs`, and `_ppp_search_*` tables may be read or
+written only by the resource service. FTS5 shadow tables inherit the reserved
+prefix. Generated SQL, schema enumeration, migration text, logical user-table
+hashes, and action diagnostics do not expose their contents.
 
 Migration parser rejects:
 
@@ -210,7 +319,7 @@ Parameters are always separate from SQL for runtime action input. Table and colu
 
 Database size is checked before and after staging. A stage exceeding 25 MiB is rejected before commit.
 
-## 14. Outbound HTTP and SSRF
+## 15. Outbound HTTP and SSRF
 
 Public requests:
 
@@ -239,7 +348,7 @@ Blocked address families include:
 
 DNS results containing any blocked address fail closed. Redirect targets repeat the complete validation.
 
-## 15. Named connectors
+## 16. Named connectors
 
 Developer-owned `connectors.edn` contains:
 
@@ -260,7 +369,7 @@ The model receives only alias, description, method, path, query, and body contra
 
 User-managed connector setup is outside the MVP.
 
-## 16. Data isolation and quotas
+## 17. Data isolation and quotas
 
 - Workspace is fixed to `local`, but each session owns a distinct normalized UUID directory and SQLite file.
 - Generated actions receive only their session datasource.
@@ -268,8 +377,11 @@ User-managed connector setup is outside the MVP.
 - Quota checks include staging, journal backup, history, and checkpoints.
 - At instance quota, new AI changes are rejected globally while read, actions, history, and restore remain available when they do not increase storage materially.
 - No quota code deletes history or checkpoints automatically.
+- Product identities are scoped by session database. Product-login cookies and
+  keyed token digests include the parsed session UUID and cannot be replayed in
+  another session.
 
-## 17. Container hardening
+## 18. Container hardening
 
 Release container:
 
@@ -286,7 +398,7 @@ Release container:
 
 The image contains the Codex binary but no OAuth state, access code, session data, `.env`, or connector secrets.
 
-## 18. Logging and diagnostics
+## 19. Logging and diagnostics
 
 Application logs use an allowlist of metadata fields. Exceptions are converted to stable codes before logging. Stack traces may appear only in local development and must still exclude prompt, source, SQL, request bodies, cookies, headers, and process environment.
 
@@ -298,7 +410,11 @@ The Codex launcher and, when required, its Node interpreter are resolved to abso
 the child environment is cleared. This preserves the environment allowlist without inheriting a
 host `PATH` that could redirect executable lookup.
 
-## 19. Backup and recovery
+Product-auth logs contain only stable outcome codes and durations. They exclude
+identifiers, passwords, tokens, cookie values, hashes, action bodies, and public
+user claims.
+
+## 20. Backup and recovery
 
 - Checkpoint SQLite snapshots use the live backup facility and are verified before gzip.
 - Deployment backup captures persistent volumes while the app is quiesced or through a documented consistent procedure.
@@ -306,8 +422,11 @@ host `PATH` that could redirect executable lookup.
 - Journal recovery completes before readiness.
 - A corrupt checkpoint is rejected without modifying current state.
 - Image rollback does not automatically downgrade session format.
+- Product credential records follow the selected database checkpoint, but
+  active login-session and throttling rows are cleared before restore
+  activation.
 
-## 20. Security verification gate
+## 21. Security verification gate
 
 Release requires:
 
@@ -321,10 +440,24 @@ Release requires:
 - repository and image secret scan;
 - container non-root/read-only smoke;
 - live Codex refusal scenarios for filesystem/shell and OAuth/secret exfiltration.
+- Argon2id parameter/encoding tests, credential redaction, generic login
+  failures, throttle/revocation tests, and 1,000 cross-session token cases;
+- three fresh-browser product signup/login/reload/logout paths, including one
+  delayed sandbox load and one second-browser isolation path.
+- blob size/count/hash/restore and host-path denial properties;
+- post-commit event delivery plus rollback, stale-runtime, and cross-session
+  non-delivery properties;
+- job idempotency, lease recovery, bounded retry, cancellation, and
+  post-restore non-execution properties;
+- public ingress method/body/rate/session/HMAC verification properties;
+- Unicode FTS and numeric-vector bound, determinism, and session-isolation
+  properties;
+- one compiled-browser resource-plane flow covering upload, search, delayed
+  completion, second-tab event, ingress, reload, and restore.
 
 Any critical trust boundary without both validation and failure handling blocks release.
 
-## 21. Known residual risks
+## 22. Known residual risks
 
 - SCI bugs could weaken interpreter isolation. Keep capability surface small and version pinned.
 - A logically harmful action can remain within allowed SQL. Generated domain
@@ -336,6 +469,16 @@ Any critical trust boundary without both validation and failure handling blocks 
 - OAuth account rate limits and policy can change independently of PPP.
 - Access-code links can be forwarded. The MVP does not provide per-person revocation.
 - Single-process deployment has an availability limit.
+- Product identity in this release is identifier/password only. Email
+  ownership, MFA, social OAuth, and account recovery require configured
+  connectors and their own consent and abuse review; generated code must not
+  simulate those proofs.
 - Outbound content can contain malicious data that influences later model turns. External responses should not automatically become privileged provider instructions.
+- A public ingress can be abused within its rate/body budget. Products that
+  cause valuable external effects must use a configured verifier alias and an
+  idempotent generated rule.
+- Background work is single-process and best-effort during downtime. Durable
+  rows resume after restart, but the hackathon deployment does not promise
+  distributed scheduling or exactly-once external delivery.
 
 These risks are acceptable only for the stated gated hackathon and trusted self-host scope.

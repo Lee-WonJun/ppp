@@ -22,9 +22,9 @@ Last updated: 2026-07-16
 | PRD-F05 | PPP-006, PPP-017 | Playwright broken-sidebar recovery and render-timeout preservation | E-01, E-04 |
 | PRD-F06 | PPP-003 | `ppp.session.store-test/new-session-is-a-complete-version-zero-product` | E-01, E-05 |
 | PRD-F07 | PPP-003, PPP-006 | Playwright session switch persistence | E-01, E-03 |
-| PRD-F08 | PPP-007, PPP-015, PPP-018 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer contract | E-01 |
+| PRD-F08 | PPP-007, PPP-015, PPP-018, PPP-019 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer and live-status contract | E-01 |
 | PRD-F09 | PPP-004, PPP-007 | `ppp.provider.queue-test/provider-queue-is-global-fifo-with-eight-waiting-slots` | E-01 |
-| PRD-F10 | PPP-007, PPP-015, PPP-018 | protocol schema plus WebSocket integration; guarded keyboard and composition submission | E-01 |
+| PRD-F10 | PPP-007, PPP-015, PPP-018, PPP-019 | protocol schema plus WebSocket integration; guarded keyboard/composition submission and bounded phase presentation | E-01 |
 | PRD-F11 | PPP-006, PPP-007, PPP-017 | hidden render, animation-independent DOM commit, and no-refresh Playwright | E-01, E-03 |
 | PRD-F12 | PPP-005 | `ppp.runtime.server-test/initial-runtime-stages-registers-and-invokes` | E-01 |
 | PRD-F13 | PPP-005 | `ppp.property.gallery-domain-test/fake-gallery-seeds-once-persists-and-ranks-deterministically` | E-01, E-03 |
@@ -47,6 +47,18 @@ Last updated: 2026-07-16
 | PRD-F30 | PPP-009 | connector secret redaction/injection tests | E-01 |
 | PRD-F31 | PPP-013 | parent DOM/cookie/origin isolation Playwright suite | E-01, E-02 |
 | PRD-F32 | PPP-014 | impact-classification PBT, client-only registry reuse integration, `bb eval-evolution` | E-01, E-07 |
+| PRD-F33 | PPP-020 | capability matrix review plus SCI/host/cross-session negative suite | E-01, E-12 |
+| PRD-F34 | PPP-020 | generated signup/login/current-user/protected-action/logout integration and Playwright | E-01, E-12 |
+| PRD-F35 | PPP-020 | credential/token redaction, reserved-table denial, HttpOnly cookie inspection | E-01, E-12 |
+| PRD-F36 | PPP-020 | PBT-09/PBT-10, reload, credential rotation, and restore revocation | E-01, E-12 |
+| PRD-F37 | PPP-020 | fake-provider regression plus live owner-prompt evolution scenario | E-07, E-12 |
+| PRD-F38 | PPP-020 | maintained resource/effect capability matrix and unsupported-effect ledger | E-12 |
+| PRD-F39 | PPP-021 | PBT-11, blob CRUD/restore/quota integration, compiled browser upload/reload | E-01, E-13 |
+| PRD-F40 | PPP-021 | PBT-12, action/job/ingress post-commit event and cross-tab/cross-session browser suite | E-01, E-13 |
+| PRD-F41 | PPP-021 | PBT-13, clocked scheduler/lease/retry/idempotency/restore integration | E-01, E-13 |
+| PRD-F42 | PPP-021 | PBT-14, public ingress/HMAC/rate/body/session HTTP integration | E-01, E-13 |
+| PRD-F43 | PPP-021 | PBT-15, Unicode FTS/vector determinism/isolation and browser search outcome | E-01, E-13 |
+| PRD-F44 | PPP-021 | resource-plane checkpoint/restore property and real Codex composite evolution | E-07, E-13 |
 
 ## Property mapping
 
@@ -60,6 +72,13 @@ Last updated: 2026-07-16
 | PBT-06 SSRF boundary | PPP-009 | `ppp.property.http-policy-test` |
 | PBT-07 scoring and ties | PPP-005, PPP-010 | `ppp.property.gallery-domain-test/generated-scoring-and-tie-property` |
 | PBT-08 stale browser resync | PPP-007 | `ppp.property.coordinator-test` plus Playwright |
+| PBT-09 product-auth session isolation | PPP-020 | `ppp.runtime.auth-test` plus Playwright fresh contexts |
+| PBT-10 product-auth revocation | PPP-020 | `ppp.runtime.auth-test`, restore integration, and Playwright |
+| PBT-11 blob round-trip/restore | PPP-021 | `ppp.runtime.resources-test` plus coordinator restore integration |
+| PBT-12 product-event commit/isolation | PPP-021 | `ppp.property.resource-plane-test` plus multi-tab Playwright |
+| PBT-13 durable-job lifecycle | PPP-021 | `ppp.property.resource-plane-test` plus scheduler integration |
+| PBT-14 ingress ownership/policy | PPP-021 | `ppp.property.resource-plane-test` plus public HTTP integration |
+| PBT-15 search bounds/determinism | PPP-021 | `ppp.runtime.resources-test` plus browser search outcome |
 
 ## Ticket dependency graph
 
@@ -84,6 +103,12 @@ PPP-001
                               +---------------------------> PPP-017
                               |
                               +---------------------------> PPP-018
+                              |
+                              +---------------------------> PPP-019
+                              |
+                              +---------------------------> PPP-020
+                              |
+                              +---------------------------> PPP-021
 ```
 
 ## Completion ledger
@@ -108,3 +133,6 @@ PPP-001
 | PPP-016 | done | Browser-interop and Enter contracts reconciled; clean candidate-copy `bb verify` passes 132 JVM/750 assertions, 21 CLJS/89 assertions, Chromium 11/11, Docker smoke, and secret scan; Enter-based packaged demo passes 3/3; 155-file repository baseline is clean; stable 8787 is Codex-ready with zero sessions/runtimes; local commit `e83dc0d` records the reproducible source without external publication. |
 | PPP-017 | done | Owner timeout reproduced by suppressing sandbox animation frames; immutable DOM-commit sentinel plus microtask state flush remove the animation dependency. Clean `bb verify` passes 132 JVM/750 assertions, 21 CLJS/89 assertions, Chromium 14/14, Docker smoke, and a 156-file secret scan. Stable 8787 passes three additional fresh contexts beyond ten seconds, including a 6.5-second delayed bundle, then restarts Codex-ready with zero sessions/runtimes. |
 | PPP-018 | done | Real Chromium IME reproduced stale parent echoes corrupting `간단한`; frame-local drafts plus monotonic bridge revisions prevent rollback. Isolated `bb verify` passes 132 JVM/750 assertions, 21 CLJS/89 assertions, Chromium 17/17, Docker smoke, and a 158-file secret scan. Stable 8787 passes three fresh Korean composition paths including a 6.5-second delayed frame, then restarts Codex-ready with zero sessions/runtimes. |
+| PPP-019 | done | Real phases now drive a bounded one-line label/detail with decorative zero-to-three-dot motion, stable accessibility text, reduced-motion fallback, and no reasoning leakage. Clean `bb verify` passes 132 JVM/750 assertions, 23 CLJS/99 assertions, Chromium 19/19, Docker smoke, and a 161-file secret scan; stable 8787 passes 2/2 before the final zero-session restart. |
+| PPP-020 | done | Session-owned resource/effect model and generated-product identity are complete. Isolated `bb verify` passes 141 JVM/814 assertions, 24 CLJS/104 assertions, Chromium 22/22, Docker smoke, and a 167-file secret scan. Product accounts pass two 1,000-case properties, HTTP/cookie/restore integration, and three fresh browser contexts including a 6.5-second delayed frame. The real Codex evolution passes 7/7 through dark/floating/Tetris/SQLite ranking/server-rule/Gomoku/account changes; paired bundles were promoted and stable 8787 restarted with zero sessions/runtimes. |
+| PPP-021 | done | The complete session resource plane now covers durable blobs, post-commit product events, durable jobs, public ingress, and Unicode text/vector search. Isolated `bb verify` passes 163 JVM/985 assertions, 25 CLJS/110 assertions, Chromium 23/23, Docker smoke, and a clean 176-file secret scan. PBT-11 through PBT-15 run at least 1,000 cases/sequences each; the real eight-step Codex evolution passes 8/8 in one resumed thread with all repair versions retained and covered. Paired bundles were promoted together, stable 8787 passed Chromium 23/23 directly, and the final Codex OAuth restart reports zero sessions/runtimes. |

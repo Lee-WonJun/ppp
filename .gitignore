@@ -27,6 +27,9 @@ artifacts/evolution-eval/*/
 !artifacts/evolution-eval/20260715-234942/
 artifacts/evolution-eval/20260715-234942/*
 !artifacts/evolution-eval/20260715-234942/report.edn
+!artifacts/evolution-eval/20260716-141959/
+artifacts/evolution-eval/20260716-141959/*
+!artifacts/evolution-eval/20260716-141959/report.edn
 
 artifacts/demo/*/
 !artifacts/demo/20260716-004803/

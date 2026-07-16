@@ -2,6 +2,49 @@
 
 These are accepted directions, not hackathon promises. Each item includes the condition that should trigger it and the prerequisites that prevent premature implementation.
 
+## Programmable sandbox resource coverage
+
+### Rule
+
+The generated product should be able to build any ordinary product behavior
+whose effects remain inside session-owned resources. “That category is not
+supported” is not a design answer. Either the behavior composes from an
+existing browser/data/identity/network capability, or the missing virtual
+resource is recorded here and implemented behind a typed Kernel boundary.
+
+Raw shell, host filesystem, JVM/process control, PPP credentials, Kernel data,
+and cross-session access are not gaps. They are permanent sandbox escapes.
+
+### Coverage ledger
+
+| Resource/effect | Current state | Next complete slice |
+|---|---|---|
+| Browser UI, timers, keyboard, Canvas, media, workers, WASM | available in opaque frame | keep browser conformance E2E current |
+| Relational data, transactions, schema additions | available through SQLite | add bounded destructive/schema-copy migrations when a real evolution case needs them |
+| Product accounts and authenticated actions | available through typed identity capabilities | extend with configured email, social OAuth, or recovery connectors only when a product case needs them |
+| Product profiles, roles, ownership, moderation | compose from auth user ID plus generated tables | add reusable generated examples, not new Kernel authority |
+| Public outbound APIs | available through restricted HTTPS | add streaming only when a product needs it |
+| Private APIs, email, SMS, payments, social OAuth | possible through developer-owned named connectors | add consent/callback and user-managed secret work only with hosted identity |
+| Durable binary uploads and generated assets | available through bounded SQLite blob resource | no remaining sandbox gap |
+| Multi-client product events | available through post-commit session/runtime events | durable reconstruction comes from SQLite by design; no event replay gap |
+| Background and scheduled work | available through durable named jobs, leases, retry, idempotency, cancellation, and restore policy | no remaining sandbox gap |
+| Inbound public routes and webhooks | available through capability-named routes, rate/body limits, and optional named HMAC verifier | no remaining sandbox gap |
+| Full-text and vector search | available through session FTS5 and bounded caller-supplied vectors | no remaining sandbox gap |
+| Server-side compute | pure SCI plus restricted HTTP/connectors; browser Worker/WASM for arbitrary client compute | native host extensions remain a permanent authority boundary, not a missing product resource |
+| Runtime dependencies | browser platform and generated source plus existing curated server capabilities | mutating the host classpath remains permanently outside the sandbox |
+
+### Acceptance rule for new gaps
+
+Each new resource ticket must prove ownership, quota, transaction/checkpoint
+semantics, failure observability, provider documentation, fake-provider flow,
+and one real browser outcome. A connector-shaped workaround does not count when
+the product needs a durable session-owned resource.
+
+PPP-021 closes every ordinary session-owned resource gap in this ledger. New
+product requests should first compose these primitives; a future entry belongs
+here only when it demonstrates a genuinely new owned effect rather than a new
+application category or convenience wrapper.
+
 ## Hosted SaaS identity and workspaces
 
 ### Why

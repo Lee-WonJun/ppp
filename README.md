@@ -6,12 +6,12 @@ Programmable Programming Page (PPP) is a self-hostable live product workspace fo
 
 The user never needs to install a development environment, clone a repository, inspect files, understand Git, or operate an AI coding agent. Developers still receive a complete source tree, domain tests, and an append-only record of every accepted change.
 
-Status: locally complete under PPP-016; external publication remains
-owner-controlled.
-Automated verification, the 24-case live
-Codex evaluation, a six-turn real product-evolution evaluation, and three
-consecutive packaged demo rehearsals pass. Final video publication, hosted
-deployment, and Devpost submission remain owner-controlled steps.
+Status: the PPP-021 complete session resource plane is implemented and passed
+its release gates. External publication remains owner-controlled. Automated
+verification, the 24-case live Codex evaluation, the eight-step cumulative
+real-product evolution gate, and three consecutive packaged demo rehearsals
+are the release evidence; exact current counts are recorded in
+`docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
 
 In the conversation composer, Enter sends and Shift+Enter inserts a newline.
 
@@ -118,6 +118,7 @@ JVM server             │
 │ Fixed kernel: policy, Codex, history, journal        │
 │  ├─ server SCI -> generated actions                 │
 │  ├─ per-session SQLite                              │
+│  ├─ blobs, search, jobs, ingress, product events     │
 │  └─ restricted public HTTP / named connectors       │
 └──────────────────────────────────────────────────────┘
 ```
@@ -168,9 +169,12 @@ bb eval-evolution
 
 `bb eval-evolution` uses one fresh session and one resumed Codex thread to move
 from dark and floating visual changes to timer/keyboard Tetris, SQLite-backed
-ranking, a changed server scoring rule, and a client-only Gomoku replacement.
-It fails if browser outcomes, changed runtime surfaces, generated domain tests,
-repair metadata, thread continuity, or persisted data do not agree.
+ranking, a changed server scoring rule, a client-only Gomoku replacement,
+product accounts, and a complete resource workbench. The eighth turn composes
+exact binary upload, Unicode search, durable background work, cross-tab product
+events, and public ingress while preserving every earlier feature. The gate
+fails if browser outcomes, changed runtime surfaces, generated domain tests,
+repair metadata, thread continuity, persistence, or preservation do not agree.
 
 ## Docker
 

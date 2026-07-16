@@ -1,13 +1,23 @@
 # Product Design System
 
 Status: source of truth
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## Design read
 
 PPP is a real-time product workspace for nontechnical product teams. It should feel as immediate and unsurprising as opening a Figma file or Notion page, while retaining the quiet confidence of an instrument that can recover from mistakes.
 
 This is dense product UI, not a marketing page. The immutable parent uses native CSS and Reagent. Generated surfaces live together in an isolated full-viewport browser frame and may define their own frontend system.
+
+Generated products may include their own account, onboarding, admin, or
+permission experiences. Those are product surfaces inside the frame, not PPP
+workspace chrome. The immutable handle and conversation remain recoverable
+regardless of a generated product's signed-in state.
+
+Generated products may also expose uploads, live multi-tab updates, scheduled
+work, public webhook status, and search. Those interactions use the generated
+product's own visual language. The host does not add technical resource panels,
+queue inspectors, route editors, or search-debug UI.
 
 Design dials:
 
@@ -170,14 +180,37 @@ Error copy describes the user outcome:
 - Good: `The new version could not be applied. Your current product is unchanged.`
 - Bad: `SCI eval failed in runtime.client at line 17.`
 
+Product-auth errors also stay in product language:
+
+- Good: `Those sign-in details did not match.`
+- Good: `Create an account before continuing.`
+- Bad: `No auth token in request context.`
+
+The host never displays or copies a password, credential hash, cookie, session
+token, or identifier into the conversation. Generated forms use normal browser
+password inputs and may provide product-specific recovery guidance only when a
+real configured recovery capability exists.
+
 ## Progress behavior
 
-Progress is a single current phrase, not a growing event log.
+Progress is a single current line, not a growing event log.
 
 ```text
-Generating -> Validating -> Applying -> Applied
+Generating... · Thinking through your request
+Validating... · Checking the proposed product
+Applying... · Updating the live product
+Applied... · Your product is ready
 ```
 
+- The phase word is the source of truth. Its detail is a short translation of
+  the real phase, never a simulated thought transcript.
+- The ellipsis cycles visually through zero, one, two, and three dots in a
+  fixed-width slot so neighboring text does not move.
+- The status has one stable accessible label per phase. Animated dots are
+  decorative and hidden from assistive technology.
+- The detail stays on one line and truncates with an ellipsis on narrow
+  surfaces instead of changing sidebar geometry.
+- Reduced-motion mode shows a static three-dot ellipsis.
 - `Applied` may remain attached to the assistant response as a quiet completion note.
 - The number and timing of internal events are not part of the UI contract.
 - If a stage fails, the assistant response explains that the current product was preserved.
@@ -243,6 +276,12 @@ The generated canvas owns its own responsive behavior and must pass hidden stagi
 - storage quota reached while history remains readable;
 - Safe Mode with last successful sidebar;
 - no Codex OAuth/model readiness.
+- generated-product signed out, signup, login failure, signed in after reload,
+  protected action, logout, and post-restore signed out.
+- generated-product upload pending/success/failure, empty/search-results,
+  delayed-work pending/completed/failed, live update in another tab, and public
+  ingress success/rate-limited/verification-failed outcomes when those features
+  exist in the generated product.
 
 ## Manual visual evidence
 

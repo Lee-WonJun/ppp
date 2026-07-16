@@ -5,7 +5,7 @@ Status: approved implementation baseline
 Protocol version: 1
 Session format version: 1
 Capability version: 1
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## 1. Purpose
 
@@ -25,12 +25,15 @@ flowchart TB
     D["Per-session SQLite"]
     P["Codex CLI provider"]
     E["Restricted public HTTP and named connectors"]
+    R["Session resource plane\nblobs, search, jobs, ingress, events"]
 
     U -->|"conversation and product use"| H
     H <--> |"HTTP and protocol v1 WebSocket"| K
     H --> C
     K --> S
     S --> D
+    S --> R
+    R --> D
     K --> P
     S --> E
 ```
@@ -74,6 +77,7 @@ src/ppp/
 ├── main.clj                    process entrypoint
 ├── system.clj                  Integrant lifecycle
 ├── websocket.clj               subscriptions, stage ACK, broadcast
+├── scheduler.clj               durable generated-job polling and execution
 ├── outbound/
 │   ├── client.clj              pinned-address HTTPS transport
 │   ├── policy.clj              URL, address, DNS, header policy
@@ -88,6 +92,8 @@ src/ppp/
 │   ├── codex.clj               Codex CLI implementation
 │   └── fake.clj                deterministic tests and demo fixture
 ├── runtime/
+│   ├── auth.clj               product identity, credentials, and login effects
+│   ├── resources.clj          blobs, search documents, and durable job state
 │   ├── catalog.cljc            single capability source of truth
 │   ├── policy.cljc             source and SQL validation
 │   ├── server.clj              server SCI staging and actions
@@ -130,6 +136,10 @@ The AI may replace complete files that define:
 - host-assigned SQLite migrations;
 - domain and property tests;
 - calls through restricted public HTTP and named connector capabilities.
+- product-owned identity and authenticated business flows through Kernel-owned
+  credential and login-session capabilities.
+- bounded binary objects, product events, durable jobs, public ingress
+  handlers, and full-text/vector search through the session resource plane.
 
 ## 6. Session layout
 
@@ -171,7 +181,13 @@ data/workspaces/local/sessions/<uuid>/
     └── <transaction-id>/...
 ```
 
-All identifiers pass through UUID parsing before path resolution. Paths are normalized and verified to remain beneath the session root.
+All identifiers pass through UUID parsing before path resolution. Paths are
+normalized and verified to remain beneath the session root. Session listing
+enumerates only direct, non-symlink child directories containing
+`session.edn`; it never recursively walks live SQLite databases. Other
+no-follow storage and quota walks may skip an entry only when that entry
+vanishes concurrently, as SQLite WAL/SHM companions legitimately do. Any other
+I/O failure remains a visible readiness/storage failure.
 
 ### 6.1 `session.edn`
 
@@ -242,20 +258,203 @@ Conceptual catalog:
    'query! bounded-fn
    'execute! bounded-fn
    'public-http! bounded-fn
-   'connector-http! bounded-fn}}
+   'connector-http! bounded-fn
+   'auth-register! bounded-fn
+   'auth-login! bounded-fn
+   'auth-logout! bounded-fn
+   'auth-current-user bounded-fn
+   'auth-require-user! bounded-fn
+   'auth-change-password! bounded-fn
+   'auth-delete-account! bounded-fn
+   'blob-put! bounded-fn
+   'blob-get bounded-fn
+   'blob-list bounded-fn
+   'blob-delete! bounded-fn
+   'publish! bounded-fn
+   'register-job! bounded-fn
+   'schedule-job! bounded-fn
+   'cancel-job! bounded-fn
+   'job-status bounded-fn
+   'register-ingress! bounded-fn
+   'search-upsert! bounded-fn
+   'search-delete! bounded-fn
+   'search-query bounded-fn}}
  :client
  {'runtime.api
   {'register-page! bounded-fn
    'register-sidebar! bounded-fn
+   'initialize-state! bounded-fn
    'navigate! bounded-fn
    'action! bounded-fn
    'ensure-action! bounded-fn
+   'register-event-handler! bounded-fn
    'page-state stable-reagent-atom
    'event-value bounded-fn
    'prevent-default! bounded-fn}}}
 ```
 
 Server SCI receives no general Java classes, shell, filesystem, process, dynamic loader, or dependency resolver. Browser SCI runs only in an iframe whose sandbox omits `allow-same-origin`; it may use that frame's ordinary DOM and browser globals. It receives no authenticated parent object. Server actions and conversation controls cross a versioned message bridge.
+
+Generated client source declares product-state defaults once with
+`runtime.api/initialize-state!`. Those defaults participate in the hidden
+render and, on activation, fill only keys that do not already exist in the
+preserved live state. Arbitrary top-level `swap!` effects from staging are
+discarded. This lets a new product choose a real initial route or form mode
+without allowing hidden validation to overwrite user input when a later
+runtime is activated.
+
+`runtime.api/start-interval!` may likewise be declared once while source is
+evaluated. The frame retains the bounded keyed schedule during staging but does
+not run its callback until activation. Rejection, replacement, Safe Mode, and
+frame disposal clear the schedule. This prevents a source-level timer from
+silently becoming a no-op while also preventing hidden staging from advancing
+the live product.
+
+### 7.1 Sandbox authority model
+
+The sandbox is defined by resources and effects, not by application category.
+Generated source may express arbitrary product semantics using the primitives
+below. A new kind of product should not require a new exception when its effects
+already fit an existing resource.
+
+| Product effect | Session-owned mechanism | Boundary |
+|---|---|---|
+| UI, routing, forms, games, media, Canvas, workers, WASM | ordinary browser APIs in the opaque frame | no parent DOM/origin/credentials |
+| local interactive state | frame-owned Reagent state and bounded host handoff | serializable handoff only; declared defaults fill missing keys without replacing preserved user state |
+| relational data and transactions | generated migrations plus parameterized SQLite actions | one session database, no `_ppp_` tables |
+| accounts and authenticated actions | typed product-auth capabilities plus per-session credential store | no raw hashes, tokens, cookies, or PPP access state |
+| roles, profiles, ownership, moderation rules | ordinary generated tables keyed by public product-user ID | generated rules cannot forge authenticated identity |
+| public API calls | SSRF-checked HTTPS capability | public addresses, bounded method/body/time/size |
+| private external services | developer-owned named connectors | secret never enters source or model context |
+| browser-selected files and compute | in-frame File/Blob/Worker/WASM APIs | no host filesystem path or parent storage |
+| durable binary objects | reserved SQLite blob resource | 4 MiB/object, database/session quota, no host path |
+| multi-client product events | post-commit WebSocket effect to active session tabs | bounded topic/payload; ephemeral; no rollback or cross-session delivery |
+| background and scheduled work | named generated handlers plus Kernel scheduler and durable job rows | bounded delay/retry/count/time; no generated threads/processes |
+| inbound public APIs and webhooks | named generated ingress handlers plus optional configured HMAC verifier | bounded methods/body/rate/status; no PPP cookie or raw socket/server control |
+| full-text and vector search | reserved SQLite document/FTS resource and bounded vector scan | one session index; deterministic limit/dimension/ranking |
+| shell, arbitrary filesystem, JVM/process control, dependency loading | none | permanently outside generated authority |
+| PPP Kernel data, OAuth, access cookie, other sessions | none | permanently outside generated authority |
+
+The last two rows are security denials. The table contains no remaining known
+ordinary session-owned resource gap. Provider copy must compose product
+behavior from these resources rather than present a missing app-specific
+template as an inherent limitation.
+
+### 7.2 Product identity boundary
+
+PPP access and product identity are independent:
+
+```text
+PPP access cookie
+  -> may open workspace/session and call the action bridge
+
+session-scoped product cookie
+  -> identifies one generated-product user to one session database
+  -> never enters the opaque frame or generated server values
+```
+
+Generated server actions continue receiving their submitted payload map
+directly. The Kernel resolves the product cookie before calling the action and
+places only public claims behind `auth-current-user` and
+`auth-require-user!`. Login, registration, logout, password change, and account
+deletion emit an internal typed response effect. The HTTP adapter translates
+that effect into one session-scoped cookie and removes the effect before JSON
+serialization.
+
+Product profiles and roles are ordinary generated tables keyed by the returned
+public user ID. Credentials and login sessions remain in reserved tables so a
+generated query cannot read or forge them.
+
+### 7.3 Durable binary objects
+
+Binary content is a typed SQLite resource, not a host file path. Generated
+server code stores base64 input through `blob-put!` and receives immutable
+metadata plus base64 only through `blob-get`. IDs are bounded product slugs;
+content type, display name, size, SHA-256, creator claim, timestamps, and bytes
+live in `_ppp_blobs`. One object is at most 4 MiB and the existing 25 MiB
+session-database quota remains authoritative. Replacing an ID is atomic.
+
+Because bytes live in the session database, stage copies, checkpoints, crash
+recovery, restore, and database quota include them without a second commit
+protocol. Generated code cannot obtain a filesystem location. Browser file
+selection and base64 conversion remain ordinary opaque-frame APIs; the action
+bridge accepts the bounded representation.
+
+### 7.4 Product events
+
+`publish!` records `{:op :product-event :topic keyword :payload value}` in the
+current action/job/ingress effect accumulator. The Kernel dispatches it only
+after the surrounding SQLite transaction succeeds. It sends
+`:product/event` to tabs subscribed to the exact session and current runtime.
+The parent forwards it only to its active opaque frame, where handlers declared
+with `register-event-handler!` run under the existing client execution budget.
+
+Events are deliberately ephemeral: source and SQLite hold durable truth.
+Staging, rollback, restore, disconnected tabs, and other sessions receive no
+replay. Products requiring reconstruction query SQLite after reconnect.
+
+### 7.5 Durable jobs
+
+Generated server source registers at most 32 named handlers with
+`register-job!`. An action, ingress, or job may call `schedule-job!` with a
+bounded payload, delay, retry count, and optional idempotency key. Scheduling
+requires that the named handler is registered in the runtime performing the
+call. It returns the public job map; callers pass the map's string `:id`, not
+the map itself, to `job-status` and `cancel-job!`. Job rows live in
+`_ppp_jobs`; those operations expose only public state.
+
+A single Kernel scheduler polls active session runtimes. It claims one due row
+with a lease, executes the matching generated handler in `:job` phase under the
+normal SCI/SQLite deadline, and commits generated data plus effects atomically.
+Failures record a stable code and reschedule with bounded exponential backoff
+until the declared attempt limit. An expired lease is reclaimed only when
+another attempt remains; an expired final lease becomes terminal with
+`job/lease-expired`. The scheduler also claims a due row whose handler was
+removed by a later runtime version, then records bounded
+`job/handler-not-found` retry or terminal state instead of leaving the row
+pending forever. The idempotency constraint prevents duplicate scheduling for
+the same handler/key.
+
+Checkpoint restore preserves completed job records from the chosen database
+but marks every restored pending or running job cancelled before activation.
+This prevents a historical checkpoint from repeating an external side effect.
+The restored product may intentionally schedule new work afterward.
+
+### 7.6 Public ingress and webhooks
+
+Generated source registers at most 16 handlers with
+`register-ingress! :route {:verification optional-alias} handler`. The Kernel
+serves them at `/public/sessions/:id/:route` for bounded GET, POST, PUT, PATCH,
+and DELETE requests. It accepts at most 1 MiB, parses JSON or exposes bounded
+text/base64, removes cookies and authorization, limits safe headers/query data,
+and rate-limits each session/route/remote-address bucket.
+
+An optional verifier alias comes from developer-owned configuration. The model
+sees alias, description, algorithm, and expected signature header but never the
+secret or environment name. The Kernel verifies HMAC-SHA256 over the raw body
+in constant time before the generated handler runs. A public handler returns
+only a bounded status and JSON body; it cannot select headers, cookies,
+redirects, sockets, routes, or another session.
+
+Ingress registration is source, so checkpoint restore naturally restores the
+route set. Ingress request data is not persisted unless the handler writes it
+to SQLite. Ingress execution may schedule jobs, update blobs/search, and
+publish product events through the same post-commit effect path.
+
+### 7.7 Full-text and vector search
+
+`search-upsert!`, `search-delete!`, and `search-query` operate on
+`_ppp_search_documents` and an FTS5 index. Each document has a bounded
+collection, ID, Unicode text, JSON/Transit metadata, and optional numeric
+vector. Text queries are normalized into quoted Unicode terms before `MATCH`.
+Vector queries accept finite dimensions from 2 through 1536 and scan at most
+1,000 documents in one collection. Results use deterministic score, then
+document ID ordering.
+
+The caller supplies vectors directly or obtains them through an approved
+connector; PPP does not silently call a model. Search tables are reserved,
+session-local, quota-counted, and included in checkpoint/restore. Generated
+SQL cannot enumerate or mutate them outside the typed capability.
 
 ## 8. Codex provider
 
@@ -371,6 +570,7 @@ Internal exception text and generated source are not returned.
 | `GET` | `/api/sessions/:id/checkpoints` | cookie | Return nontechnical checkpoint metadata. |
 | `POST` | `/api/sessions/:id/restores` | cookie + CSRF | Enqueue checkpoint restore. |
 | `POST` | `/api/sessions/:id/actions/:action-id` | cookie + CSRF | Invoke active generated server action. |
+| `GET/POST/PUT/PATCH/DELETE` | `/public/sessions/:id/:ingress-id` | public or configured verifier | Invoke the matching active generated ingress under body/rate/status limits. |
 | `GET` | `/healthz` | none | JVM liveness only. |
 | `GET` | `/readyz` | none | Storage writable, recovery complete, provider preflight. |
 
@@ -393,6 +593,20 @@ HTTP/1.1 202 Accepted
 ```json
 {"jobId":"...","requestId":"..."}
 ```
+
+### 9.2 Generated action authentication
+
+The action endpoint can receive two cookies with different authority:
+
+- `ppp_access` authorizes use of PPP and remains required with CSRF;
+- a UUID-derived product cookie authorizes only generated actions for the
+  matching session.
+
+The product cookie uses `HttpOnly`, `SameSite=Strict`, the narrow action path,
+and `Secure` outside development. A successful auth capability may set or clear
+that cookie. The action JSON response retains the existing
+`{:runtime-version ... :result ...}` shape and never contains the token or
+internal effect.
 
 ## 10. WebSocket protocol
 
@@ -426,8 +640,11 @@ Server to client:
 | `:runtime/activate` | committed manifest and target version. |
 | `:runtime/resync` | current complete client source and manifest. |
 | `:turn/failed` | stable user-safe error code and message. |
+| `:product/event` | bounded topic and payload emitted after a committed action, job, or ingress. |
 
 The requesting tab's stage response alone determines commit. Other tabs never block a commit.
+Product events are delivered only to current subscribers of the exact session
+and runtime; they are never stage acknowledgements and never advance a version.
 
 ## 11. Change state machine
 
@@ -594,6 +811,66 @@ Invocation:
  :input {:project-id 1 :voter-type "judge"}}
 ```
 
+Before invocation, the Kernel resolves an optional product cookie inside the
+same SQLite transaction. Generated code can read only:
+
+```clojure
+(runtime.api/auth-current-user)
+;; => nil or {:id "..." :identifier "..." :created-at "..."}
+
+(runtime.api/auth-require-user!)
+;; => the same public map, or a stable auth-required failure
+```
+
+Credential mutations are typed capabilities:
+
+```clojure
+(runtime.api/auth-register! {:identifier email :password password})
+(runtime.api/auth-login! {:identifier email :password password})
+(runtime.api/auth-logout!)
+(runtime.api/auth-change-password! {:current-password old :new-password next})
+(runtime.api/auth-delete-account! {:password password})
+```
+
+Registration and login return only public user claims and schedule a private
+cookie effect. Product code cannot supply a user ID, role, token, hash,
+expiration, cookie attribute, or response header. Generated tests may invoke an
+action as a real rollback-only fixture user through a test-only helper; they do
+not receive a valid browser token.
+
+Session resources use the same transaction connection:
+
+```clojure
+(runtime.api/blob-put! {:id "hero" :name "hero.png"
+                        :content-type "image/png" :content-base64 encoded})
+(runtime.api/blob-get "hero")
+(runtime.api/blob-list)
+(runtime.api/blob-delete! "hero")
+
+(runtime.api/publish! :scores/changed {:player player-id})
+
+(runtime.api/register-job! :scores/rebuild rebuild-handler)
+(let [scheduled
+      (runtime.api/schedule-job! :scores/rebuild {:season season-id}
+                                 {:delay-ms 500 :max-attempts 3
+                                  :idempotency-key (str season-id)})]
+  (runtime.api/job-status (:id scheduled))
+  (runtime.api/cancel-job! (:id scheduled)))
+
+(runtime.api/register-ingress! :score-import {} import-handler)
+
+(runtime.api/search-upsert! :projects project-id
+                            {:text searchable-text :metadata project})
+(runtime.api/search-query :projects "space robotics" {:limit 10})
+```
+
+Query, mutation, blob, search, scheduling, and publish capabilities are
+available in action, job, ingress, and rollback-only test phases as applicable.
+Public HTTP and connectors remain unavailable to tests. Auth cookie mutations
+remain action-only. Generated tests can invoke registered job and ingress
+handlers with test-only helpers without starting the Kernel scheduler or public
+listener.
+
 Action SQL allows one parameterized statement:
 
 - read: `SELECT` only;
@@ -607,7 +884,7 @@ Action output must be Transit/JSON representable and remain below the response l
 - One database per session.
 - Foreign keys are enabled.
 - Busy timeout is 5 seconds.
-- `_ppp_runtime_meta` and `_ppp_migrations` are kernel-owned.
+- `_ppp_runtime_meta`, `_ppp_migrations`, and `_ppp_auth_*` are kernel-owned.
 - Generated SQL cannot mention `_ppp_` identifiers.
 - Allowed migration statement families:
   - `CREATE TABLE`
@@ -623,6 +900,43 @@ The kernel assigns `000001-<name>.sql` after sanitizing the descriptive name. Th
 Checkpoint databases are created from a live connection through SQLite's consistent backup facility, then gzip-compressed. Raw copying of a potentially active WAL database is not accepted as checkpoint evidence.
 
 Logical content hashes exclude `_ppp_` metadata so restore properties compare user data independently of the new restore event version.
+
+Product identity uses reserved tables in the same session database:
+
+```text
+_ppp_auth_users       normalized identifier, Argon2id hash, credential version
+_ppp_auth_sessions    keyed token digest, user, credential version, expiration
+_ppp_auth_attempts    bounded login-throttling state
+```
+
+The session resource plane adds reserved tables:
+
+```text
+_ppp_blobs              bytes and immutable public metadata
+_ppp_jobs               payload, due time, lease, retry, idempotency, status
+_ppp_search_documents   source text, metadata, optional vector
+_ppp_search_fts*        SQLite FTS5 index and its internal tables
+```
+
+Blob and search rows are durable product data and participate in snapshots.
+Product events are not stored. Restore changes pending/running job rows to a
+terminal cancelled state before activation; it never reruns a historical job.
+
+The credential table is part of checkpoint state even though its secret fields
+are excluded from generated access and normal logical-content diagnostics.
+Focused identity restore tests compare bounded public identity state. Active
+login sessions are operational authority, not historical product data: a
+checkpoint restore deletes `_ppp_auth_sessions` and `_ppp_auth_attempts` before
+the restored database can become active.
+
+Passwords use Argon2id with a unique random salt and bounded parameters at or
+above the [OWASP password-storage baseline](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+of 19 MiB memory, two iterations, and parallelism one, implemented according to
+[RFC 9106](https://www.rfc-editor.org/info/rfc9106/).
+Session tokens contain at least 256 random bits. Only a keyed digest scoped to
+the PPP session ID is stored. Unknown-identifier and wrong-password verification
+run the same password-hash path and return the same public category. Repeated
+failures are throttled without placing passwords or identifiers in logs.
 
 ## 15. History and checkpoint semantics
 
@@ -653,6 +967,10 @@ Restore semantics:
 5. Append a restore event referencing the source checkpoint.
 6. Preserve all checkpoints.
 7. Clear Codex thread ID.
+8. Revoke every product login token and throttling record before activation.
+9. Cancel every pending or running job found in the restored snapshot; preserve
+   durable blobs, search documents, completed job history, and restored ingress
+   source definitions.
 
 ## 16. Crash journal
 
@@ -688,6 +1006,11 @@ Recovery runs before readiness becomes true or any session accepts actions.
 | Generated files | 32 |
 | Generated source | 256 KiB |
 | SQLite per session | 25 MiB |
+| Binary object | 4 MiB each, at most 64 objects |
+| Search document | 64 KiB text/metadata, vector dimension 2-1536, at most 10,000 documents |
+| Product event | 64 KiB payload, at most 32 handlers per frame |
+| Durable job | 64 KiB payload, 1,000 nonterminal rows, delay at most 30 days, 1-5 attempts |
+| Ingress | 1 MiB request, 60 requests/minute per route/address, at most 16 handlers |
 | Checkpoints per session | 256 MiB |
 | Instance data | 2 GiB |
 | Codex queue | 8 jobs |
@@ -708,6 +1031,7 @@ PPP_AI_PROVIDER=codex
 PPP_CODEX_MODEL=gpt-5.6-terra
 PPP_CODEX_REASONING=medium
 PPP_REQUIRE_CLIENT_ACK=true
+PPP_PRODUCT_AUTH_SESSION_SECONDS=604800
 CODEX_HOME=/var/lib/codex
 ```
 
@@ -748,6 +1072,16 @@ bb eval-live
 bb eval-evolution
 ```
 
+The evolution evaluator retains every committed version. A semantic browser
+failure after commit is fed back to the same provider thread in bounded form;
+up to five repair changes may follow the scenario's initial change. Resume
+reconciles an unrecorded committed version before generating anything new.
+Reports group only contiguous runtime versions, require complete event/thread
+coverage, validate the first event against the scenario impact, and re-run
+source/client/server/domain gates for every repair. Raw observations, traces,
+session IDs, and provider output remain local; only the bounded report is
+release evidence.
+
 ## 21. Requirement mapping
 
 | PRD range | Primary specification sections |
@@ -758,6 +1092,9 @@ bb eval-evolution
 | PRD-F16-F21 | 11, 12, 13, 14 |
 | PRD-F22-F26 | 6, 15, 16 |
 | PRD-F27-F30 | 8 and `docs/SECURITY.md` |
+| PRD-F31-F32 | 7, 11, 12 and `docs/SECURITY.md` |
+| PRD-F33-F38 | 5, 7.1, 7.2, 9.2, 13, 14 and `docs/SECURITY.md` |
+| PRD-F39-F44 | 5, 7.3-7.7, 9, 10, 13, 14, 17 and `docs/SECURITY.md` |
 
 ## 22. Resolved decisions
 
@@ -769,5 +1106,11 @@ bb eval-evolution
 - OAuth Codex provider is a gated hackathon/self-host exception.
 - Fake provider is mandatory for deterministic CI and demo rehearsal.
 - No source promotion during the hackathon.
+- Product identity is a Kernel-mediated session resource, not a special-case
+  UI template and not an expansion of PPP workspace authority.
+- Blob, event, job, ingress, and search are one typed session resource plane;
+  they are not generated filesystem, thread, listener, or database authority.
+- In-process SCI remains the server language sandbox. Typed resources broaden
+  what products can do without turning generated code into a host process.
 
 Unresolved implementation decisions: none.

@@ -180,7 +180,8 @@ Hero image should show the running generated product and sidebar together, not a
 
 ## Final submission checklist
 
-- [ ] Public repository and MIT license.
+- [x] Reproducible local Git baseline and MIT license.
+- [ ] Repository pushed and publicly accessible.
 - [x] English README works from clean Linux amd64.
 - [ ] Work & Productivity selected.
 - [x] `bb verify` evidence complete.

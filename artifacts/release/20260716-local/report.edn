@@ -1,6 +1,6 @@
 {:format-version 1
  :created-at #inst "2026-07-16T00:50:59.000-00:00"
- :status :local-release-candidate
+ :status :local-release-complete
  :clean-copy
  {:path-kind :temporary-git-candidate-copy
   :verify :passed
@@ -25,4 +25,17 @@
   :passed 3
   :failed 0
   :conversation-submit :enter}
+ :repository
+ {:candidate-files 155
+  :baseline-commit "e83dc0d"
+  :forbidden-candidate-files 0
+  :pushed? false}
+ :stable-surface
+ {:url "http://localhost:8787/"
+  :provider :codex
+  :auth :chatgpt-oauth
+  :ready? true
+  :sessions 0
+  :runtime-registry 0
+  :pending-stages 0}
  :external-actions :owner-approval-required}

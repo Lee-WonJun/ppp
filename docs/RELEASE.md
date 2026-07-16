@@ -1,6 +1,6 @@
 # Local Release Closure
 
-Status: local gates passed; repository commit pending under PPP-016
+Status: locally complete; external publication awaits owner approval
 Last updated: 2026-07-16
 
 ## Definition of locally complete
@@ -13,7 +13,8 @@ PPP is locally complete when:
 - live Codex reports remain valid for provider and multi-turn evolution behavior;
 - only sanitized bounded evidence is part of the repository candidate;
 - the owner-facing 8787 process is ready with no development sessions;
-- an intentional local Git commit contains the reproducible source baseline.
+- intentional local Git commits contain the reproducible source and closure
+  records.
 
 Local completeness does not authorize remote or public state changes.
 
@@ -28,12 +29,16 @@ Local completeness does not authorize remote or public state changes.
 - Enter-based packaged demo: `artifacts/demo/20260716-004803/report.edn`, three
   of three fresh-volume runs passed.
 - Aggregated bounded record: `artifacts/release/20260716-local/report.edn`.
+- Repository baseline: local commit `e83dc0d`; PPP-016 closure is recorded in a
+  following local documentation commit. Nothing was pushed.
+- Stable owner surface: `http://localhost:8787/#access=ppp-local` is ready with
+  Codex OAuth, zero sessions, zero in-memory runtimes, and no pending stages.
 
 ## Owner approval queue
 
 These actions remain deliberately unperformed until the owner approves them:
 
-1. Push the local commit to `origin` and confirm repository visibility.
+1. Push the local commits to `origin` and confirm repository visibility.
 2. Deploy the verified image to the chosen VPS/Coolify target.
 3. Record and upload the narrated sub-three-minute video.
 4. Add public repository, video, and hosted-demo URLs to `docs/DEVPOST.md`.

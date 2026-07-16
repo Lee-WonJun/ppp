@@ -31,6 +31,11 @@
                          (when development?
                            "development-only-cookie-secret-change-before-sharing"))
      :cookie-secure? (parse-bool (env "PPP_COOKIE_SECURE" (str (not development?))))
+     :fragment-access-enabled?
+     (parse-bool (env "PPP_FRAGMENT_ACCESS_ENABLED" (str development?)))
+     :login-failure-limit (parse-int (env "PPP_LOGIN_FAILURE_LIMIT" "10"))
+     :login-failure-window-seconds
+     (parse-int (env "PPP_LOGIN_FAILURE_WINDOW_SECONDS" "600"))
      :product-auth-session-seconds
      (parse-int (env "PPP_PRODUCT_AUTH_SESSION_SECONDS" "604800"))
      :provider (keyword (env "PPP_AI_PROVIDER" "codex"))
@@ -39,6 +44,10 @@
      :codex-model (env "PPP_CODEX_MODEL" "gpt-5.6-terra")
      :codex-reasoning (env "PPP_CODEX_REASONING" "medium")
      :provider-timeout-ms (parse-int (env "PPP_PROVIDER_TIMEOUT_MS" "120000"))
+     :provider-calls-per-hour
+     (parse-int (env "PPP_PROVIDER_CALLS_PER_HOUR" "100"))
+     :provider-window-seconds
+     (parse-int (env "PPP_PROVIDER_WINDOW_SECONDS" "3600"))
      :change-generation-attempts
      (parse-int (env "PPP_CHANGE_GENERATION_ATTEMPTS" "3"))
      :queue-capacity (parse-int (env "PPP_QUEUE_CAPACITY" "8"))
@@ -68,7 +77,9 @@
 
 (defn validate!
   [{:keys [access-code cookie-secret environment development?
-           product-auth-session-seconds]
+           product-auth-session-seconds login-failure-limit
+           login-failure-window-seconds provider-calls-per-hour
+           provider-window-seconds]
     :as config}]
   (when (str/blank? access-code)
     (throw (ex-info "PPP_ACCESS_CODE is required" {:environment environment})))
@@ -84,4 +95,17 @@
     (throw (ex-info
             "PPP_PRODUCT_AUTH_SESSION_SECONDS must be between 300 and 7776000"
             {:environment environment})))
+  (when-not (<= 1 (long (or login-failure-limit 10)) 1000)
+    (throw (ex-info "PPP_LOGIN_FAILURE_LIMIT must be between 1 and 1000"
+                    {:environment environment})))
+  (when-not (<= 60 (long (or login-failure-window-seconds 600)) 86400)
+    (throw (ex-info
+            "PPP_LOGIN_FAILURE_WINDOW_SECONDS must be between 60 and 86400"
+            {:environment environment})))
+  (when-not (<= 1 (long (or provider-calls-per-hour 100)) 10000)
+    (throw (ex-info "PPP_PROVIDER_CALLS_PER_HOUR must be between 1 and 10000"
+                    {:environment environment})))
+  (when-not (<= 60 (long (or provider-window-seconds 3600)) 86400)
+    (throw (ex-info "PPP_PROVIDER_WINDOW_SECONDS must be between 60 and 86400"
+                    {:environment environment})))
   config)

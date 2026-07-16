@@ -15,25 +15,33 @@
 (defonce frame-sync-installed? (atom false))
 (defonce last-runtime-error (atom nil))
 
-(defonce app-state
-  (r/atom {:phase :loading
-           :sidebar-open? false
-           :safe-mode? false
-           :safe-mode-transition? false
-           :sidebar-failed? false
-           :sessions []
-           :session-id nil
-           :saved-runtime-version nil
-           :csrf-token nil
-           :connection :disconnected
-           :messages []
-           :checkpoints []
-           :progress nil
-           :progress-detail nil
-           :draft ""
-           :draft-revision 0
-           :message nil
-           :runtime-error nil}))
+(def initial-app-state
+  {:phase :loading
+   :sidebar-open? false
+   :safe-mode? false
+   :safe-mode-transition? false
+   :sidebar-failed? false
+   :sessions []
+   :session-id nil
+   :saved-runtime-version nil
+   :csrf-token nil
+   :connection :disconnected
+   :messages []
+   :checkpoints []
+   :progress nil
+   :progress-detail nil
+   :draft ""
+   :draft-revision 0
+   :password ""
+   :login-busy? false
+   :project-title ""
+   :project-create-open? false
+   :project-create-busy? false
+   :change-capacity {:available? true}
+   :message nil
+   :runtime-error nil})
+
+(defonce app-state (r/atom initial-app-state))
 
 (defn- set-progress!
   ([phase]
@@ -46,12 +54,14 @@
               :progress-detail (:detail copy)))
      (swap! app-state assoc :progress nil :progress-detail nil))))
 
-(declare create-session!
+(declare begin-create-project!
+         create-session!
          handle-server-message!
          load-checkpoints!
          load-session-runtime!
          render-active-surfaces!
          select-session!
+         show-projects!
          stage-client-runtime!)
 
 (defn- json-headers
@@ -109,9 +119,13 @@
 (defn- replace-session-in-url!
   [session-id]
   (let [params (js/URLSearchParams. (.-search js/location))]
-    (.set params "session" session-id)
-    (.replaceState js/history nil ""
-                   (str (.-pathname js/location) "?" (.toString params)))))
+    (if session-id
+      (.set params "session" session-id)
+      (.delete params "session"))
+    (let [query (.toString params)]
+      (.replaceState js/history nil ""
+                     (str (.-pathname js/location)
+                          (when-not (str/blank? query) (str "?" query)))))))
 
 (defn- selected-value
   [event]
@@ -199,6 +213,8 @@
             (.catch
              (fn [error]
                (set-progress! nil)
+               (when (= :provider/capacity-exhausted (:code (ex-data error)))
+                 (swap! app-state assoc-in [:change-capacity :available?] false))
                (append-message! :assistant (.-message error) "Not applied"))))
         (do
           (set-progress! nil)
@@ -244,7 +260,7 @@
 (defn- frame-sidebar-model
   []
   (let [{:keys [sessions session-id messages checkpoints draft draft-revision
-                progress progress-detail]} @app-state]
+                progress progress-detail change-capacity]} @app-state]
     {:sessions sessions
      :session-id session-id
      :messages messages
@@ -253,13 +269,15 @@
      :draft-revision draft-revision
      :busy? (some? progress)
      :progress progress
-     :progress-detail progress-detail}))
+     :progress-detail progress-detail
+     :changes-available? (not= false (:available? change-capacity))}))
 
 (defn- handle-frame-sidebar-event!
   [event value]
   (case event
     :select-session (select-session! value)
-    :new-session (create-session!)
+    :new-session (begin-create-project!)
+    :all-projects (show-projects!)
     :restore (restore-checkpoint! value)
     :draft-change (accept-frame-draft! value)
     :send (submit-draft!)
@@ -272,6 +290,11 @@
         @app-state]
     [:aside.ppp-fallback-sidebar {:aria-label "Product conversation"}
      [:header.ppp-fallback-header
+      [:button.ppp-projects-link
+       {:type "button"
+        :aria-label "All projects"
+        :on-click show-projects!}
+       "Projects"]
       [:select
        {:aria-label "Current session"
         :value (or session-id "")
@@ -280,7 +303,7 @@
          ^{:key id} [:option {:value id} title])]
       [:button {:type "button"
                 :aria-label "New session"
-                :on-click create-session!}
+                :on-click begin-create-project!}
        "+"]]
      [:section.ppp-fallback-conversation {:aria-live "polite"}
       (cond
@@ -314,6 +337,9 @@
           [:span.ppp-fallback-progress-dots-fill "..."]]
          [:span.ppp-fallback-progress-separator {:aria-hidden true} " · "]
          [:span.ppp-fallback-progress-detail progress-detail]])]
+     (when (false? (get-in @app-state [:change-capacity :available?]))
+       [:p.ppp-capacity-note
+        "New changes are temporarily unavailable. Saved products still work."])
      (when (seq checkpoints)
        [:section.ppp-fallback-checkpoints {:aria-label "Checkpoints"}
         [:strong "Checkpoints"]
@@ -408,15 +434,16 @@
             title])])
       [:div.ppp-safe-actions
        [:button {:type "button"
+                 :on-click show-projects!}
+        "All projects"]
+       [:button {:type "button"
                  :on-click #(do
                               (set-safe-mode! false)
                               (load-session-runtime! session-id))}
         "Try again"]
        [:button {:type "button"
-                 :on-click #(do
-                              (set-safe-mode! false)
-                              (create-session!))}
-        "New session"]]]]))
+                 :on-click begin-create-project!}
+        "New project"]]]]))
 
 (defn render-active-surfaces!
   []
@@ -655,19 +682,28 @@
 (defn select-session!
   [session-id]
   (when (and session-id (not (str/blank? session-id)))
-    (replace-session-in-url! session-id)
-    (swap! app-state assoc
-           :session-id session-id
-           :saved-runtime-version nil
-           :runtime-error nil)
-    (load-session-runtime! session-id)
-    (transport/subscribe!)))
+    (when-let [session (some #(when (= session-id (:id %)) %) (:sessions @app-state))]
+      (replace-session-in-url! session-id)
+      (swap! app-state assoc
+             :phase :workspace
+             :session-id session-id
+             :saved-runtime-version (:current-version session)
+             :runtime-error nil
+             :project-create-open? false
+             :project-title "")
+      (transport/connect!
+       {:session-fn #(:session-id @app-state)
+        :version-fn current-base-version
+        :on-message handle-server-message!
+        :on-status #(swap! app-state assoc :connection %)})
+      (load-session-runtime! session-id)
+      (transport/subscribe!))))
 
 (defn- request-session!
-  []
+  [title]
   (fetch-json! "/api/sessions"
                {:method "POST"
-                :body {}
+                :body {:title title}
                 :csrf-token (:csrf-token @app-state)}))
 
 (defn- add-session!
@@ -676,33 +712,34 @@
          (fn [state]
            (-> state
                (update :sessions conj session)
-               (assoc :phase :ready :message nil))))
+               (assoc :message nil
+                      :project-create-busy? false
+                      :project-create-open? false
+                      :project-title ""))))
   (select-session! (:id session))
   session)
 
 (defn- accept-bootstrap!
-  [{:keys [csrf-token sessions]}]
+  [{:keys [csrf-token sessions change-capacity]}]
   (let [sessions (vec sessions)
         available (set (map :id sessions))
-        preferred (or (:session-id @app-state) (url-session-id))
-        selected (if (contains? available preferred)
-                   preferred
-                   (:id (first sessions)))]
+        preferred (url-session-id)
+        selected (when (contains? available preferred) preferred)]
     (swap! app-state assoc
-           :phase (if (empty? sessions) :loading :ready)
+           :phase (if selected :workspace :projects)
            :csrf-token csrf-token
            :sessions sessions
            :session-id selected
+           :change-capacity (or change-capacity {:available? true})
+           :login-busy? false
+           :password ""
            :message nil)
-    (transport/connect!
-     {:session-fn #(:session-id @app-state)
-      :version-fn current-base-version
-      :on-message handle-server-message!
-      :on-status #(swap! app-state assoc :connection %)})
     (if selected
       (select-session! selected)
-      (-> (request-session!)
-          (.then add-session!)))))
+      (do
+        (replace-session-in-url! nil)
+        (transport/stop!)
+        (frame/reset-runtime!)))))
 
 (defn bootstrap!
   []
@@ -710,8 +747,12 @@
       (.then accept-bootstrap!)
       (.catch
        (fn [error]
+         (transport/stop!)
+         (frame/reset-runtime!)
          (swap! app-state assoc
                 :phase :access-required
+                :session-id nil
+                :login-busy? false
                 :message (.-message error))))))
 
 (defn- exchange-access!
@@ -725,13 +766,186 @@
                 :phase :access-required
                 :message (.-message error))))))
 
-(defn create-session!
+(defn- submit-login!
   []
-  (-> (request-session!)
-      (.then add-session!)
-      (.catch
-       (fn [error]
-         (swap! app-state assoc :runtime-error (.-message error))))))
+  (let [password (:password @app-state)]
+    (when-not (or (:login-busy? @app-state) (str/blank? password))
+      (swap! app-state assoc :login-busy? true :message nil)
+      (-> (fetch-json! "/api/login" {:method "POST" :body {:password password}})
+          (.then (fn [_] (bootstrap!)))
+          (.catch
+           (fn [error]
+             (swap! app-state assoc
+                    :phase :access-required
+                    :login-busy? false
+                    :message (.-message error))))))))
+
+(defn- logout!
+  []
+  (let [csrf-token (:csrf-token @app-state)]
+    (-> (fetch-json! "/api/logout" {:method "POST" :body {}
+                                    :csrf-token csrf-token})
+        (.then
+         (fn [_]
+           (swap! load-sequence inc)
+           (transport/stop!)
+           (frame/reset-runtime!)
+           (replace-session-in-url! nil)
+           (reset! app-state (assoc initial-app-state
+                                    :phase :access-required
+                                    :message "Signed out."))))
+        (.catch
+         (fn [error]
+           (swap! app-state assoc :message (.-message error)))))))
+
+(defn show-projects!
+  []
+  (swap! load-sequence inc)
+  (transport/stop!)
+  (frame/reset-runtime!)
+  (replace-session-in-url! nil)
+  (swap! app-state assoc
+         :phase :projects
+         :session-id nil
+         :saved-runtime-version nil
+         :sidebar-open? false
+         :safe-mode? false
+         :safe-mode-transition? false
+         :runtime-error nil)
+  nil)
+
+(defn begin-create-project!
+  []
+  (show-projects!)
+  (swap! app-state assoc
+         :project-create-open? true
+         :project-title ""
+         :message nil)
+  nil)
+
+(defn create-session!
+  [title]
+  (let [title (str/trim (str title))]
+    (when-not (or (:project-create-busy? @app-state)
+                  (str/blank? title)
+                  (> (count title) 80))
+      (swap! app-state assoc :project-create-busy? true :message nil)
+      (-> (request-session! title)
+          (.then add-session!)
+          (.catch
+           (fn [error]
+             (swap! app-state assoc
+                    :project-create-busy? false
+                    :message (.-message error))))))))
+
+(defn- formatted-updated-at
+  [value]
+  (try
+    (.toLocaleString (js/Date. value) js/undefined
+                     #js {:dateStyle "medium" :timeStyle "short"})
+    (catch :default _ "Recently updated")))
+
+(defn- login-view
+  []
+  (let [{:keys [password login-busy? message]} @app-state]
+    [:section.ppp-login-shell {:aria-label "Workspace sign in"}
+     [:div.ppp-login-panel
+      [:p.ppp-login-kicker "Programmable Programming Page"]
+      [:h1 "Where product conversations become running software."]
+      [:p.ppp-login-copy
+       "Enter the shared password to open this judge workspace."]
+      [:form.ppp-login-form
+       {:aria-label "Sign in to workspace"
+        :on-submit (fn [event]
+                     (.preventDefault event)
+                     (submit-login!))}
+       [:label {:for "ppp-shared-password"} "Password"]
+       [:input#ppp-shared-password
+        {:type "password"
+         :auto-complete "current-password"
+         :auto-focus true
+         :value password
+         :disabled login-busy?
+         :on-change #(swap! app-state assoc :password (selected-value %))}]
+       [:button {:type "submit"
+                 :disabled (or login-busy? (str/blank? password))}
+        (if login-busy? "Opening" "Continue")]]
+      (when message
+        [:p.ppp-login-message {:role "alert"} message])]]))
+
+(defn- projects-view
+  []
+  (let [{:keys [sessions project-title project-create-open?
+                project-create-busy? change-capacity message]} @app-state]
+    [:section.ppp-projects-shell {:aria-label "Projects"}
+     [:div.ppp-projects-page
+      [:header.ppp-projects-header
+       [:div
+        [:p.ppp-projects-kicker "Shared judge workspace"]
+        [:h1 "Projects"]
+        [:p "Everyone with the shared password works in this same space."]]
+       [:div.ppp-projects-actions
+        [:button.ppp-secondary-button {:type "button" :on-click logout!}
+         "Sign out"]
+        [:button.ppp-primary-button
+         {:type "button" :on-click begin-create-project!}
+         "New project"]]]
+      [:p.ppp-projects-capacity
+       {:data-available (not= false (:available? change-capacity))}
+       (if (false? (:available? change-capacity))
+         "New changes are temporarily unavailable. Existing projects still work."
+         "New changes are available.")]
+      (when project-create-open?
+        [:form.ppp-new-project-form
+         {:aria-label "Create project"
+          :on-submit (fn [event]
+                       (.preventDefault event)
+                       (create-session! project-title))}
+         [:label {:for "ppp-project-title"} "Project name"]
+         [:input#ppp-project-title
+          {:type "text"
+           :max-length 80
+           :auto-focus true
+           :value project-title
+           :disabled project-create-busy?
+           :on-change #(swap! app-state assoc :project-title (selected-value %))
+           :on-key-down (fn [event]
+                          (when (= "Escape" (.-key event))
+                            (.preventDefault event)
+                            (swap! app-state assoc
+                                   :project-create-open? false
+                                   :project-title "")))}]
+         [:div
+          [:button.ppp-secondary-button
+           {:type "button"
+            :disabled project-create-busy?
+            :on-click #(swap! app-state assoc
+                              :project-create-open? false
+                              :project-title "")}
+           "Cancel"]
+          [:button.ppp-primary-button
+           {:type "submit"
+            :disabled (or project-create-busy?
+                          (str/blank? (str/trim project-title)))}
+           (if project-create-busy? "Creating" "Create project")]]])
+      (when message [:p.ppp-projects-message {:role "alert"} message])
+      (if (seq sessions)
+        [:div.ppp-project-list
+         (for [{:keys [id title updated-at]} sessions]
+           ^{:key id}
+           [:article.ppp-project-row
+            [:div
+             [:h2 title]
+             [:time {:date-time (str updated-at)}
+              (str "Updated " (formatted-updated-at updated-at))]]
+            [:button.ppp-open-project
+             {:type "button" :on-click #(select-session! id)}
+             "Open"]])]
+        [:div.ppp-projects-empty
+         [:h2 "No projects yet"]
+         [:p "Start with a blank product and describe what it should become."]
+         [:button.ppp-primary-button {:type "button" :on-click begin-create-project!}
+          "New project"]])]]))
 
 (defn- cancel-hold!
   []
@@ -784,19 +998,24 @@
 (defn host-shell
   []
   (let [{:keys [phase sidebar-open? safe-mode? runtime-error message]} @app-state
-        ready? (= :ready phase)
+        workspace? (= :workspace phase)
         recovery? (or safe-mode? runtime-error (nil? @frame/active-runtime))]
     [:main.ppp-host
      {:aria-label "Programmable product workspace"}
-     [:div.ppp-frame-host
-      {:aria-label "Product canvas"
-       :ref frame/register-host!}]
-     (when (and ready? sidebar-open? recovery?)
+     (case phase
+       :access-required [login-view]
+       :projects [projects-view]
+       nil)
+     (when workspace?
+       [:div.ppp-frame-host
+        {:aria-label "Product canvas"
+         :ref frame/register-host!}])
+     (when (and workspace? sidebar-open? recovery?)
        [:div.ppp-recovery-host
         (if safe-mode?
           [safe-mode-sidebar]
           [fallback-sidebar])])
-     (when ready?
+     (when workspace?
        [:button.ppp-handle
         {:type "button"
          :aria-label (cond
@@ -810,10 +1029,10 @@
          :on-pointer-cancel cancel-hold!
          :on-pointer-leave cancel-hold!
          :on-click handle-click!}])
-     (when (and message (not ready?))
+     (when (and message (= :loading phase))
        [:p.ppp-host-message
         {:role "status"
-         :data-tone (if (= :access-required phase) "error" "neutral")}
+         :data-tone "neutral"}
         message])]))
 
 (defn- local-test-runtime?
@@ -854,6 +1073,8 @@
                              :saved-version (:saved-runtime-version @app-state)
                              :state @(frame/active-page-state)
                              :session-id (:session-id @app-state)
+                             :phase (:phase @app-state)
+                             :sessions (:sessions @app-state)
                              :messages (:messages @app-state)
                              :progress (:progress @app-state)
                              :progress-detail (:progress-detail @app-state)

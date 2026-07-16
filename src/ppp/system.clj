@@ -4,6 +4,7 @@
             [ppp.http :as http]
             [ppp.outbound.service :as outbound]
             [ppp.provider.codex :as codex]
+            [ppp.provider.budget :as provider-budget]
             [ppp.provider.fake :as fake]
             [ppp.provider.queue :as provider-queue]
             [ppp.runtime.auth :as product-auth]
@@ -24,6 +25,10 @@
     :fake (fake/create-provider)
     :codex (codex/create-provider config)
     (throw (ex-info "Unknown AI provider" {:provider (:provider config)}))))
+
+(defmethod ig/init-key :ppp/provider-budget
+  [_ config]
+  (provider-budget/create-budget config))
 
 (defmethod ig/init-key :ppp/provider-queue
   [_ config]
@@ -98,6 +103,7 @@
   [application-config]
   {:ppp/session-store application-config
    :ppp/provider application-config
+   :ppp/provider-budget application-config
    :ppp/provider-queue application-config
    :ppp/runtime-registry {}
    :ppp/product-auth application-config
@@ -108,6 +114,7 @@
    :ppp/coordinator {:config application-config
                      :store (ig/ref :ppp/session-store)
                      :provider (ig/ref :ppp/provider)
+                     :provider-budget (ig/ref :ppp/provider-budget)
                      :provider-queue (ig/ref :ppp/provider-queue)
                      :registry (ig/ref :ppp/runtime-registry)
                      :product-auth (ig/ref :ppp/product-auth)

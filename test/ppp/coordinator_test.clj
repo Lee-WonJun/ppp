@@ -3,6 +3,7 @@
             [ppp.coordinator :as coordinator]
             [ppp.outbound.service :as outbound]
             [ppp.provider.core :as provider]
+            [ppp.provider.budget :as provider-budget]
             [ppp.provider.fake :as fake]
             [ppp.provider.queue :as provider-queue]
             [ppp.runtime.auth :as auth]
@@ -34,7 +35,7 @@
                         :session-db-limit (* 25 1024 1024)
                         :checkpoint-limit (* 256 1024 1024)
                         :instance-limit (* 2 1024 1024 1024)}
-                       (dissoc overrides :test/provider))
+                       (dissoc overrides :test/provider :test/provider-budget))
          session-store (store/create-store config)
          provider (or (:test/provider overrides) (fake/create-provider))
          queue (provider-queue/create-queue config)
@@ -65,6 +66,7 @@
                       {:config config
                        :store session-store
                        :provider provider
+                       :provider-budget (:test/provider-budget overrides)
                        :provider-queue queue
                        :registry registry
                        :product-auth auth-service
@@ -96,6 +98,100 @@
     nil
     (catch clojure.lang.ExceptionInfo cause
       (:code (ex-data cause)))))
+
+(declare submit-and-await!)
+
+(deftest provider-repair-attempts-consume-the-global-start-budget
+  (let [clock (atom 100000)
+        requests (atom [])
+        repair-provider
+        (reify provider/Provider
+          (ready? [_] {:ready? true :provider :repair-fixture})
+          (generate! [_ request]
+            (let [attempt (count (swap! requests conj request))]
+              (provider/generation
+               (if (= 1 attempt)
+                 (provider/change-result
+                  "The first proposal is intentionally invalid."
+                  "Invalid proposal"
+                  [{:path "../../outside.clj" :content "(System/exit 0)"}]
+                  [])
+                 (provider/change-result
+                  "The repaired theme is ready."
+                  "Repaired theme"
+                  [{:path "styles/runtime.css"
+                    :content ":host { color: white; background: black; }\n"}]
+                  []))
+               "77777777-7777-4777-8777-777777777777"))))
+        root (Files/createTempDirectory "ppp-coordinator-budget-test"
+                                        (make-array FileAttribute 0))
+        budget-config {:data-dir root
+                       :provider :codex
+                       :provider-calls-per-hour 1
+                       :provider-window-seconds 60
+                       :provider-budget-now-ms-fn #(deref clock)}
+        provider-budget (provider-budget/create-budget budget-config)
+        context (test-context (merge budget-config
+                                     {:test/provider repair-provider
+                                      :test/provider-budget provider-budget}))]
+    (try
+      (let [session-id (:id (coordinator/create-session! (:coordinator context)))
+            source-before (store/current-source-map (:store context) session-id)
+            database-before
+            (sqlite/logical-hash
+             (sqlite/datasource
+              (store/current-db-path (:store context) session-id)))]
+        (is (= :provider/capacity-exhausted
+               (exception-code
+                #(submit-and-await! context session-id (random-uuid) 0
+                                    "Use a dark theme"))))
+        (is (= 1 (count @requests)))
+        (is (= 1 (:used (provider-budget/status provider-budget))))
+        (is (= source-before (store/current-source-map (:store context) session-id)))
+        (is (= 0 (:current-version (store/get-session (:store context) session-id))))
+        (is (= :provider/capacity-exhausted
+               (exception-code
+                #(coordinator/submit-turn!
+                  (:coordinator context) session-id
+                  {:prompt "Try again"
+                   :request-tab-id (random-uuid)
+                   :base-version 0}))))
+        (is (= 1 (count @requests)))
+        (is (= {:ok true :message "The runtime is ready."}
+               (:result
+                (coordinator/invoke-action! (:coordinator context)
+                                            session-id :ping {}))))
+        (is (= database-before
+               (sqlite/logical-hash
+                (sqlite/datasource
+                 (store/current-db-path (:store context) session-id)))))
+        (let [restore
+              (coordinator/submit-restore!
+               (:coordinator context) session-id
+               {:checkpoint-version 0
+                :request-tab-id (random-uuid)
+                :base-version 0})
+              restored
+              (coordinator/await-turn! (:coordinator context)
+                                       (:request-id restore) 10000)]
+          (is (= {:kind :restore
+                  :runtime-version 1
+                  :restored-from 0}
+                 restored))
+          (is (= [0 1]
+                 (mapv :runtime-version
+                       (store/list-checkpoints (:store context) session-id))))
+          (is (= source-before
+                 (store/current-source-map (:store context) session-id)))
+          (is (= database-before
+                 (sqlite/logical-hash
+                  (sqlite/datasource
+                   (store/current-db-path (:store context) session-id)))))
+          (is (= 1 (:used (provider-budget/status provider-budget))))
+          (is (= 1 (count @requests)))))
+      (finally
+        (close-context! context)
+        (fs/delete-tree! root)))))
 
 (defn- submit-and-await!
   [context session-id tab-id version prompt]

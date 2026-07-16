@@ -66,6 +66,21 @@
       (finally
         (fs/delete-tree! root)))))
 
+(deftest project-title-is-bounded-without-weakening-version-zero
+  (let [{:keys [root store]} (test-context)]
+    (try
+      (let [session (store/create-session! store {:title "  Judge gallery  "})]
+        (is (= "Judge gallery" (:title session)))
+        (is (= 0 (:current-version session)))
+        (is (= [0] (mapv :runtime-version
+                         (store/list-checkpoints store (:id session))))))
+      (doseq [title ["" "   " "line\nbreak" (apply str (repeat 81 "x")) nil]]
+        (is (= :session/title-invalid
+               (exception-code #(store/create-session! store {:title title})))
+            (pr-str title)))
+      (finally
+        (fs/delete-tree! root)))))
+
 (deftest session-listing-and-tree-scans-tolerate-transient-sqlite-companions
   (let [{:keys [root store]} (test-context)]
     (try

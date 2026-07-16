@@ -43,6 +43,10 @@
   {:doc "Run semantic browser tests"
    :task (shell "bb" "scripts/run_e2e.clj")}
 
+  hosted-access-e2e
+  {:doc "Verify production shared access across browsers and JVM restart"
+   :task (shell "bb" "scripts/run_hosted_access_e2e.clj")}
+
   secret-scan
   {:doc "Fail on credential material in tracked project files"
    :task (shell "bb" "scripts/secret_scan.clj")}
@@ -67,10 +71,19 @@
   {:doc "Delete pre-release development sessions while preserving kernel state"
    :task (shell "bb" "scripts/reset_dev_sessions.clj")}
 
+  provider-capacity
+  {:doc "Inspect the configured rolling real-provider start budget"
+   :task (shell "clojure" "-M" "scripts/provider_capacity.clj" "status")}
+
+  reset-provider-capacity
+  {:doc "Reset the configured provider budget while the app is stopped"
+   :task (shell "clojure" "-M" "scripts/provider_capacity.clj" "reset")}
+
   verify
   {:doc "Single local release gate"
    :task (doseq [task ["lint" "format-check" "test" "client-test"
-                       "client-release" "e2e" "docker-smoke" "secret-scan"]]
+                       "client-release" "e2e" "hosted-access-e2e"
+                       "docker-smoke" "secret-scan"]]
            (shell "bb" task))}
 
   eval-live

@@ -95,6 +95,7 @@
          :draft @composer-draft
          :select-session! #(sidebar-event! :select-session %)
          :new-session! #(sidebar-event! :new-session)
+         :all-projects! #(sidebar-event! :all-projects)
          :restore! #(sidebar-event! :restore %)
          :draft-change! change-composer-draft!
          :send! #(sidebar-event! :send)))

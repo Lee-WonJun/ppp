@@ -41,15 +41,20 @@
     :body (json/write-str (json-value body))}))
 
 (defn error-response
-  [status code message request-id]
-  (json-response status
-                 {:error {:code code
-                          :message message
-                          :request-id request-id}}))
+  ([status code message request-id]
+   (error-response status code message request-id {}))
+  ([status code message request-id headers]
+   (json-response status
+                  {:error {:code code
+                           :message message
+                           :request-id request-id}}
+                  headers)))
 
 (defn- request-id
   [request]
   (or (:ppp/request-id request) (random-uuid)))
+
+(declare protected-mutation exception-status safe-exception-message)
 
 (defn- read-json-body
   [request limit]
@@ -171,7 +176,7 @@
   (if-let [session (access/authorized-session config request)]
     (handler (assoc request :ppp/access-session session))
     (error-response 401 :access/required
-                    "Open the shared access link to continue."
+                    "Enter the shared password to continue."
                     (request-id request))))
 
 (defn- require-csrf
@@ -183,38 +188,82 @@
                       "The workspace session could not verify this action. Refresh and try again."
                       (request-id request)))))
 
-(defn- access-handler
-  [config request]
+(defn- login-handler
+  [config limiter request]
   (require-origin
    config request
    (fn [request]
      (try
-       (let [{:keys [code]} (read-json-body request 8192)]
-         (if (access/valid-access-code? config code)
-           (let [token (access/issue-token config)]
-             (json-response 200 {:ok true}
-                            {"set-cookie" (access/cookie-header config token)}))
-           (error-response 401 :access/invalid
-                           "The access link is not valid."
-                           (request-id request))))
+       (let [remote-address (:remote-addr request)
+             {:keys [available? retry-after-seconds]}
+             (access/login-status limiter remote-address)]
+         (if-not available?
+           (error-response
+            429 :access/temporarily-locked
+            "Sign in is temporarily unavailable. Try again shortly."
+            (request-id request)
+            {"retry-after" (str retry-after-seconds)})
+           (let [{:keys [password]} (read-json-body request 8192)]
+             (if (access/valid-access-code? config password)
+               (let [token (access/issue-token config)]
+                 (access/clear-login-failures! limiter remote-address)
+                 (json-response 200 {:ok true}
+                                {"set-cookie" (access/cookie-header config token)}))
+               (do
+                 (access/record-login-failure! limiter remote-address)
+                 (error-response 401 :access/invalid
+                                 "That password did not match."
+                                 (request-id request)))))))
        (catch Exception _
          (error-response 400 :request/invalid-json
-                         "The access request could not be read."
+                         "The sign-in request could not be read."
                          (request-id request)))))))
+
+(defn- access-handler
+  [config request]
+  (if-not (get config :fragment-access-enabled? (:development? config))
+    (error-response 404 :access/fragment-disabled "Not found."
+                    (request-id request))
+    (require-origin
+     config request
+     (fn [request]
+       (try
+         (let [{:keys [code]} (read-json-body request 8192)]
+           (if (access/valid-access-code? config code)
+             (let [token (access/issue-token config)]
+               (json-response 200 {:ok true}
+                              {"set-cookie" (access/cookie-header config token)}))
+             (error-response 401 :access/invalid
+                             "The access link is not valid."
+                             (request-id request))))
+         (catch Exception _
+           (error-response 400 :request/invalid-json
+                           "The access request could not be read."
+                           (request-id request))))))))
+
+(defn- logout-handler
+  [config request]
+  (protected-mutation
+   config request
+   (fn [_]
+     (json-response 200 {:ok true}
+                    {"set-cookie" (access/expired-cookie-header config)}))))
 
 (defn- bootstrap-handler
   [config session-store readiness request]
   (require-access
    config request
    (fn [request]
-     (let [access-session (:ppp/access-session request)]
+     (let [access-session (:ppp/access-session request)
+           readiness-state (when readiness (readiness))]
        (json-response
         200
         {:protocol-version 1
          :workspace-id "local"
          :csrf-token (access/csrf-token config access-session)
          :sessions (store/list-sessions session-store)
-         :readiness (when readiness (readiness))})))))
+         :change-capacity (:change-capacity readiness-state)
+         :readiness readiness-state})))))
 
 (defn- create-session-handler
   [config session-store coordinator request]
@@ -226,10 +275,25 @@
       (fn [request]
         (require-csrf
          config request
-         (fn [_]
-           (json-response 201 (if coordinator
-                                (coordinator/create-session! coordinator)
-                                (store/create-session! session-store))))))))))
+         (fn [request]
+           (try
+             (let [body (read-json-body request 8192)
+                   title (store/normalize-session-title
+                          (get body :title "Untitled product"))]
+               (json-response 201 (if coordinator
+                                    (coordinator/create-session! coordinator
+                                                                 {:title title})
+                                    (store/create-session! session-store
+                                                           {:title title}))))
+             (catch clojure.lang.ExceptionInfo cause
+               (let [code (or (:code (ex-data cause)) :session/create-failed)]
+                 (error-response (exception-status code) code
+                                 (safe-exception-message code)
+                                 (request-id request))))
+             (catch Exception _
+               (error-response 400 :request/invalid-json
+                               "The new project request could not be read."
+                               (request-id request)))))))))))
 
 (defn- get-session-handler
   [config session-store request]
@@ -290,6 +354,8 @@
     (contains? #{:runtime/stale-browser-version
                  :runtime/base-version-conflict} code) 409
     (= :provider/queue-full code) 429
+    (= :provider/capacity-exhausted code) 429
+    (= :access/temporarily-locked code) 429
     (= :auth/temporarily-locked code) 429
     (contains? #{:auth/invalid-credentials :auth/required} code) 401
     (= :auth/identifier-taken code) 409
@@ -297,6 +363,7 @@
                  :provider/unavailable :provider/oauth-not-ready} code) 503
     (contains? #{:turn/prompt-invalid :protocol/tab-id-invalid
                  :protocol/request-id-invalid :session/invalid-id
+                 :session/title-invalid
                  :checkpoint/version-invalid :auth/identifier-invalid
                  :auth/password-invalid} code) 400
     :else 422))
@@ -309,6 +376,12 @@
 
     (= :provider/queue-full code)
     "The product assistant is busy. Try again shortly."
+
+    (= :provider/capacity-exhausted code)
+    "New product changes are temporarily unavailable. Your current product and saved work remain available."
+
+    (= :session/title-invalid code)
+    "Use a project name between 1 and 80 characters."
 
     (= :runtime/requester-not-connected code)
     "The browser live connection is not ready. Reconnect and try again."
@@ -385,10 +458,15 @@
                       :request-id (request-id request)})]
          (json-response 202 result))
        (catch clojure.lang.ExceptionInfo cause
-         (let [code (or (:code (ex-data cause)) :turn/rejected)]
+         (let [data (ex-data cause)
+               code (or (:code data) :turn/rejected)
+               retry-after (:retry-after-seconds data)]
            (error-response (exception-status code) code
                            (safe-exception-message code)
-                           (request-id request))))
+                           (request-id request)
+                           (cond-> {}
+                             (and retry-after (pos? retry-after))
+                             (assoc "retry-after" (str retry-after))))))
        (catch Exception _cause
          (error-response 400 :request/invalid-json
                          "The turn request could not be read."
@@ -565,9 +643,12 @@
            resource-fn]}]
   (let [resource-fn (or resource-fn io/resource)
         ingress-limiter (atom {})
+        login-limiter (access/create-login-limiter config)
         router
         (ring/router
-         [["/api/access" {:post #(access-handler config %)}]
+         [["/api/login" {:post #(login-handler config login-limiter %)}]
+          ["/api/access" {:post #(access-handler config %)}]
+          ["/api/logout" {:post #(logout-handler config %)}]
           ["/api/bootstrap"
            {:get #(bootstrap-handler config session-store readiness %)}]
           ["/api/sessions"

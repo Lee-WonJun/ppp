@@ -1,6 +1,7 @@
 (ns ppp.coordinator
   (:require [clojure.string :as str]
             [ppp.provider.core :as provider]
+            [ppp.provider.budget :as provider-budget]
             [ppp.provider.queue :as provider-queue]
             [ppp.outbound.service :as outbound]
             [ppp.runtime.server :as server]
@@ -16,7 +17,7 @@
 ;; Every edge before activation either leaves current untouched or restores the
 ;; before-current backup. The request tab's exact ACK is the only browser vote.
 
-(defrecord Coordinator [config store provider provider-queue registry product-auth
+(defrecord Coordinator [config store provider provider-budget provider-queue registry product-auth
                         resource-service outbound hub jobs])
 
 (defn- parse-protocol-uuid
@@ -51,6 +52,9 @@
 
            (= :provider/queue-full code)
            "The product assistant is busy. Try again after the queued change finishes."
+
+           (= :provider/capacity-exhausted code)
+           "New product changes are temporarily unavailable. Your current product and saved work remain available."
 
            (contains? #{:runtime/requester-not-connected
                         :runtime/requester-disconnected
@@ -159,10 +163,12 @@
   coordinator)
 
 (defn create-coordinator
-  [{:keys [config store provider provider-queue registry product-auth
+  [{:keys [config store provider provider-budget provider-queue registry product-auth
            resource-service outbound hub]}]
-  (->Coordinator config store provider provider-queue registry product-auth
-                 resource-service outbound hub (atom {})))
+  (let [provider-budget (or provider-budget
+                            (provider-budget/create-budget config))]
+    (->Coordinator config store provider provider-budget provider-queue registry product-auth
+                   resource-service outbound hub (atom {}))))
 
 (defn create-session!
   ([coordinator]
@@ -617,9 +623,11 @@
                feedback nil]
           (progress! coordinator request :generating)
           (let [generation
-                (provider/generate!
-                 (:provider coordinator)
-                 (generation-request coordinator request session thread-id feedback))
+                (do
+                  (provider-budget/acquire! (:provider-budget coordinator))
+                  (provider/generate!
+                   (:provider coordinator)
+                   (generation-request coordinator request session thread-id feedback)))
                 result (:result generation)]
             (reset! generated? true)
             (reset! generated-result result)
@@ -693,6 +701,7 @@
                       {:code :runtime/stale-browser-version
                        :active-version active-version
                        :base-version base-version})))
+    (provider-budget/ensure-available! (:provider-budget coordinator))
     ;; Reject before a provider job is accepted when the request tab has
     ;; already moved to another session. Otherwise the job could safely fail
     ;; staging but its failure event would have no subscribed tab to receive it.
@@ -853,11 +862,13 @@
 (defn readiness
   [^Coordinator coordinator]
   (let [provider-state (provider/ready? (:provider coordinator))
+        capacity-state (provider-budget/public-status (:provider-budget coordinator))
         outbound-state (outbound/readiness (:outbound coordinator))]
     {:ready? (boolean (and (:ready? provider-state)
                            (:ready? outbound-state)))
      :storage true
      :provider provider-state
+     :change-capacity capacity-state
      :outbound outbound-state
      :sessions (count (store/list-sessions (:store coordinator)))
      :runtime-registry (count @(:active (:registry coordinator)))

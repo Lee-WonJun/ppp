@@ -3,13 +3,15 @@
             [ppp.eval.evolution :as evolution]))
 
 (defn- observation
-  [scenario before]
-  {:scenario scenario
-   :before-version before
-   :after-version (inc before)
-   :duration-ms 42
-   :browser-outcome true
-   :client-stage-valid true})
+  ([scenario before]
+   (observation scenario before (inc before)))
+  ([scenario before after]
+   {:scenario scenario
+    :before-version before
+    :after-version after
+    :duration-ms 42
+    :browser-outcome true
+    :client-stage-valid true}))
 
 (defn- client-event
   [version thread-id]
@@ -54,13 +56,15 @@
 (defn- passing-input
   []
   (let [thread-id "11111111-1111-4111-8111-111111111111"
-        observations {:records (mapv observation evolution/scenario-order (range 6))}
+        observations {:records (mapv observation evolution/scenario-order (range 8))}
         events [(client-event 1 thread-id)
                 (client-event 2 thread-id)
                 (client-event 3 thread-id)
                 (server-event 4 thread-id true)
                 (server-event 5 thread-id false)
-                (client-event 6 thread-id)]]
+                (client-event 6 thread-id)
+                (server-event 7 thread-id true)
+                (server-event 8 thread-id false)]]
     {:model "test-model"
      :observations observations
      :events events
@@ -69,12 +73,34 @@
 (deftest evolution-report-requires-the-complete-realistic-sequence
   (let [report (evolution/build-report (passing-input))]
     (is (evolution/report-passes? report))
-    (is (= 6 (:record-count report)))
+    (is (= 8 (:record-count report)))
     (is (= :passed (:thread-continuity report)))
-    (is (= 6 (:passed report)))
+    (is (= 8 (:passed report)))
     (is (every? :passed? (:records report)))
     (is (not-any? #(contains? (first (:records report)) %)
                   [:prompt :assistant :source :changes :provider-thread-id]))))
+
+(deftest evolution-report-folds-bounded-semantic-repair-into-one-scenario
+  (let [input (passing-input)
+        thread-id (get-in input [:events 7 :provider-thread-id])
+        server-repair
+        (update-in (server-event 10 thread-id false) [:changes :writes]
+                   (fn [writes]
+                     (filterv #(not= "test/runtime/domain_test.cljc" (:path %))
+                              writes)))
+        repaired (-> input
+                     (assoc-in [:observations :records 7]
+                               (observation "EVOLVE-08" 7 10))
+                     (update :events into [(client-event 9 thread-id)
+                                           server-repair]))
+        report (evolution/build-report repaired)
+        record (get-in report [:records 7])]
+    (is (evolution/report-passes? report))
+    (is (= :passed (:event-coverage report)))
+    (is (= 2 (:repair-event-count record)))
+    (is (= 5 (:generation-attempts record)))
+    (is (= 10 (:runtime-after record)))
+    (is (every? true? (vals (:gates record))))))
 
 (deftest evolution-report-fails-closed-on-surface-or-thread-drift
   (let [input (passing-input)]
@@ -103,5 +129,5 @@
                        (update :events pop))
             report (evolution/build-report broken)]
         (is (not (evolution/report-passes? report)))
-        (is (= 5 (:record-count report)))
+        (is (= 7 (:record-count report)))
         (is (= 1 (:failed report)))))))

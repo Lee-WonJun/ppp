@@ -78,5 +78,5 @@
    :task (shell "bb" "scripts/run_live_eval.clj")}
 
   eval-evolution
-  {:doc "Evolve one real product through six OAuth Codex turns"
+  {:doc "Evolve one real product through eight OAuth Codex turns"
    :task (shell "bb" "scripts/run_evolution_eval.clj")}}}

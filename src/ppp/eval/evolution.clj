@@ -9,7 +9,8 @@
 
 (def scenario-order
   ["EVOLVE-01" "EVOLVE-02" "EVOLVE-03"
-   "EVOLVE-04" "EVOLVE-05" "EVOLVE-06"])
+   "EVOLVE-04" "EVOLVE-05" "EVOLVE-06"
+   "EVOLVE-07" "EVOLVE-08"])
 
 (def expected-impact
   {"EVOLVE-01" :client-only
@@ -17,7 +18,9 @@
    "EVOLVE-03" :client-only
    "EVOLVE-04" :server-data
    "EVOLVE-05" :server-data
-   "EVOLVE-06" :client-only})
+   "EVOLVE-06" :client-only
+   "EVOLVE-07" :server-data
+   "EVOLVE-08" :server-data})
 
 (defn- history-root
   [^Path data-root session-id]
@@ -77,53 +80,105 @@
   [{:keys [server test other]}]
   (and (pos? server) (pos? test) (zero? other)))
 
+(defn- valid-surfaces-for-impact?
+  [impact surfaces]
+  (case impact
+    :client-only (client-only-surfaces? surfaces)
+    :server-data (server-data-surfaces? surfaces)
+    false))
+
+(defn- valid-repair-surfaces-for-impact?
+  [impact {:keys [server other] :as surfaces}]
+  (case impact
+    :client-only (client-only-surfaces? surfaces)
+    ;; The scenario's first server-data event must introduce or update its
+    ;; rollback-only domain tests. A later semantic repair may rely on those
+    ;; same tests, but it must still be an actual server change and may never
+    ;; escape into an unclassified surface.
+    :server-data (and (pos? server) (zero? other))
+    false))
+
+(defn- valid-stage-for-impact?
+  [event]
+  (let [impact (:runtime-impact event)
+        validation (:validation event)]
+    (and (= :passed (:source validation))
+         (= :passed (:client validation))
+         (= impact (:impact validation))
+         (case impact
+           :client-only (and (= :not-applicable (:server validation))
+                             (= :not-applicable (:domain-tests validation)))
+           :server-data (and (= :passed (:server validation))
+                             (= :passed (:domain-tests validation)))
+           false))))
+
+(defn- add-surfaces
+  [left right]
+  (merge-with + left right))
+
 (defn evaluate-record
-  [observation event]
+  [observation events]
   (let [scenario (:scenario observation)
         expected (get expected-impact scenario)
-        surfaces (change-surfaces (:changes event))
-        validation (:validation event)
-        impact-valid? (= expected (:runtime-impact event)
-                         (:impact validation))
+        events (vec events)
+        initial-event (first events)
+        event-surfaces (mapv #(change-surfaces (:changes %)) events)
+        surfaces (reduce add-surfaces
+                         {:client 0 :style 0 :server 0 :shared 0
+                          :test 0 :other 0 :migrations 0}
+                         event-surfaces)
+        impact-valid? (and (= expected (:runtime-impact initial-event))
+                           (every? #(= (:runtime-impact %)
+                                       (get-in % [:validation :impact]))
+                                   events))
         surface-valid?
-        (case expected
-          :client-only (client-only-surfaces? surfaces)
-          :server-data (server-data-surfaces? surfaces)
-          false)
-        server-stage
-        (case expected
-          :client-only (and (= :not-applicable (:server validation))
-                            (= :not-applicable (:domain-tests validation)))
-          :server-data (and (= :passed (:server validation))
-                            (= :passed (:domain-tests validation)))
-          false)
+        (and (seq events)
+             (valid-surfaces-for-impact? (:runtime-impact initial-event)
+                                         (first event-surfaces))
+             (every? true?
+                     (map valid-repair-surfaces-for-impact?
+                          (map :runtime-impact (rest events))
+                          (rest event-surfaces))))
+        server-stage (and (seq events)
+                          (every? valid-stage-for-impact? events))
         migration-valid?
         (case scenario
           "EVOLVE-04" (pos? (:migrations surfaces))
           "EVOLVE-05" (zero? (:migrations surfaces))
+          "EVOLVE-07" (pos? (:migrations surfaces))
+          "EVOLVE-08" (zero? (:migrations surfaces))
           true)
-        attempts (:generation-attempts event)
-        gates {:kind (= :change (:kind event))
-               :version (and (= (inc (:before-version observation))
-                                (:after-version observation))
-                             (= (:after-version observation)
-                                (:runtime-version event)))
+        attempts (mapv :generation-attempts events)
+        expected-versions (vec (range (inc (:before-version observation))
+                                      (inc (:after-version observation))))
+        event-versions (mapv :runtime-version events)
+        gates {:kind (and (seq events) (every? #(= :change (:kind %)) events))
+               :version (and (= expected-versions event-versions)
+                             (= (count events)
+                                (- (:after-version observation)
+                                   (:before-version observation))))
                :browser (and (true? (:browser-outcome observation))
                              (true? (:client-stage-valid observation)))
-               :source (= :passed (:source validation))
-               :client-stage (= :passed (:client validation))
+               :source (and (seq events)
+                            (every? #(= :passed (get-in % [:validation :source]))
+                                    events))
+               :client-stage (and (seq events)
+                                  (every? #(= :passed (get-in % [:validation :client]))
+                                          events))
                :impact impact-valid?
                :surfaces surface-valid?
                :server-stage server-stage
                :migration-policy migration-valid?
-               :attempts (and (integer? attempts) (<= 1 attempts 3))}
+               :attempts (and (seq attempts)
+                              (every? #(and (integer? %) (<= 1 % 3)) attempts))}
         passed? (every? true? (vals gates))]
     {:scenario scenario
      :runtime-before (:before-version observation)
      :runtime-after (:after-version observation)
      :duration-ms (:duration-ms observation)
-     :runtime-impact (:runtime-impact event)
-     :generation-attempts attempts
+     :runtime-impact expected
+     :generation-attempts (reduce + 0 attempts)
+     :repair-event-count (max 0 (dec (count events)))
      :changed-surface-counts surfaces
      :gates gates
      :passed? passed?}))
@@ -142,16 +197,33 @@
 
 (defn build-report
   [{:keys [model observations events database]}]
-  (let [records (mapv evaluate-record (:records observations) events)
+  (let [observations-records (:records observations)
+        runtime-events (->> events
+                            (filter #(and (= :change (:kind %))
+                                          (integer? (:runtime-version %))))
+                            (sort-by :runtime-version)
+                            vec)
+        event-groups
+        (mapv (fn [{:keys [before-version after-version]}]
+                (->> runtime-events
+                     (filter #(< before-version (:runtime-version %) (inc after-version)))
+                     vec))
+              observations-records)
+        records (mapv evaluate-record observations-records event-groups)
+        selected-events (vec (mapcat identity event-groups))
         missing-records (max 0 (- (count scenario-order) (count records)))
         failed-records (count (remove :passed? records))
-        thread-ids (mapv :provider-thread-id events)
-        thread-continuity? (and (= (count scenario-order) (count thread-ids))
+        thread-ids (mapv :provider-thread-id selected-events)
+        event-coverage? (= (mapv :runtime-version runtime-events)
+                           (mapv :runtime-version selected-events))
+        thread-continuity? (and (= (count scenario-order) (count records))
+                                (every? seq event-groups)
                                 (every? string? thread-ids)
                                 (= 1 (count (distinct thread-ids))))
         ordered? (= scenario-order (mapv :scenario records))
         passed? (and ordered?
                      thread-continuity?
+                     event-coverage?
                      (= (count scenario-order) (count records))
                      (every? :passed? records)
                      (pos? (:user-table-count database)))]
@@ -165,6 +237,7 @@
      :passed (count (filter :passed? records))
      :failed (+ failed-records missing-records)
      :thread-continuity (if thread-continuity? :passed :failed)
+     :event-coverage (if event-coverage? :passed :failed)
      :scenario-order (if ordered? :passed :failed)
      :database database
      :records records

@@ -13,14 +13,29 @@
 (def keep-data? (contains? #{"1" "true" "yes"}
                            (some-> (System/getenv "PPP_EVOLUTION_KEEP_DATA")
                                    str/lower-case)))
+(def resume-data-root (some-> (System/getenv "PPP_EVOLUTION_RESUME_DATA_ROOT")
+                              str/trim
+                              not-empty))
+(def resume-output-root (some-> (System/getenv "PPP_EVOLUTION_RESUME_OUTPUT_ROOT")
+                                str/trim
+                                not-empty))
+(def resume? (and resume-data-root resume-output-root))
+(when (not= (boolean resume-data-root) (boolean resume-output-root))
+  (throw (ex-info
+          "Evolution resume requires both data and output roots"
+          {:code :evolution-eval/resume-arguments-invalid})))
 (def data-root
-  (str (fs/absolutize (str "target/evolution-eval-data-" (random-uuid)))))
+  (str (fs/absolutize
+        (or resume-data-root
+            (str "target/evolution-eval-data-" (random-uuid))))))
 (def timestamp
   (-> (DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss")
       (.withZone java.time.ZoneOffset/UTC)
       (.format (Instant/now))))
 (def output-root
-  (str (fs/absolutize (str "artifacts/evolution-eval/" timestamp))))
+  (str (fs/absolutize
+        (or resume-output-root
+            (str "artifacts/evolution-eval/" timestamp)))))
 (def observations-path (str (fs/path output-root "observations.json")))
 (def project-root (fs/absolutize "."))
 (def work-root (fs/create-temp-dir {:prefix "ppp-evolution-eval-work-"}))
@@ -110,11 +125,17 @@
   work-root)
 
 (fs/create-dirs output-root)
+(when (and resume?
+           (or (not (fs/directory? data-root))
+               (not (fs/regular-file? observations-path))))
+  (throw (ex-info "Evolution resume state is incomplete"
+                  {:code :evolution-eval/resume-state-missing})))
 (println (pr-str {:evolution-eval :starting
                   :output output-root
-                  :scenarios 6
+                  :scenarios 8
                   :sessions 1
-                  :provider :codex}))
+                  :provider :codex
+                  :resume-existing (boolean resume?)}))
 
 (prepare-work-root!)
 
@@ -140,9 +161,10 @@
               "evolution.spec.mjs"
               "--reporter=line"]
              {:dir (str work-root)
-              :extra-env {"PPP_LIVE_BASE_URL" base-url
-                          "PPP_EVOLUTION_ACCESS_CODE" access-code
-                          "PPP_EVOLUTION_OBSERVATIONS" observations-path}})]
+              :extra-env (cond-> {"PPP_LIVE_BASE_URL" base-url
+                                  "PPP_EVOLUTION_ACCESS_CODE" access-code
+                                  "PPP_EVOLUTION_OBSERVATIONS" observations-path}
+                           resume? (assoc "PPP_EVOLUTION_RESUME_FINAL" "1"))})]
         (reset! browser-exit (:exit result)))
       (finally
         (process/destroy-tree server)))
@@ -158,9 +180,19 @@
     (finally
       (when (process/alive? server)
         (process/destroy-tree server))
-      (if keep-data?
-        (println (pr-str {:evolution-eval :kept-debug-data :path data-root}))
-        (fs/delete-tree data-root))
-      (fs/delete-tree work-root)))
+      (let [failed? (not (and (zero? @browser-exit)
+                              (zero? @report-exit)))
+            retain? (or keep-data? failed?)]
+        (if retain?
+          (do
+            (println (pr-str {:evolution-eval :kept-debug-data
+                              :reason (if failed? :failure :requested)
+                              :path data-root}))
+            (println (pr-str {:evolution-eval :kept-debug-work
+                              :reason (if failed? :failure :requested)
+                              :path (str work-root)})))
+          (do
+            (fs/delete-tree data-root)
+            (fs/delete-tree work-root))))))
   (when-not (and (zero? @browser-exit) (zero? @report-exit))
     (System/exit 1)))

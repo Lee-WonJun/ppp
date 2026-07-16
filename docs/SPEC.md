@@ -528,7 +528,10 @@ Stage algorithm:
 6. Require exactly one registered page entrypoint and one sidebar entrypoint.
 7. Attach staged CSS inside the hidden frame document.
 8. Render page and sidebar with representative host context.
-9. Wait for a browser paint and capture synchronous render errors.
+9. Require an immutable shell sentinel to report the React DOM commit that
+   contains both generated surfaces, then allow queued React error callbacks to
+   settle before success. Hidden or background-frame `requestAnimationFrame`
+   scheduling is never a staging-completion dependency.
 10. Send `runtime/staged` or `runtime/rejected` with a bounded failure chain.
 11. Keep the active frame untouched until `runtime/activate` arrives.
 12. On activation, reveal the exact staged frame, remount generated children in the active phase, hand off serializable state, and destroy the previous frame.
@@ -536,6 +539,18 @@ Stage algorithm:
 The host may retain structured-clone-safe page state when keys remain compatible. Generated code may keep arbitrary frame-local objects, but those objects are intentionally discarded with the frame.
 
 The server's request-tab ACK timeout is 45 seconds so it exceeds the 30-second frame-load plus 10-second render deadlines. A load timeout and a render timeout use different stable codes and different user messages.
+
+The commit sentinel belongs to the fixed frame shell, not generated source. It
+may signal only while the exact staged version is unsettled. Source evaluation,
+registration, or attachment of the iframe alone is insufficient evidence of a
+successful render. A generated render or ref failure wins over a queued success
+signal and rejects the stage.
+
+The fixed frame also schedules one coalesced microtask flush when approved page
+state or a host-bridge sidebar/state message changes. Reagent may still use
+animation scheduling as an optimization, but correctness of generated state,
+handle-driven sidebar changes, and initial staging must not depend on an
+animation callback running in the opaque frame.
 
 ## 13. Server staging and actions
 

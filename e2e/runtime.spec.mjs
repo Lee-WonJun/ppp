@@ -120,6 +120,92 @@ async function stageAndActivate(page, version, source) {
   }
 }
 
+async function suppressSandboxAnimationFrames(page, delayFrameBundle = false) {
+  let intercepted = 0;
+  await page.route("**/frame-js/frame.js*", async route => {
+    intercepted += 1;
+    if (delayFrameBundle) {
+      await new Promise(resolve => setTimeout(resolve, 6_500));
+    }
+    const response = await route.fetch();
+    const headers = { ...response.headers() };
+    delete headers["content-length"];
+    delete headers["content-encoding"];
+    const body = await response.text();
+    await route.fulfill({
+      status: response.status(),
+      headers,
+      contentType: "application/javascript",
+      body: `self.requestAnimationFrame = function PPP_SUPPRESSED_RAF() { return 0; };\n${body}`
+    });
+  });
+  return () => intercepted;
+}
+
+async function verifyAnimationIndependentColdSession(page, delayFrameBundle) {
+  const intercepted = await suppressSandboxAnimationFrames(page, delayFrameBundle);
+
+  await page.goto("/?test-runtime=1#access=ppp-local");
+  const frame = await openConversation(page);
+  await expect.poll(
+    () => page.evaluate(() => {
+      const snapshot = window.__PPP_TEST__?.snapshot();
+      return Number.isInteger(snapshot?.version)
+        && snapshot.version === snapshot["saved-version"];
+    })
+  ).toBe(true);
+  expect((await page.evaluate(
+    () => window.__PPP_TEST__.snapshot()
+  ))["debug-error"]).toBeNull();
+
+  await createFreshSession(page, frame);
+  await expect.poll(
+    () => page.evaluate(() => window.__PPP_TEST__?.snapshot().version)
+  ).toBe(0);
+  await expect(frame.getByRole("complementary", {
+    name: "Product conversation"
+  })).toBeVisible();
+
+  const animationFrameImplementation = await frame.locator("body").evaluate(
+    () => String(requestAnimationFrame)
+  );
+  expect(animationFrameImplementation).toContain("PPP_SUPPRESSED_RAF");
+
+  // Remain on the exact fresh-session product beyond the former host deadline.
+  await page.waitForTimeout(10_500);
+  const snapshot = await page.evaluate(() => window.__PPP_TEST__.snapshot());
+  expect(snapshot.version).toBe(0);
+  expect(snapshot["saved-version"]).toBe(0);
+  expect(snapshot["debug-error"]).toBeNull();
+  await expect(page.locator("iframe[data-ppp-runtime-frame]")).toHaveCount(1);
+  expect(intercepted()).toBeGreaterThanOrEqual(2);
+
+  await page.getByRole("button", {
+    name: "Close product conversation"
+  }).click();
+  await expect(frame.getByRole("complementary", {
+    name: "Product conversation"
+  })).toHaveCount(0);
+  await page.getByRole("button", {
+    name: "Open product conversation"
+  }).click();
+  await expect(frame.getByRole("complementary", {
+    name: "Product conversation"
+  })).toBeVisible();
+}
+
+for (const scenario of [
+  { name: "fresh context one", delayFrameBundle: false },
+  { name: "fresh context two", delayFrameBundle: false },
+  { name: "delayed cold frame", delayFrameBundle: true }
+]) {
+  test(`a hidden product commits without animation frames — ${scenario.name}`,
+    async ({ page }) => {
+      test.setTimeout(45_000);
+      await verifyAnimationIndependentColdSession(page, scenario.delayFrameBundle);
+    });
+}
+
 test("a cold new session waits for the product frame to finish loading", async ({ page }) => {
   test.setTimeout(45_000);
   let delayedFrameBundles = 0;

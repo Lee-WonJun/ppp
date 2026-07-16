@@ -15,6 +15,7 @@
 (defonce pending-actions (atom {}))
 (defonce state-watch-key (keyword (str "frame-state-" (random-uuid))))
 (defonce stage-state (atom {:settled? true :phase :idle}))
+(defonce render-flush-queued? (atom false))
 
 (defn- channel
   []
@@ -70,6 +71,33 @@
       (composer/handle-key-down!
        event busy? draft #(sidebar-event! :send)))))
 
+(defn- settle-stage!
+  [outcome payload]
+  (when-not (:settled? @stage-state)
+    (swap! stage-state assoc :settled? true)
+    (post! outcome payload)))
+
+(defn- stage-commit-ref!
+  [version node]
+  (let [{:keys [phase settled? commit-queued?]} @stage-state]
+    (when (and node
+               (= :staging phase)
+               (not settled?)
+               (not commit-queued?)
+               (= version (:version @stage-state)))
+      (swap! stage-state assoc :commit-queued? true)
+      ;; React calls this fixed-shell ref only after the generated page and
+      ;; sidebar share one DOM commit. A microtask lets synchronous React error
+      ;; callbacks reject first, without relying on animation scheduling that
+      ;; hidden/background frames are allowed to suppress.
+      (js/queueMicrotask
+       (fn []
+         (let [state @stage-state]
+           (when (and (= :staging (:phase state))
+                      (not (:settled? state))
+                      (= version (:version state)))
+             (settle-stage! :frame/staged {:version version}))))))))
+
 (defn- frame-shell
   []
   (let [epoch @render-epoch]
@@ -82,13 +110,11 @@
          [:div.ppp-frame-sidebar {:data-ppp-surface "sidebar"
                                   :on-key-down handle-sidebar-key-down!}
           (with-meta [(:sidebar client-runtime) (sidebar-props)]
-            {:key (str "sidebar-" epoch)})])])))
-
-(defn- settle-stage!
-  [outcome payload]
-  (when-not (:settled? @stage-state)
-    (swap! stage-state assoc :settled? true)
-    (post! outcome payload)))
+            {:key (str "sidebar-" epoch)})])
+       [:span {:data-ppp-stage-commit (:version client-runtime)
+               :aria-hidden true
+               :hidden true
+               :ref #(stage-commit-ref! (:version client-runtime) %)}]])))
 
 (defn- runtime-failed!
   [error]
@@ -103,11 +129,17 @@
       (settle-stage! :frame/rejected payload)
       (post! :frame/runtime-error payload))))
 
-(defn- next-paint!
-  [callback]
-  (js/requestAnimationFrame
-   (fn []
-     (js/requestAnimationFrame callback))))
+(defn- schedule-render-flush!
+  []
+  (when (compare-and-set! render-flush-queued? false true)
+    (js/queueMicrotask
+     (fn []
+       (reset! render-flush-queued? false)
+       (try
+         (r/flush)
+         (catch :default error
+           (runtime-failed! error))))))
+  nil)
 
 (defn- action!
   [action-id payload]
@@ -133,7 +165,8 @@
   [client-runtime]
   (add-watch (:state client-runtime) state-watch-key
              (fn [_ _ _ next-state]
-               (publish-state! next-state))))
+               (publish-state! next-state)
+               (schedule-render-flush!))))
 
 (defn- remove-runtime-watch!
   []
@@ -168,12 +201,16 @@
         (set! (.-textContent style)
               (str/replace (:css client-runtime) ":host" ":root")))
       (watch-runtime-state! client-runtime)
-      (reset! stage-state {:settled? false :phase :staging :version version})
-      (r/flush)
-      (next-paint!
-       #(settle-stage! :frame/staged {:version version})))
+      (reset! stage-state {:settled? false
+                           :phase :staging
+                           :version version
+                           :commit-queued? false})
+      (r/flush))
     (catch :default error
-      (reset! stage-state {:settled? false :phase :staging :version version})
+      (reset! stage-state {:settled? false
+                           :phase :staging
+                           :version version
+                           :commit-queued? false})
       (runtime-failed! error))))
 
 (defn- activate!
@@ -210,13 +247,20 @@
             (case type
               :host/stage (stage! payload)
               :host/activate (activate! payload)
-              :host/sidebar-model (reset! sidebar-model (:model payload))
-              :host/sidebar-open (reset! sidebar-open? (boolean (:open? payload)))
+              :host/sidebar-model
+              (do
+                (reset! sidebar-model (:model payload))
+                (schedule-render-flush!))
+              :host/sidebar-open
+              (do
+                (reset! sidebar-open? (boolean (:open? payload)))
+                (schedule-render-flush!))
               :host/action-result (action-result! payload true)
               :host/action-error (action-result! payload false)
               :host/set-state
               (when-let [client-runtime @displayed-runtime]
-                (reset! (:state client-runtime) (:state payload)))
+                (reset! (:state client-runtime) (:state payload))
+                (schedule-render-flush!))
               :host/dispose
               (do
                 (remove-runtime-watch!)

@@ -29,6 +29,7 @@
            :checkpoints []
            :progress nil
            :draft ""
+           :draft-revision 0
            :message nil
            :runtime-error nil}))
 
@@ -133,6 +134,29 @@
   (or (frame/active-version)
       (:saved-runtime-version @app-state)))
 
+(defn- with-draft
+  [state value]
+  (assoc state
+         :draft (str value)
+         :draft-revision (inc (or (:draft-revision state) 0))))
+
+(defn- set-draft!
+  [value]
+  (swap! app-state with-draft value))
+
+(defn- accept-frame-draft!
+  [value]
+  (when (map? value)
+    (let [{:keys [draft revision]} value]
+      (when (and (string? draft)
+                 (number? revision)
+                 (not (neg? revision)))
+        (swap! app-state
+               (fn [state]
+                 (if (> revision (or (:draft-revision state) 0))
+                   (assoc state :draft draft :draft-revision revision)
+                   state)))))))
+
 (defn- submit-draft!
   []
   (let [draft (str/trim (:draft @app-state))
@@ -140,7 +164,9 @@
         version (current-base-version)]
     (when-not (str/blank? draft)
       (append-message! :user draft)
-      (swap! app-state assoc :draft "" :progress "Generating")
+      (swap! app-state #(-> %
+                            (with-draft "")
+                            (assoc :progress "Generating")))
       (if (and session-id (some? version) (transport/connected?))
         (-> (fetch-json!
              (str "/api/sessions/" (js/encodeURIComponent session-id) "/turns")
@@ -196,12 +222,14 @@
 
 (defn- frame-sidebar-model
   []
-  (let [{:keys [sessions session-id messages checkpoints draft progress]} @app-state]
+  (let [{:keys [sessions session-id messages checkpoints draft draft-revision
+                progress]} @app-state]
     {:sessions sessions
      :session-id session-id
      :messages messages
      :checkpoints checkpoints
      :draft draft
+     :draft-revision draft-revision
      :busy? (some? progress)
      :progress progress}))
 
@@ -211,7 +239,7 @@
     :select-session (select-session! value)
     :new-session (create-session!)
     :restore (restore-checkpoint! value)
-    :draft-change (swap! app-state assoc :draft (str value))
+    :draft-change (accept-frame-draft! value)
     :send (submit-draft!)
     nil))
 
@@ -273,7 +301,7 @@
                   :disabled (some? progress)
                   :on-key-down #(composer/handle-key-down!
                                  % (some? progress) draft submit-draft!)
-                  :on-change #(swap! app-state assoc :draft (selected-value %))}]
+                  :on-change #(set-draft! (selected-value %))}]
       [:button {:type "submit"
                 :disabled (or (some? progress) (str/blank? draft))}
        (if progress "Working" "Send")]]]))
@@ -783,7 +811,7 @@
                             (merge @(frame/active-page-state)
                                    (js->clj value :keywordize-keys true))))
                :submitPrompt (fn [value]
-                               (swap! app-state assoc :draft (str value))
+                               (set-draft! value)
                                (submit-draft!))
                :snapshot (fn []
                            (clj->js

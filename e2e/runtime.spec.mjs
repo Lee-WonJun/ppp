@@ -194,6 +194,87 @@ async function verifyAnimationIndependentColdSession(page, delayFrameBundle) {
   })).toBeVisible();
 }
 
+const koreanImeCandidates = [
+  "ㄱ", "가", "간", "간ㄷ", "간다", "간단", "간단ㅎ", "간단하", "간단한"
+];
+
+async function verifyKoreanImeComposer(page, delayFreshFrame) {
+  let frameBundleRequests = 0;
+  const turnRequests = [];
+
+  await page.route("**/frame-js/frame.js*", async route => {
+    frameBundleRequests += 1;
+    if (delayFreshFrame && frameBundleRequests === 2) {
+      await new Promise(resolve => setTimeout(resolve, 6_500));
+    }
+    await route.continue();
+  });
+  await page.route("**/api/sessions/*/turns", async route => {
+    turnRequests.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 202,
+      contentType: "application/json",
+      body: JSON.stringify({ jobId: "ime-job", requestId: "ime-request" })
+    });
+  });
+
+  await page.goto("/?test-runtime=1#access=ppp-local");
+  const frame = await openConversation(page);
+  await createFreshSession(page, frame);
+  await expect.poll(
+    () => page.evaluate(() => window.__PPP_TEST__?.snapshot().version)
+  ).toBe(0);
+
+  const composer = productFrame(page).getByRole("textbox", { name: "Message" });
+  await composer.focus();
+  const cdp = await page.context().newCDPSession(page);
+
+  for (const candidate of koreanImeCandidates) {
+    await cdp.send("Input.imeSetComposition", {
+      text: candidate,
+      selectionStart: candidate.length,
+      selectionEnd: candidate.length
+    });
+    // Let the frame -> parent -> frame echo complete before checking the next
+    // candidate. Before PPP-018, that echo rewrote the live value with an
+    // older candidate and caused the IME to start a new composition.
+    await page.waitForTimeout(80);
+    expect(await composer.inputValue()).toBe(candidate);
+    await expect(composer).toBeFocused();
+  }
+
+  const confirmationPrevented = await composer.evaluate(node => {
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      code: "Enter",
+      keyCode: 229,
+      isComposing: true,
+      bubbles: true,
+      cancelable: true
+    });
+    node.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(confirmationPrevented).toBe(false);
+  expect(turnRequests).toHaveLength(0);
+
+  await cdp.send("Input.insertText", { text: "간단한" });
+  await page.waitForTimeout(80);
+  expect(await composer.inputValue()).toBe("간단한");
+  await expect(composer).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await expect.poll(() => turnRequests.length).toBe(1);
+  expect(turnRequests[0].prompt).toBe("간단한");
+  await expect(composer).toHaveValue("");
+
+  await page.keyboard.press("Enter");
+  expect(turnRequests).toHaveLength(1);
+  if (delayFreshFrame) {
+    expect(frameBundleRequests).toBeGreaterThanOrEqual(2);
+  }
+}
+
 for (const scenario of [
   { name: "fresh context one", delayFrameBundle: false },
   { name: "fresh context two", delayFrameBundle: false },
@@ -203,6 +284,18 @@ for (const scenario of [
     async ({ page }) => {
       test.setTimeout(45_000);
       await verifyAnimationIndependentColdSession(page, scenario.delayFrameBundle);
+    });
+}
+
+for (const scenario of [
+  { name: "fresh context one", delayFreshFrame: false },
+  { name: "fresh context two", delayFreshFrame: false },
+  { name: "delayed fresh frame", delayFreshFrame: true }
+]) {
+  test(`Korean IME composition remains intact — ${scenario.name}`,
+    async ({ page }) => {
+      test.setTimeout(45_000);
+      await verifyKoreanImeComposer(page, scenario.delayFreshFrame);
     });
 }
 

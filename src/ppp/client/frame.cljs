@@ -10,12 +10,16 @@
 (defonce displayed-runtime (r/atom nil))
 (defonce render-epoch (r/atom 0))
 (defonce sidebar-model (r/atom {}))
+(defonce composer-draft (r/atom ""))
+(defonce composer-draft-revision (atom 0))
 (defonce sidebar-open? (r/atom false))
 (defonce canvas-context (r/atom {}))
 (defonce pending-actions (atom {}))
 (defonce state-watch-key (keyword (str "frame-state-" (random-uuid))))
 (defonce stage-state (atom {:settled? true :phase :idle}))
 (defonce render-flush-queued? (atom false))
+
+(declare schedule-render-flush!)
 
 (defn- channel
   []
@@ -55,21 +59,52 @@
   ([event value]
    (post! :frame/sidebar-event {:event event :value value})))
 
+(defn- model-draft-revision
+  [model]
+  (let [revision (:draft-revision model)]
+    (if (number? revision) revision 0)))
+
+(defn- reset-composer-draft!
+  [model]
+  (reset! composer-draft (str (or (:draft model) "")))
+  (reset! composer-draft-revision (model-draft-revision model)))
+
+(defn- sync-sidebar-model!
+  [model]
+  (let [model (or model {})
+        revision (model-draft-revision model)]
+    (reset! sidebar-model model)
+    ;; Draft input is immediate frame-local state. The parent retains a copy
+    ;; for submission and recovery, but an older echo must never rewrite an
+    ;; active IME candidate and terminate the browser's composition session.
+    (when (>= revision @composer-draft-revision)
+      (reset! composer-draft-revision revision)
+      (reset! composer-draft (str (or (:draft model) ""))))))
+
+(defn- change-composer-draft!
+  [value]
+  (let [draft (str value)
+        revision (swap! composer-draft-revision inc)]
+    (reset! composer-draft draft)
+    (sidebar-event! :draft-change {:draft draft :revision revision})
+    (schedule-render-flush!)))
+
 (defn- sidebar-props
   []
   (assoc @sidebar-model
+         :draft @composer-draft
          :select-session! #(sidebar-event! :select-session %)
          :new-session! #(sidebar-event! :new-session)
          :restore! #(sidebar-event! :restore %)
-         :draft-change! #(sidebar-event! :draft-change %)
+         :draft-change! change-composer-draft!
          :send! #(sidebar-event! :send)))
 
 (defn- handle-sidebar-key-down!
   [event]
   (when (composer/message-textarea-event? event)
-    (let [{:keys [busy? draft]} @sidebar-model]
+    (let [{:keys [busy?]} @sidebar-model]
       (composer/handle-key-down!
-       event busy? draft #(sidebar-event! :send)))))
+       event busy? @composer-draft #(sidebar-event! :send)))))
 
 (defn- settle-stage!
   [outcome payload]
@@ -193,7 +228,9 @@
             :sidebar-enabled? (not= false sidebar-enabled?)})]
       (runtime/retain-stage! client-runtime)
       (reset! canvas-context {:session-id session-id})
-      (reset! ppp.client.frame/sidebar-model (or sidebar-model {}))
+      (let [model (or sidebar-model {})]
+        (reset! ppp.client.frame/sidebar-model model)
+        (reset-composer-draft! model))
       (reset! ppp.client.frame/sidebar-open? (boolean sidebar-open?))
       (reset! displayed-runtime client-runtime)
       (swap! render-epoch inc)
@@ -249,7 +286,7 @@
               :host/activate (activate! payload)
               :host/sidebar-model
               (do
-                (reset! sidebar-model (:model payload))
+                (sync-sidebar-model! (:model payload))
                 (schedule-render-flush!))
               :host/sidebar-open
               (do

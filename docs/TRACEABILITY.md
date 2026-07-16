@@ -22,13 +22,13 @@ Last updated: 2026-07-16
 | PRD-F05 | PPP-006, PPP-017 | Playwright broken-sidebar recovery and render-timeout preservation | E-01, E-04 |
 | PRD-F06 | PPP-003 | `ppp.session.store-test/new-session-is-a-complete-version-zero-product` | E-01, E-05 |
 | PRD-F07 | PPP-003, PPP-006 | Playwright session switch persistence | E-01, E-03 |
-| PRD-F08 | PPP-007, PPP-015 | prompt limit and `202` route integration; CLJS and Chromium Enter-to-send contract | E-01 |
+| PRD-F08 | PPP-007, PPP-015, PPP-018 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer contract | E-01 |
 | PRD-F09 | PPP-004, PPP-007 | `ppp.provider.queue-test/provider-queue-is-global-fifo-with-eight-waiting-slots` | E-01 |
-| PRD-F10 | PPP-007, PPP-015 | protocol schema plus WebSocket integration; guarded keyboard submission | E-01 |
+| PRD-F10 | PPP-007, PPP-015, PPP-018 | protocol schema plus WebSocket integration; guarded keyboard and composition submission | E-01 |
 | PRD-F11 | PPP-006, PPP-007, PPP-017 | hidden render, animation-independent DOM commit, and no-refresh Playwright | E-01, E-03 |
 | PRD-F12 | PPP-005 | `ppp.runtime.server-test/initial-runtime-stages-registers-and-invokes` | E-01 |
 | PRD-F13 | PPP-005 | `ppp.property.gallery-domain-test/fake-gallery-seeds-once-persists-and-ranks-deterministically` | E-01, E-03 |
-| PRD-F14 | PPP-006, PPP-013, PPP-015 | sandbox frame state handoff and replacement Playwright test; composer draft/focus keyboard test | E-01 |
+| PRD-F14 | PPP-006, PPP-013, PPP-015, PPP-018 | sandbox state handoff; composer draft/focus tests; revision-ordered Korean IME regression | E-01 |
 | PRD-F15 | PPP-004, PPP-005, PPP-013 | JVM escape property plus sandbox browser-API Playwright test | E-01, E-02 |
 | PRD-F16 | PPP-001, PPP-005, PPP-007 | `ppp.runtime.policy-test/forbidden-sql-token-property` | E-01 |
 | PRD-F17 | PPP-005, PPP-007 | `ppp.runtime.sqlite-test/failed-stage-database-never-mutates-live-content` | E-01 |
@@ -82,6 +82,8 @@ PPP-001
                               +---------------------------> PPP-016
                               |
                               +---------------------------> PPP-017
+                              |
+                              +---------------------------> PPP-018
 ```
 
 ## Completion ledger
@@ -105,3 +107,4 @@ PPP-001
 | PPP-015 | done | Enter-to-send and Shift+Enter pass 21 CLJS tests/89 assertions; isolated release Chromium passes 11/11 including three fresh composer contexts and a 6.5-second delayed frame; stable `localhost:8787` passes against real OAuth Codex; JVM 132/750, lint, format, and secret scan remain clean before the final zero-session restart. |
 | PPP-016 | done | Browser-interop and Enter contracts reconciled; clean candidate-copy `bb verify` passes 132 JVM/750 assertions, 21 CLJS/89 assertions, Chromium 11/11, Docker smoke, and secret scan; Enter-based packaged demo passes 3/3; 155-file repository baseline is clean; stable 8787 is Codex-ready with zero sessions/runtimes; local commit `e83dc0d` records the reproducible source without external publication. |
 | PPP-017 | done | Owner timeout reproduced by suppressing sandbox animation frames; immutable DOM-commit sentinel plus microtask state flush remove the animation dependency. Clean `bb verify` passes 132 JVM/750 assertions, 21 CLJS/89 assertions, Chromium 14/14, Docker smoke, and a 156-file secret scan. Stable 8787 passes three additional fresh contexts beyond ten seconds, including a 6.5-second delayed bundle, then restarts Codex-ready with zero sessions/runtimes. |
+| PPP-018 | done | Real Chromium IME reproduced stale parent echoes corrupting `간단한`; frame-local drafts plus monotonic bridge revisions prevent rollback. Isolated `bb verify` passes 132 JVM/750 assertions, 21 CLJS/89 assertions, Chromium 17/17, Docker smoke, and a 158-file secret scan. Stable 8787 passes three fresh Korean composition paths including a 6.5-second delayed frame, then restarts Codex-ready with zero sessions/runtimes. |

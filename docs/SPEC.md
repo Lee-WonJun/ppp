@@ -5,7 +5,7 @@ Status: approved implementation baseline
 Protocol version: 1
 Session format version: 1
 Capability version: 1
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## 1. Purpose
 
@@ -88,6 +88,7 @@ src/ppp/
 │   ├── runtime.cljs            browser SCI and hidden staging
 │   └── transport.cljs          HTTP, Transit, reconnect, resync
 ├── provider/
+│   ├── budget.clj             persistent rolling provider-start budget
 │   ├── core.clj                provider protocol
 │   ├── codex.clj               Codex CLI implementation
 │   └── fake.clj                deterministic tests and demo fixture
@@ -113,7 +114,7 @@ Complex transition logic carries the state-machine ASCII diagram in the coordina
 
 The AI cannot modify or replace:
 
-- access-code exchange, cookie signing, and CSRF;
+- shared-password login/logout, cookie signing, failed-login throttling, and CSRF;
 - session lifecycle and path resolution;
 - Codex process execution and queueing;
 - provider schema validation;
@@ -179,6 +180,9 @@ data/workspaces/local/sessions/<uuid>/
 │   └── <transaction-id>.edn
 └── .staging/
     └── <transaction-id>/...
+
+data/kernel/
+└── provider-starts.edn
 ```
 
 All identifiers pass through UUID parsing before path resolution. Paths are
@@ -536,6 +540,15 @@ Required controls:
 - Static JSON Schema validation occurs in Codex, then Malli validates again in the host.
 - Default timeout is 120 seconds.
 - Global concurrency is one, per-session concurrency is one, FIFO capacity is eight.
+- The real Codex provider consumes one global start immediately before every
+  `generate!` invocation, including repair attempts. At most 100 starts are
+  accepted in any rolling 60-minute window by default.
+- Accepted start timestamps are atomically persisted under `data/kernel` and
+  reloaded before turns are accepted. Fake-provider work never consumes this
+  budget. Corrupt or symlinked ledger state fails closed.
+- Capacity inspection exposed to browsers contains only `available?`; owner
+  commands may inspect exact bounded status. Exhaustion includes a stable code
+  and bounded retry delay without exposing OAuth or provider diagnostics.
 - Restore clears the stored thread ID so future context cannot assume the abandoned future state.
 - A repairable source, SQL, server SCI, or browser staging rejection is returned to the same Codex thread as structured feedback. The initial proposal plus at most two corrected attempts are allowed. Only the final successful proposal enters history as a change; exhausted attempts create one rejected event. Successful history records include the host-observed attempt count and affected runtime surfaces; the provider never declares its own trusted impact flag.
 
@@ -561,9 +574,11 @@ Internal exception text and generated source are not returned.
 
 | Method | Path | Auth | Contract |
 |---|---|---|---|
-| `POST` | `/api/access` | access code | Exchange code; set signed cookie; return no secret. |
+| `POST` | `/api/login` | shared password | Origin-check password; apply failed-login throttle; set signed cookie; return no secret. |
+| `POST` | `/api/access` | development fragment code | Exchange only when explicitly enabled; production defaults to disabled. |
+| `POST` | `/api/logout` | cookie + CSRF | Expire the access cookie without modifying workspace data. |
 | `GET` | `/api/bootstrap` | cookie | Return CSRF token, protocol version, sessions, provider readiness. |
-| `POST` | `/api/sessions` | cookie + CSRF | Create a blank persistent session. |
+| `POST` | `/api/sessions` | cookie + CSRF | Create a bounded-title blank persistent project. |
 | `GET` | `/api/sessions/:id` | cookie | Return metadata and current version. |
 | `POST` | `/api/sessions/:id/turns` | cookie + CSRF | Validate prompt; enqueue; return `202` and job ID. |
 | `GET` | `/api/sessions/:id/runtime` | cookie | Return current client source bundle and manifest. |
@@ -607,6 +622,23 @@ and `Secure` outside development. A successful auth capability may set or clear
 that cookie. The action JSON response retains the existing
 `{:runtime-version ... :result ...}` shape and never contains the token or
 internal effect.
+
+### 9.3 Shared judge workspace
+
+The PPP access cookie identifies no person. Every valid cookie sees the same
+`local` project list and may open or change any project. Session directories
+remain isolated from generated code, but they are not authorization partitions
+between judges.
+
+Bootstrap never creates or selects a session. Without a valid deep-linked
+`?session=<uuid>`, the immutable host renders Projects. A valid deep link opens
+that project after bootstrap. Project creation accepts a trimmed UTF-8 title of
+1-80 characters, creates the complete version-zero source/database/checkpoint,
+then navigates to its existing query URL.
+
+Failed logins use only the kernel-observed remote address, not forwarded
+headers, and allow at most ten failures in a rolling ten-minute window. Public
+responses do not distinguish password shape, partial match, or stored secret.
 
 ## 10. WebSocket protocol
 
@@ -1014,6 +1046,8 @@ Recovery runs before readiness becomes true or any session accepts actions.
 | Checkpoints per session | 256 MiB |
 | Instance data | 2 GiB |
 | Codex queue | 8 jobs |
+| Real Codex starts | 100 per rolling 60 minutes, globally |
+| Failed shared-password attempts | 10 per remote address per rolling 10 minutes |
 
 Quota exhaustion never deletes history automatically. It rejects new AI changes while leaving product use, history reading, and restore available.
 
@@ -1027,7 +1061,12 @@ PPP_PORT=8787
 PPP_DATA_DIR=/var/lib/ppp
 PPP_ACCESS_CODE=<secret>
 PPP_COOKIE_SECRET=<32+ random characters>
+PPP_FRAGMENT_ACCESS_ENABLED=false
+PPP_LOGIN_FAILURE_LIMIT=10
+PPP_LOGIN_FAILURE_WINDOW_SECONDS=600
 PPP_AI_PROVIDER=codex
+PPP_PROVIDER_CALLS_PER_HOUR=100
+PPP_PROVIDER_WINDOW_SECONDS=3600
 PPP_CODEX_MODEL=gpt-5.6-terra
 PPP_CODEX_REASONING=medium
 PPP_REQUIRE_CLIENT_ACK=true
@@ -1047,7 +1086,7 @@ timestamp level event request-id job-id session-id runtime-version duration-ms e
 
 Never log:
 
-- access code or cookie value;
+- shared password or cookie value;
 - prompt or transcript;
 - generated source or SQL;
 - connector headers or environment names;
@@ -1086,7 +1125,7 @@ release evidence.
 
 | PRD range | Primary specification sections |
 |---|---|
-| PRD-F01-F05 | 5, 9, 12 and `DESIGN.md` |
+| PRD-F01-F05 | 5, 9, 9.3, 12 and `DESIGN.md` |
 | PRD-F06-F10 | 6, 8, 9, 10 |
 | PRD-F11-F15 | 5, 7, 12, 13 |
 | PRD-F16-F21 | 11, 12, 13, 14 |
@@ -1095,6 +1134,7 @@ release evidence.
 | PRD-F31-F32 | 7, 11, 12 and `docs/SECURITY.md` |
 | PRD-F33-F38 | 5, 7.1, 7.2, 9.2, 13, 14 and `docs/SECURITY.md` |
 | PRD-F39-F44 | 5, 7.3-7.7, 9, 10, 13, 14, 17 and `docs/SECURITY.md` |
+| PRD-F45-F47 | 5, 8.2, 9, 9.3, 17-19 and `docs/SECURITY.md` |
 
 ## 22. Resolved decisions
 
@@ -1112,5 +1152,9 @@ release evidence.
   they are not generated filesystem, thread, listener, or database authority.
 - In-process SCI remains the server language sandbox. Typed resources broaden
   what products can do without turning generated code into a host process.
+- The hackathon deployment has one shared password and one shared Projects
+  list, not judge accounts or per-judge authorization.
+- The real provider uses a persistent global rolling start budget; project use
+  and recovery do not consume or depend on that budget.
 
 Unresolved implementation decisions: none.

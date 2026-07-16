@@ -1,7 +1,7 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-021 complete resource plane passed
-Last updated: 2026-07-16
+Status: PPP-022 shared judge workspace complete
+Last updated: 2026-07-17
 
 ## 1. Scoring model
 
@@ -39,9 +39,9 @@ Scoring anchors:
 
 | Item | Points | Full-credit evidence |
 |---|---:|---|
-| Nontechnical clarity | 6 | A viewer can use it without seeing code, files, Git, models, skills, MCP, or evaluator language. |
+| Nontechnical clarity | 6 | A judge can sign in, find/create a shared project, and use it without seeing code, files, Git, models, skills, MCP, or evaluator language. |
 | Blank-to-product transformation | 5 | Literal white first frame, discoverable handle, immediate generated product replacement. |
-| Conversation interaction | 4 | One composer, session switch, progress, reply, clarification, change, and restore states. |
+| Conversation interaction | 4 | One composer, project switch, progress, reply, clarification, change, and restore states. |
 | Recovery UX | 4 | Immutable handle, keyboard Safe Mode, last-success sidebar, plain failure copy. |
 | Visual coherence | 3 | Consistent tokens, spacing, typography, responsive behavior, no generic dashboard clutter. |
 | Accessibility | 3 | Semantic controls, keyboard flow, visible focus, live regions, contrast, reduced motion. |
@@ -60,7 +60,7 @@ Scoring anchors:
 | Problem specificity | 6 | Submission leads with installation, Git, environment, and authentication barriers for product/design users. |
 | User leverage | 6 | Demo shows a product manager changing persistent business behavior, not only copy or color. |
 | Handoff value | 5 | Complete source tree, domain tests, and change history are inspectable after the demo. |
-| Adoption path | 4 | Self-host instructions work; hosted identity/workspace path is documented without pretending it exists. |
+| Adoption path | 4 | Self-host instructions and the one-password hosted judge instance work; full hosted identity/tenancy remains explicitly future scope. |
 | Breadth with focus | 4 | Gallery demo proves UI, server, data, rules, session, and restore while keeping MVP exclusions honest. |
 
 Scoring anchors:
@@ -98,12 +98,13 @@ Scoring anchors:
 | E-05 | Session history fixture after demo | Actual CLJ/CLJS/CLJC/CSS/SQL, before/after, checkpoint source and DB. |
 | E-06 | Docker inspection | amd64, non-root, volumes, health, no embedded OAuth/session data. |
 | E-07 | Eight-step `bb eval-evolution` report | One real Codex thread evolves client-only, server-data, identity, and complete resource-plane features with browser and SQLite outcomes. |
-| E-08 | Public repository secret scan | No credentials or access code in tracked/image content. |
+| E-08 | Public repository secret scan | No credentials or shared password in tracked/image content. |
 | E-09 | Three-minute video and subtitle file | Submission story, timing, and accessibility. |
 | E-10 | Devpost draft and feedback session ID | Required fields and product positioning. |
 | E-11 | PPP-016 local release record and clean repository baseline | Current docs, packaged demo, clean-copy gate, safe evidence set, and local commit agree. |
 | E-12 | PPP-020 product-auth and capability-coverage report | Generated signup/login/reload/protected action/logout, credential safety, restore revocation, and real-provider non-refusal. |
 | E-13 | PPP-021 complete resource-plane report | Durable blob, search, job, ingress, event, restore, security, compiled-browser, and real-provider composition. |
+| E-14 | PPP-022 shared judge workspace report | Production password login/logout, shared Projects, persistent rolling provider budget, exhausted-state continuity, restart, browser, and package evidence. |
 
 ## 7. Automated release gate
 
@@ -113,12 +114,11 @@ Scoring anchors:
 2. formatting check;
 3. JVM Kaocha unit and property tests;
 4. CLJS unit and property tests;
-5. fake-provider integration suite;
+5. paired release browser build;
 6. Playwright semantic E2E;
-7. release browser build;
-8. Linux amd64 Docker image build;
-9. packaged container smoke;
-10. secret scan.
+7. production-configured shared-access E2E across a JVM restart;
+8. Linux amd64 Docker image build and packaged container smoke;
+9. secret scan.
 
 The command must exit nonzero on the first failed task while retaining enough output to reproduce it.
 
@@ -143,6 +143,8 @@ Each property runs at least 1,000 generated sequences unless a documented cost a
 | PBT-13 | A job idempotency key creates at most one logical job; lease recovery, retry, cancellation, and restore never execute beyond the bounded policy. |
 | PBT-14 | Arbitrary ingress IDs, methods, bodies, rates, sessions, and signatures cannot bypass route ownership, bounds, or configured verification. |
 | PBT-15 | Text/vector search remains session-local, bounded, and deterministically ordered for equal scores and arbitrary Unicode documents. |
+| PBT-16 | Real-provider starts never exceed the configured rolling limit, expire exactly at the boundary, and retain the same decision across restart. |
+| PBT-17 | Shared-password failures remain isolated by kernel-observed remote address, reveal no match detail, and recover after the rolling window. |
 
 ## 9. Live Codex evaluation
 
@@ -209,9 +211,9 @@ gate, not permission to weaken the requested outcome or its semantic selector.
 
 The packaged demo must pass three times consecutively with a newly created data directory:
 
-1. access fragment exchange;
-2. blank white canvas;
-3. open sidebar;
+1. production shared-password login;
+2. shared Projects list and named New project;
+3. blank white canvas and open sidebar;
 4. self-redesign sidebar;
 5. build gallery product;
 6. vote and browser reload persistence;
@@ -246,6 +248,8 @@ Tests assert semantic roles and persistent outcomes. They do not assert exact co
 | Job timeout/crash/duplicate | lease and bounded retry or terminal failure; idempotency key prevents duplicate logical scheduling. |
 | Ingress invalid signature/rate/body | reject before generated handler execution with no session mutation or event. |
 | Event after rollback or stale runtime | discard; no browser receives the payload. |
+| Shared-password guessing | Generic response plus per-remote rolling throttle; no secret or partial-match signal. |
+| Provider rolling capacity exhausted | Reject only new AI turns with bounded retry guidance; product actions, data, history, restore, Safe Mode, and logout remain available. |
 
 A critical path with no validation, no explicit failure handling, or a silent fallback blocks release regardless of total score.
 
@@ -265,22 +269,22 @@ All conditions are required:
 - Devpost fields and Codex session ID are recorded;
 - actual deployment has separate owner approval.
 
-The evaluator records the current complete baseline below. PPP-021 E-13 and
-the expanded automated/live gates pass. Publication remains blocked only on
+The evaluator records the current complete baseline below. PPP-022 E-14 and
+the expanded automated, production-browser, and live gates pass. Publication remains blocked only on
 the owner-controlled video, public links, deployment, and submission approval.
 
 ## 13. Release assessment
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` (163 JVM/985 assertions, 25 CLJS/110 assertions, Chromium 23/23, Docker smoke, clean 176-file secret scan); eight-step live Codex evolution 8/8 with retained repair coverage; `artifacts/evidence/ppp-021-resource-plane.md`; PPP-007 through PPP-021 evidence; Chromium 23/23 directly against stable 8787 | pass |
-| Design | 23/25 | `DESIGN.md`; blank, sidebar, floating, mobile, sandbox, and Safe Mode screenshots under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests | pass |
-| Impact | 24/25 | `docs/PRD.md`; exact persistent Gallery demo; source/history handoff; verified Docker workflow; hosted workspace remains explicitly future scope | pass |
+| Technical implementation | 25/25 | isolated `bb verify` (174 JVM/1,262 assertions, 25 CLJS/110 assertions, 25 normal Chromium tests, two production restart phases across three fresh contexts, Docker smoke, clean secret scan); eight-step live Codex evolution 8/8 with retained repair coverage; `artifacts/evidence/ppp-022-shared-judge-workspace.md`; PPP-007 through PPP-022 evidence | pass |
+| Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests | pass |
+| Impact | 24/25 | `docs/PRD.md`; exact persistent Gallery demo; source/history handoff; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |
 | Total | 97/100 | Minimum 80 and every category minimum 17 satisfied | pass |
 
 The two unawarded design points reserve final visual judgment for the recorded cut,
-and one impact point remains unawarded because hosted identity/workspaces are not in
-the hackathon build. Automated, live-provider, security, recovery, and packaged-demo
+and one impact point remains unawarded because private hosted identity/workspaces are not in
+the hackathon build. Automated, production-browser, live-provider, security, recovery, and packaged-demo
 gates pass. Final release remains blocked on the public video, repository URL, hosted
 URL/access delivery, and explicit deployment/submission approval.

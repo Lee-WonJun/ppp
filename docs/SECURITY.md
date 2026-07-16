@@ -1,7 +1,7 @@
 # Security Model
 
 Status: release-blocking source of truth
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## 1. Security objective
 
@@ -14,7 +14,7 @@ PPP never exposes a public Clojure REPL, nREPL, shell, filesystem, JavaScript ev
 The hackathon release is:
 
 - one trusted self-hosted JVM application;
-- protected by an unguessable access code;
+- protected by one strong owner-configured shared password;
 - intended for the owner and judges;
 - backed by one local workspace and isolated session directories;
 - authenticated to Codex with the owner's ChatGPT OAuth session.
@@ -37,7 +37,7 @@ It is not a public multi-tenant SaaS. Before public signup, identity, tenancy, p
 
 ## 4. Actors
 
-- Owner: controls deployment, access code, OAuth, connector configuration, and backups.
+- Owner: controls deployment, shared password, OAuth, connector configuration, and backups.
 - Authorized user or judge: may submit arbitrary natural language and use generated actions.
 - AI provider: receives bounded prompt, source, and transcript context.
 - Generated program: untrusted code even when produced by the configured provider.
@@ -81,6 +81,8 @@ Generated source remains untrusted on both sides of the network.
 | A product login crosses into another PPP session | UUID-derived cookie name and path, session-keyed token digest, distinct database lookup. | 1,000-sequence cross-session auth property. |
 | Checkpoint restore resurrects a revoked login | Restore keeps credential state but deletes every active auth session and attempt before activation. | Restore/auth integration property. |
 | Credential guessing exhausts or enumerates accounts | Bounded input, same unknown/wrong hash path and public error, per-identifier throttling. | Hash-path contract and throttle tests. |
+| Shared PPP password is guessed or brute-forced | Origin check, constant-time comparison, per-remote rolling failure throttle, generic response, signed cookie, private judge delivery. | Access integration and login-sequence property tests. |
+| Judges exhaust the owner's Codex allowance | Persistent global rolling provider-start limit, one-attempt accounting before every real invocation, bounded queue, fake-provider CI. | Restart, boundary, repair-attempt, and exhausted-product-use tests. |
 | Path traversal crosses sessions | UUID parsing, normalized descendant check, no symlinks. | 1,000-sequence path property test. |
 | SQL reaches kernel tables or filesystem | Statement allowlist, `_ppp_` denylist, no ATTACH/PRAGMA/extensions/file functions. | Migration and action PBT. |
 | SSRF reaches loopback, private network, metadata, or DNS-rebinding target | HTTPS only, custom resolver, public-IP pinning, redirect revalidation. | URL/DNS/redirect property tests. |
@@ -98,24 +100,29 @@ Generated source remains untrusted on both sides of the network.
 
 ## 7. Access gate
 
-The shared link format is:
+The owner puts the hosted URL and shared password only in Devpost's private
+judge instructions. Browser flow:
 
-```text
-https://host.example/#access=<code>
-```
+1. An unauthenticated browser renders a semantic password form.
+2. POST `/api/login` is accepted only from the configured HTTPS Origin.
+3. The server checks the kernel-observed remote-address throttle and compares
+   the submitted value in constant time.
+4. Success sets a signed, expiring, HttpOnly, Secure, SameSite=Strict cookie.
+5. Bootstrap returns the complete shared `local` project list. The cookie has
+   no person, owner, judge, or membership identity.
+6. Logout expires the cookie and disposes browser authority without deleting
+   projects.
 
-The fragment is not sent in the HTTP request. Browser flow:
+`/#access=<code>` and `/api/access` remain disabled by default in production.
+They may be explicitly enabled for local development and deterministic browser
+tests; the client removes the fragment before exchange. A production deployment
+must never publish a password-bearing URL.
 
-1. Read `access` from `location.hash`.
-2. `history.replaceState` removes the fragment immediately.
-3. POST the code to `/api/access` over HTTPS.
-4. Server compares a keyed hash in constant time.
-5. Server sets a signed, expiring, HttpOnly, Secure, SameSite=Strict cookie.
-6. Browser discards the code and bootstraps.
+Production refuses startup without `PPP_ACCESS_CODE` and a cookie secret of at least 32 random characters. Shared-password and cookie values never enter logs.
 
-Production refuses startup without `PPP_ACCESS_CODE` and a cookie secret of at least 32 random characters. Access code and cookie values never enter logs.
-
-The access gate is sufficient only for the trusted hackathon release. It is not a substitute for hosted identity and tenancy.
+The access gate is sufficient only for the trusted hackathon release. Anyone
+who knows the password can read and modify every project in `local`; this is an
+intentional collaboration model, not a tenant boundary or audit identity.
 
 It is also not the account system of a generated product. A game or internal
 tool inside an authorized PPP session may have its own users. Those users are
@@ -159,6 +166,11 @@ Before a public SaaS release, implement a Responses API or other service-account
 - Bound stdin, stdout, stderr, final message, time, and concurrency.
 - Do not return Codex reasoning or diagnostics to the browser.
 - Validate the final JSON twice.
+- Before every real initial or repair invocation, atomically record one start
+  in the Kernel-owned rolling ledger. Refuse starts beyond the configured
+  100-per-60-minute default and preserve the refusal across JVM restart.
+- Fake-provider work, generated actions, product jobs, and checkpoint restores
+  do not touch the ledger. A rejected start receives no provider process.
 
 The packaged provider Skill is instruction-only. It is copied into the child Codex CWD so that `codex exec` discovers it as a repository-scoped Skill, and the stdin prompt invokes it explicitly. It cannot access session files, run validation, connect to a raw REPL, or grant generated code a new capability. Host policy, temporary SQLite, server SCI, and browser SCI remain authoritative.
 
@@ -372,6 +384,9 @@ User-managed connector setup is outside the MVP.
 ## 17. Data isolation and quotas
 
 - Workspace is fixed to `local`, but each session owns a distinct normalized UUID directory and SQLite file.
+- Every holder of the shared PPP cookie is authorized for every session in
+  `local`. Directory separation contains generated runtimes; it does not
+  provide privacy between judges.
 - Generated actions receive only their session datasource.
 - A session cannot name a database path.
 - Quota checks include staging, journal backup, history, and checkpoints.
@@ -396,7 +411,7 @@ Release container:
 - one exposed application port;
 - process and memory limits documented for the deployment platform.
 
-The image contains the Codex binary but no OAuth state, access code, session data, `.env`, or connector secrets.
+The image contains the Codex binary but no OAuth state, shared password, session data, `.env`, or connector secrets.
 
 ## 19. Logging and diagnostics
 
@@ -467,7 +482,12 @@ Any critical trust boundary without both validation and failure handling blocks 
   user data. These tests and owner review reduce but do not eliminate semantic
   risk.
 - OAuth account rate limits and policy can change independently of PPP.
-- Access-code links can be forwarded. The MVP does not provide per-person revocation.
+- The shared judge password can be forwarded and every authenticated action is
+  unattributed. Revocation rotates the one deployment secret and invalidates
+  cookies operationally; there is no per-person revocation or audit identity.
+- The provider-start ledger is single-process and filesystem-backed. The
+  hackathon deployment therefore runs exactly one application replica; a
+  public multi-replica service requires shared atomic metering.
 - Single-process deployment has an availability limit.
 - Product identity in this release is identifier/password only. Email
   ownership, MFA, social OAuth, and account recovery require configured

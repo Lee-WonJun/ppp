@@ -20,7 +20,10 @@ Do not spend the opening on architecture. Show the barrier, then the transformat
 - Fake provider for camera blocking and timing rehearsals.
 - Codex provider for the final take only after LIVE-03, LIVE-04, and LIVE-05 pass 3/3.
 - Browser at 1440x900 with 100% zoom.
-- Access URL copied but not visible in browser history after exchange.
+- Shared-password sign-in completed before the product story; if shown, obscure
+  the credential in the recording.
+- Projects starts empty for the take. Create one named project and open its
+  literal blank canvas before Prompt A.
 - No terminal visible after launch.
 - Enter sends each prepared conversation turn; Shift+Enter remains available
   for intentional multiline prompts.
@@ -41,13 +44,13 @@ bb demo-preflight
 ### Prompt A: change the control surface
 
 ```text
-Make this sidebar a focused floating panel. Keep the session selector, conversation, and composer, but give it more breathing room and make it feel like a calm product workspace.
+Make this sidebar a focused floating panel. Keep Projects navigation, the project selector, conversation, and composer, but give it more breathing room and make it feel like a calm product workspace.
 ```
 
 Expected outcome:
 
 - Sidebar becomes a rounded floating panel.
-- Session selector, `+`, conversation, and composer still work.
+- Projects navigation, project selector, `+`, conversation, and composer still work.
 - Canvas does not refresh.
 
 ### Prompt B: build the product
@@ -98,13 +101,13 @@ Expected outcome:
 
 | Time | Picture | English subtitle / narration |
 |---:|---|---|
-| 0:00-0:12 | Literal white screen, small handle. Open sidebar. | `Product managers do not fail at prompting. They get blocked by installs, Git, folders, builds, and authentication.` |
+| 0:00-0:12 | Brief sign-in cut, Projects, create `Hackathon workspace`, then literal white screen with handle. | `Product managers do not fail at prompting. They get blocked by installs, Git, folders, builds, and authentication.` |
 | 0:12-0:23 | Default sidebar and one sentence typed. | `PPP moves that machinery behind the kind of browser workspace people already know.` |
 | 0:23-0:39 | Send Prompt A. Show four progress words and floating result. | `The conversation is part of the product, so it can redesign itself without a refresh.` |
 | 0:39-1:08 | Send Prompt B. Product appears. Move through Gallery, Submit, Leaderboard. | `Now I ask for a real product: three views, six seed projects, persistent voting, and server-side ranking.` |
 | 1:08-1:27 | Vote as public and judge, reload browser, open leaderboard. | `These are not mock cards. Votes are stored in this session's SQLite database and remain after reload.` |
 | 1:27-1:50 | Send Prompt C. Show reordered scores and podium. | `One conversation changes the business rule and its presentation atomically. Judge votes now count for three.` |
-| 1:50-2:08 | Create blank session, show white canvas, switch back. | `Work is organized like a familiar SaaS file. A new session is blank, and the original product and data are still here.` |
+| 1:50-2:08 | Return to Projects, create a second blank project, then reopen the first. | `Work is organized like a familiar SaaS file. A new project is blank, and the original product and data are still here.` |
 | 2:08-2:28 | Restore pre-score checkpoint, then latest checkpoint. | `Source, runtime behavior, and data move together. Every checkpoint can be revisited without losing later history.` |
 | 2:28-2:43 | Brief filesystem history/source capture prepared in advance, not a code UI inside PPP. | `The user never handles files, but the handoff is real CLJ, CLJS, CSS, SQL, tests, and an append-only change record.` |
 | 2:43-2:55 | Trigger broken-sidebar fixture, use shortcut and Safe Mode. | `A fixed recovery host remains outside generated code. A failed interface cannot lock the user out.` |
@@ -119,7 +122,7 @@ Target is 165-175 seconds in rehearsal. Cut pauses before accelerating narration
 - Do not zoom into code while claiming the nontechnical experience.
 - Use progress naturally; do not edit out all model wait and imply instant generation.
 - If generation exceeds the shot budget, use an honest time compression card.
-- Do not expose access codes, cookies, OAuth files, local paths containing personal information, or provider diagnostics.
+- Do not expose shared passwords, cookies, OAuth files, local paths containing personal information, or provider diagnostics.
 - Do not claim public multi-tenancy, collaboration, source promotion, or deployed scale.
 
 ## 6. English subtitle file
@@ -137,7 +140,7 @@ The planned English subtitles are in `artifacts/demo/ppp-demo.en.srt`. Subtitle 
 
 Record three fresh packaged rehearsals in a row:
 
-| Run | Provider | Prompt A | Prompt B | persistence | Prompt C | sessions | restore | Safe Mode | result |
+| Run | Provider | Prompt A | Prompt B | persistence | Prompt C | projects | restore | Safe Mode | result |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | fake | pass | pass | pass | pass | pass | pass | pass | pass |
 | 2 | fake | pass | pass | pass | pass | pass | pass | pass | pass |
@@ -162,7 +165,7 @@ recorded interaction matches the owner-facing chat contract.
 - [ ] Public and judge vote persistence after reload.
 - [ ] Submit flow.
 - [ ] Weighted leaderboard and top-three podium.
-- [ ] Blank second session and restored first session.
+- [ ] Blank second project and restored first project.
 - [ ] Old and new checkpoint restore.
 - [ ] Safe Mode.
 - [ ] Source/history handoff evidence with secrets redacted.

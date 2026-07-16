@@ -4,7 +4,7 @@ Product: Programmable Programming Page
 Tagline: Where product conversations become running software.
 Status: approved implementation baseline
 Category: Work & Productivity
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## 1. Summary
 
@@ -88,16 +88,26 @@ A conversation should be able to change the interface, server action, persistent
 
 ### 7.1 Access and first frame
 
-- The shared hackathon instance is protected by a judge access code.
-- The access code arrives in a URL fragment and is exchanged for an HttpOnly signed cookie.
-- The fragment is removed immediately after exchange.
-- After access, the screen is literally white except for a small fixed sidebar handle.
-- No welcome dashboard, template picker, tutorial modal, or repository setup is shown.
+- The shared hackathon instance is protected by one owner-configured shared
+  password. It is delivered to judges only through the private submission
+  instructions.
+- An unauthenticated browser sees a normal password form. A successful
+  origin-checked exchange creates an HttpOnly signed cookie; logout expires it.
+- Production does not accept password-bearing URL fragments. Fragment exchange
+  remains an explicitly enabled local-development and deterministic-test aid.
+- After access, Projects lists every session in the shared `local` workspace
+  and offers one New project action. There are no judge identities, private
+  copies, owners, memberships, templates, or per-user views.
+- Opening an existing project loads its latest source and data. Creating a
+  project opens the literal white version-zero canvas with only the immutable
+  sidebar handle visible.
+- No tutorial modal, repository setup, code surface, or technical dashboard is
+  shown.
 
 ### 7.2 Sidebar
 
 - The default sidebar is a right-side overlay, 420px wide on desktop.
-- Top: current session selector and a `+` control.
+- Top: an All projects action, current session selector, and a `+` control.
 - Center: conversation messages and nontechnical checkpoint cards.
 - Bottom: one composer for questions and changes.
 - The sidebar itself is generated runtime UI and may be completely redesigned.
@@ -139,7 +149,8 @@ Errors use plain language, identify whether loading, validation, initial drawing
 
 ### 7.5 Sessions and checkpoints
 
-- `+` creates a persistent blank session.
+- Projects lists every shared session by title and last update.
+- New project and `+` create a named persistent blank session.
 - Switching sessions restores its latest product and data.
 - A successful change creates a checkpoint.
 - Reply and clarification turns do not create a runtime version or checkpoint.
@@ -170,7 +181,7 @@ needs privileged machinery, PPP provides a typed capability that operates on
 session-owned virtual resources instead of exposing raw host authority.
 
 PPP workspace access and generated-product identity are separate layers. The
-hackathon access code decides who may open PPP. A generated game, community,
+hackathon shared password decides who may open PPP. A generated game, community,
 admin tool, or marketplace may still create and authenticate its own users
 inside that one product session.
 
@@ -180,9 +191,9 @@ inside that one product session.
 
 | ID | Requirement |
 |---|---|
-| PRD-F01 | Exchange a fragment-delivered access code for a signed HttpOnly, SameSite=Strict cookie. |
+| PRD-F01 | Exchange a server-configured shared password submitted through an origin-checked login form for a signed HttpOnly, SameSite=Strict cookie; allow fragment exchange only when explicitly enabled for development or tests. |
 | PRD-F02 | Protect state-changing HTTP requests with CSRF. |
-| PRD-F03 | Render a literal blank canvas and immutable recovery handle after access. |
+| PRD-F03 | Show every shared `local` project after access; opening a newly created version-zero project renders a literal blank canvas and immutable recovery handle. |
 | PRD-F04 | Enter Safe Mode through the handle or `Ctrl+Alt+Shift+P`. |
 | PRD-F05 | Keep the last successful sidebar available if generated sidebar staging or rendering fails. |
 
@@ -190,8 +201,8 @@ inside that one product session.
 
 | ID | Requirement |
 |---|---|
-| PRD-F06 | Create and persist independent sessions under workspace `local`. |
-| PRD-F07 | Switch sessions without losing source, data, transcript, or current version. |
+| PRD-F06 | Create and persist independently stored, bounded-title projects under workspace `local`. |
+| PRD-F07 | List and switch every shared project without losing source, data, transcript, or current version and without per-judge ownership filtering. |
 | PRD-F08 | Accept one prompt of at most 4,000 characters and return `202` with a job identifier. |
 | PRD-F09 | Serialize provider work globally and per session with FIFO capacity eight. |
 | PRD-F10 | Broadcast progress and final state over protocol-versioned WebSocket messages. |
@@ -255,12 +266,22 @@ inside that one product session.
 | PRD-F43 | Let generated source index, replace, delete, and query session-owned documents using Unicode full-text relevance and optional bounded numeric vectors, with deterministic ranking and no cross-session index. |
 | PRD-F44 | Treat blob, event, job, ingress, and search capabilities as one checkpoint-aware resource plane. Restore preserves durable blobs and search documents, cancels restored pending/running jobs, discards ephemeral events, and restores ingress definitions from source. |
 
+### Hosted judge operations
+
+| ID | Requirement |
+|---|---|
+| PRD-F45 | Let an authorized browser log out by expiring the PPP access cookie and disposing its live host connection without modifying any project. Throttle repeated failed shared-password attempts per kernel-observed remote address. |
+| PRD-F46 | Limit the real Codex provider to 100 actual process starts in any rolling 60-minute window by default, count every repair attempt, persist the global ledger across restart, and exclude the fake provider. |
+| PRD-F47 | When provider capacity is exhausted, reject only new AI turns with a bounded retry signal while keeping project opening, generated actions, SQLite data, history, checkpoints, restore, Safe Mode, and logout available. |
+
 ## 9. Hackathon demo acceptance
 
 The packaged product must support this exact uninterrupted story:
 
-1. Open an authenticated blank white canvas and reveal the sidebar.
-2. Ask for a floating sidebar and see it replace itself without refresh.
+1. Enter the private shared password, choose New project from Projects, and
+   open its blank white canvas.
+2. Reveal the sidebar, ask for a floating sidebar, and see it replace itself
+   without refresh.
 3. Ask for a Gallery / Submit / Leaderboard product with six seed projects, public and judge voting, SQLite storage, and server actions.
 4. Cast a vote, reload the browser, and observe the vote still present.
 5. Ask for judge votes worth three points, public votes worth one, and a top-three podium.
@@ -329,6 +350,8 @@ updates a second open tab, and the ingress changes only its matching session.
 ## 12. Constraints and assumptions
 
 - Workspace ID is always `local`.
+- Every browser with the shared password can see and modify every project in
+  `local`; the hackathon build has no judge identity or ownership boundary.
 - Each session owns one SQLite database.
 - The app runs as one public JVM process and serves the compiled browser shell.
 - The requesting browser tab alone decides client-stage commit readiness.
@@ -336,14 +359,16 @@ updates a second open tab, and the ingress changes only its matching session.
 - Filesystem history is canonical. Codex thread state is a conversational cache.
 - Checkpoints are never pruned automatically. New AI changes stop when quota is exhausted.
 - Codex provider defaults to `gpt-5.6-terra` with medium reasoning and 120-second timeout.
-- OAuth credentials are acceptable only for the access-code-gated hackathon and trusted self-host deployment.
+- Real Codex process starts are globally limited to 100 in a rolling hour by
+  default and stored under Kernel data; fake-provider work is unmetered.
+- OAuth credentials are acceptable only for the shared-password-gated hackathon and trusted self-host deployment.
 
 ## 13. Risks
 
 | Risk | Product response |
 |---|---|
 | Generated source compiles but violates intent | Domain tests, hidden client render, server contract checks, observable E2E scenarios. |
-| Live code execution becomes remote code execution | SCI allowlist, no interop, path policy, SQL policy, no shell/filesystem/tool exposure. |
+| Live code execution becomes remote code execution | Server SCI allowlist and no JVM interop; opaque-origin browser frame; path and SQL policy; no shell/filesystem/tool exposure. |
 | A missing capability is mistaken for an impossible product request | Capability coverage matrix, product-identity E2E, provider guidance, and regression prompts based on owner reports. |
 | A background job or webhook obtains host authority | Kernel-owned runner and ingress adapter, named generated handlers, bounded payloads, no thread/socket/server control, and session-scoped databases. |
 | A binary object or search index bypasses restore or quota | Reserved SQLite resource tables, size/count limits, snapshot inclusion, logical resource hashes, and restore properties. |
@@ -351,7 +376,7 @@ updates a second open tab, and the ingress changes only its matching session.
 | Product authentication leaks credentials or crosses sessions | Kernel-owned Argon2id credentials, opaque keyed token digests, session-scoped HttpOnly cookies, restore revocation, and isolation properties. |
 | Client and server change different versions | Base-version check and request-tab two-phase staging. |
 | SQLite and source diverge during crash | Prepared journal, before backup, runtime metadata version comparison, idempotent recovery. |
-| OAuth material leaks | Separate volume, mode 0600, no logs, no image/repository inclusion, access-code gate. |
+| OAuth material leaks | Separate volume, mode 0600, no logs, no image/repository inclusion, shared-password gate. |
 | Demo consumes unpredictable model quota | Fake provider for deterministic local and CI coverage; live eval only by explicit command. |
 | Generated tests become brittle | Test domain invariants, public contracts, security boundaries, and outcomes only. |
 

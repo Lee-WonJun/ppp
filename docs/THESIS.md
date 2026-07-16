@@ -85,7 +85,11 @@ PPP does not remove developers. It changes the point at which they enter the pro
 
 ## Why a bounded runtime
 
-PPP is not a public nREPL endpoint. It does not give generated code a shell, general filesystem access, Java or JavaScript interop, credentials, arbitrary network access, MCP servers, or skills.
+PPP is not a public nREPL endpoint. Generated server code receives no shell,
+general filesystem access, Java interop, credentials, arbitrary network access,
+MCP servers, or skills. Generated browser code may use normal JavaScript and
+web-platform APIs only inside a disposable opaque-origin frame that cannot
+reach the authenticated parent.
 
 The AI writes real Clojure-family source, but a fixed kernel decides what that source may do. SCI evaluates it with an explicit namespace and symbol catalog. SQL migrations are validated and applied to a staging database. Client code must render in a fresh hidden opaque-origin sandbox frame before the live state commits. Every successful version can be restored together with its source and data.
 
@@ -93,7 +97,7 @@ This boundary preserves the essential property of a REPL, changing a running sys
 
 ## The long-term view
 
-The hackathon uses one local workspace, an access-code gate, and per-session SQLite. The architecture is intended to support two later forms:
+The hackathon uses one local workspace, a shared-password gate, and per-session SQLite. The architecture is intended to support two later forms:
 
 1. A hosted, Figma-like SaaS where a signed-in person or team owns private workspaces.
 2. A self-hosted application where an organization controls the runtime, data, identity, and AI provider.

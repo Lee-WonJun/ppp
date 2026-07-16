@@ -1,7 +1,7 @@
 # Devpost Submission Draft
 
 Status: evidence-complete draft; links and submission remain owner-controlled
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## Submission fields
 
@@ -33,7 +33,9 @@ PPP also follows a longer technical lineage. Emacs put a Lisp interpreter at the
 
 ## What it does
 
-PPP opens as a white canvas with one conversation handle. The user describes the outcome they want. The assistant can:
+After shared sign-in and project selection, PPP opens the chosen product as a
+white canvas with one conversation handle. The user describes the outcome they
+want. The assistant can:
 
 - answer without changing the product;
 - ask one focused clarification;
@@ -42,7 +44,12 @@ PPP opens as a white canvas with one conversation handle. The user describes the
 
 A change can replace the canvas, the sidebar itself, client interactions, server actions, business rules, CSS, SQLite migrations, and domain tests. The requesting browser stages the new client in a hidden opaque-origin sandbox frame while the server stages generated Clojure and a copy of SQLite. Only when both sides succeed does PPP commit and activate the new version.
 
-The user never sees code, filenames, diffs, Git, models, skills, or MCP. Developers can still inspect the session's actual CLJ, CLJS, CLJC, CSS, SQL, tests, prompts, before/after source, and source-plus-data checkpoints.
+The hosted judge flow begins with one shared password and one server-wide
+Projects list. Judges do not receive fabricated accounts or private copies;
+they can open the same saved products or create a named blank project. Inside a
+project, the user never sees code, filenames, diffs, Git, models, skills, or
+MCP. Developers can still inspect the session's actual CLJ, CLJS, CLJC, CSS,
+SQL, tests, prompts, before/after source, and source-plus-data checkpoints.
 
 ## Demo
 
@@ -50,7 +57,9 @@ The demo starts from a blank canvas. We ask PPP to redesign its own conversation
 
 After casting votes and proving they survive a reload, we change the rule in natural language: judge votes become three points, public votes remain one, ties stay deterministic, and the top three receive podium marks. The UI and server rule activate together without refreshing.
 
-Finally, we create another session, return to the original product and data, restore an older checkpoint, return to the newest checkpoint, and recover a deliberately broken sidebar through immutable Safe Mode.
+Finally, we create another project, return through Projects to the original
+product and data, restore an older checkpoint, return to the newest checkpoint,
+and recover a deliberately broken sidebar through immutable Safe Mode.
 
 ## How we built it
 
@@ -79,7 +88,13 @@ Codex is the source-generation and reasoning provider behind each conversation t
 
 For a change, Codex writes complete CLJ, CLJS, CLJC, CSS, test, and migration contents. PPP does not trust the result directly. It validates the schema, paths, capabilities, SQL, quotas, server runtime, browser render, and version acknowledgement before committing.
 
-The hackathon and trusted self-host mode reuse the owner's ChatGPT/Codex OAuth login to avoid per-turn API cost. OAuth is stored in a separate volume and treated as a password. A public SaaS version will replace this exception with a metered service-account/API provider.
+The hackathon and trusted self-host mode reuse the owner's ChatGPT/Codex OAuth
+login to avoid per-turn API cost. OAuth is stored in a separate volume and
+treated as a password. The hosted judge instance admits at most 100 real Codex
+process starts in every rolling hour by default, including repair attempts;
+saved products, actions, data, and restore remain usable when new changes are
+temporarily unavailable. A public SaaS version will replace this exception
+with a metered service-account/API provider.
 
 Model target: GPT-5.6 Terra with medium reasoning.
 Codex CLI target: 0.144 series.
@@ -159,10 +174,11 @@ Docker
 
 - Repository: `TBD_PUBLIC_GITHUB_URL`
 - Demo video: `TBD_PUBLIC_YOUTUBE_URL`
-- Hosted demo: `TBD_HOSTED_URL/#access=TBD_SEPARATELY_SHARED_CODE`
+- Hosted demo: `TBD_HOSTED_URL`
 - Codex feedback session ID: `019f644a-b625-7a33-88f4-1ea260c3fdaa`
 
-Do not place a real access code in the public Devpost body. Share it through the event's approved private field or judge instruction channel.
+Do not place the shared password in the public Devpost body or URL. Share it
+through the event's approved private field or judge instruction channel.
 
 ## Media plan
 
@@ -193,8 +209,9 @@ Hero image should show the running generated product and sidebar together, not a
 - [x] Codex and model roles stated accurately.
 - [x] Feedback session ID recorded.
 - [ ] Hosted URL works from an unauthenticated browser.
-- [ ] Access code delivered privately and can be rotated.
+- [ ] Shared password delivered privately and can be rotated.
+- [x] Production browser gate proves three fresh contexts, a common Projects list, and JVM restart persistence.
 - [ ] Owner explicitly approves deployment and submission.
 
 Local release closure and the exact owner approval queue are tracked in
-`docs/RELEASE.md` and `tickets/PPP-016.md`.
+`docs/RELEASE.md` and `tickets/PPP-022.md`.

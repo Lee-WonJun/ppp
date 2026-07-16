@@ -6,12 +6,12 @@ Programmable Programming Page (PPP) is a self-hostable live product workspace fo
 
 The user never needs to install a development environment, clone a repository, inspect files, understand Git, or operate an AI coding agent. Developers still receive a complete source tree, domain tests, and an append-only record of every accepted change.
 
-Status: the PPP-021 complete session resource plane is implemented and passed
-its release gates. External publication remains owner-controlled. Automated
-verification, the 24-case live Codex evaluation, the eight-step cumulative
-real-product evolution gate, and three consecutive packaged demo rehearsals
-are the release evidence; exact current counts are recorded in
-`docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
+Status: the complete session resource plane and shared judge workspace are
+implemented. External publication remains owner-controlled. Automated
+verification, production-configured shared-access browser tests, the 24-case
+live Codex evaluation, the eight-step cumulative real-product evolution gate,
+and three consecutive packaged demo rehearsals are the release evidence; exact
+current counts are recorded in `docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
 
 In the conversation composer, Enter sends and Shift+Enter inserts a newline.
 
@@ -40,11 +40,16 @@ Build and run the deterministic rehearsal provider:
 PPP_AI_PROVIDER=fake docker compose up --build
 ```
 
-Open:
+Open the workspace and enter the development shared password `ppp-local`:
 
 ```text
-http://localhost:8787/#access=ppp-local
+http://localhost:8787/
 ```
+
+Successful sign-in opens the server-wide Projects list. Create a named project
+to open its literal blank canvas, or open any existing project. Everyone with
+the shared password sees the same `local` workspace; PPP does not invent judge
+accounts or private copies.
 
 The fake provider exists for repeatable development, CI, and demo rehearsal. It supports the exact prompts in `docs/DEMO.md`; it does not pretend to be a general model.
 
@@ -56,7 +61,11 @@ docker compose run --rm app codex login status
 docker compose up
 ```
 
-Use non-development access and cookie secrets before sharing the server. Full volume, backup, and rollback instructions are in `docs/DEPLOYMENT.md`.
+Use a high-entropy shared password and cookie secret before sharing the server.
+Production disables fragment access, throttles repeated failed login attempts,
+and limits real Codex process starts to 100 in every rolling hour by default.
+Full volume, backup, capacity, and rollback instructions are in
+`docs/DEPLOYMENT.md`.
 
 ## Native development
 
@@ -82,7 +91,7 @@ codex login status
 PPP_AI_PROVIDER=codex bb dev
 ```
 
-This is deliberately limited to the access-code-gated hackathon and trusted self-host scenario. `auth.json` is a credential and must never enter this repository, an image, logs, or session data. A public hosted service requires a service-account/API provider described in `TODOS.md`.
+This is deliberately limited to the shared-password-gated hackathon and trusted self-host scenario. `auth.json` is a credential and must never enter this repository, an image, logs, or session data. A public hosted service requires a service-account/API provider described in `TODOS.md`.
 
 ## Optional named connectors
 
@@ -92,12 +101,12 @@ Public runtime HTTP is HTTPS-only and rejects private/reserved DNS results, unsa
 
 ## Demo flow
 
-1. Start from a white canvas and open the conversation handle.
+1. Sign in, create a named project from Projects, and open its white canvas.
 2. Ask the sidebar to redesign itself as a floating panel.
 3. Ask for a Gallery / Submit / Leaderboard product with six seed projects and persistent public/judge voting.
 4. Vote, reload, and verify persistence.
 5. Make judge votes worth three points, public votes worth one, and mark the top three.
-6. Create a second session, switch back, and recover the first product and data.
+6. Create a second project, return through Projects, and recover the first product and data.
 7. Restore an old checkpoint, then return to the newer checkpoint.
 
 No change uses a technical Apply control, build, restart, or page refresh.
@@ -123,7 +132,11 @@ JVM server             │
 └──────────────────────────────────────────────────────┘
 ```
 
-Generated source is real source, not a private low-code DSL. The fixed kernel withholds shell, filesystem, Java/JavaScript interop, dependency installation, MCP, skills, credentials, and unrestricted network access.
+Generated source is real source, not a private low-code DSL. Server code has no
+shell, filesystem, Java interop, dependency installation, MCP, skills,
+credentials, or unrestricted network access. Generated browser code may use
+ordinary JavaScript and web APIs only inside its disposable opaque-origin
+frame, never in the authenticated parent.
 
 ## Project documents
 
@@ -131,6 +144,8 @@ Generated source is real source, not a private low-code DSL. The fixed kernel wi
 - [Product requirements](docs/PRD.md)
 - [Implementation specification](docs/SPEC.md)
 - [Security model](docs/SECURITY.md)
+- [Sandboxed browser runtime decision](docs/ADR-001-SANDBOXED-CLIENT-RUNTIME.md)
+- [Browser runtime incident analysis](docs/RCA-001-REPEATED-CLIENT-RUNTIME-FAILURES.md)
 - [Design system](DESIGN.md)
 - [Evaluation rubric](docs/RUBRIC.md)
 - [Requirements traceability](docs/TRACEABILITY.md)
@@ -138,7 +153,9 @@ Generated source is real source, not a private low-code DSL. The fixed kernel wi
 - [Devpost draft](docs/DEVPOST.md)
 - [Deployment guide](docs/DEPLOYMENT.md)
 - [Local release closure](docs/RELEASE.md)
-- [Implementation tickets](tickets/PPP-001.md)
+- [Adopted long-term work](TODOS.md)
+- [Project working agreement](AGENTS.md)
+- [Implementation tickets](tickets/)
 
 ## Development workflow
 
@@ -153,11 +170,13 @@ bb test
 bb client-test
 bb client-release
 bb e2e
+bb hosted-access-e2e
 bb docker-smoke
 bb demo-preflight
 bb demo-reset
 bb demo-rehearsal
 bb verify
+bb provider-capacity
 ```
 
 `bb verify` must use the fake provider and make no live model calls. Live evaluation is explicit:
@@ -205,9 +224,13 @@ Tests protect:
 
 Tests do not freeze exact wording, CSS classes, DOM nesting, private call order, progress-event counts, or small spacing choices. Visual quality is reviewed through deliberate screenshots, while browser automation uses semantic roles and real persistent outcomes.
 
+`bb provider-capacity` reports only safe rolling-capacity metadata. Stop the
+application before the explicit owner operation `bb reset-provider-capacity`.
+Fake-provider verification never consumes this ledger.
+
 ## Scope
 
-The hackathon MVP is one access-code-gated local workspace. It does not include public signup, organizations, billing, real-time collaboration, source/diff UI, automatic pull requests, runtime dependency installation, user-managed connectors, or multi-node HA.
+The hackathon MVP is one shared-password-gated local workspace. It does not include public signup, judge identities, project ownership, organizations, billing, real-time collaboration, source/diff UI, automatic pull requests, runtime dependency installation, user-managed connectors, or multi-node HA.
 
 The intended future can be either a hosted Figma-like workspace or a trusted self-hosted application. Those paths and prerequisites are recorded in `TODOS.md`.
 

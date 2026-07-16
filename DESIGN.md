@@ -1,7 +1,7 @@
 # Product Design System
 
 Status: source of truth
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## Design read
 
@@ -27,7 +27,8 @@ Design dials:
 
 ## Experience principles
 
-1. Start with nothing. The blank canvas is the invitation.
+1. Enter through a familiar password and project list; start each new product
+   with nothing. The blank canvas is the invitation.
 2. Keep technical machinery invisible.
 3. Let the result, not a confirmation dialog, prove the change.
 4. Make progress legible without narrating internal implementation.
@@ -56,9 +57,43 @@ Design dials:
 
 The handle belongs to the immutable parent and remains above the frame. Canvas and sidebar rendering belong to the sandbox frame, so they can collaborate freely without gaining access to recovery controls.
 
+Before a project is open, the same immutable parent renders either Login or
+Projects. Neither surface loads generated code or opens a live project socket.
+
+## Login
+
+- Center one compact form in the viewport: product name, one-sentence purpose,
+  Password field, and Continue button.
+- Do not show usernames, account creation, OAuth choices, access links, judge
+  identity, or technical configuration.
+- A failed attempt stays in place, preserves focus, and uses one generic
+  message. A throttled attempt explains only that sign-in is temporarily
+  unavailable.
+- The password never appears in a URL, success message, browser storage, or
+  project conversation.
+
+## Projects
+
+- This is a shared workspace index, not a SaaS analytics dashboard.
+- Header: `Projects`, a quiet `Shared judge workspace` description, one
+  `New project` action, and `Sign out`.
+- Sessions appear as an editorial list ordered by most recently updated. Each
+  row has title, locale-friendly last update, and an `Open` action. Do not use
+  fake thumbnails, metrics, ownership avatars, filters, folders, or template
+  cards.
+- New project expands a small inline form with a focused `Project name` input
+  and `Create project` action. Escape or Cancel closes it without creating
+  state.
+- At most one quiet availability line may say whether new AI changes are
+  available. It never exposes provider names, remaining calls, prices, tokens,
+  or reset controls.
+- A valid deep link may move directly from login to the selected project.
+  Invalid or missing project IDs return to this list without auto-creating or
+  silently opening another project.
+
 ## Blank state
 
-- Background is literal `#ffffff`.
+- After a new project opens, background is literal `#ffffff`.
 - Only the 38px circular handle is visible.
 - The handle sits 18px from the top and right on desktop, 12px on mobile.
 - It has an accessible label, visible keyboard focus, and a simple two-line menu mark built with CSS.
@@ -77,6 +112,7 @@ The handle belongs to the immutable parent and remains above the frame. Canvas a
 
 Header:
 
+- `All projects` returns to the immutable Projects surface.
 - Session selector fills available width.
 - `+` creates a blank persistent session.
 - Rename and delete controls are excluded.
@@ -154,6 +190,12 @@ Send
 Try again
 Safe Mode
 Restore
+Projects
+New project
+All projects
+Password
+Continue
+Sign out
 ```
 
 Do not expose:
@@ -237,7 +279,7 @@ Safe Mode behavior:
 - Unmount the generated sidebar.
 - Render the bundled last-success fallback sidebar.
 - Keep the current generated canvas visible when safe.
-- Offer session switching, checkpoint restore, and retry.
+- Offer project switching, checkpoint restore, and retry.
 - Never execute generated sidebar code while Safe Mode remains active.
 
 ## Responsive behavior
@@ -265,7 +307,10 @@ The generated canvas owns its own responsive behavior and must pass hidden stagi
 
 ## States that must exist
 
-- inaccessible: access-code entry guidance;
+- inaccessible: shared-password entry guidance;
+- signed out: shared Password form and generic/throttled failure;
+- projects: empty and populated shared project list, inline creation, and AI
+  changes available/unavailable;
 - blank: white canvas and closed sidebar;
 - open empty session;
 - queued and each progress phase;

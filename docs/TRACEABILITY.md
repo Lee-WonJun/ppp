@@ -1,7 +1,7 @@
 # Requirements Traceability
 
 Status: implementation control document
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## Rules
 
@@ -15,13 +15,13 @@ Last updated: 2026-07-16
 
 | Requirement | Ticket | Verification target | Release evidence |
 |---|---|---|---|
-| PRD-F01 | PPP-002 | `ppp.access-test/fragment-exchange-contract`, Playwright access flow | E-01, E-03 |
+| PRD-F01 | PPP-002, PPP-022 | shared-password/fragment-policy integration and production Playwright login | E-01, E-03, E-14 |
 | PRD-F02 | PPP-002 | `ppp.access-test/csrf-required` | E-01 |
-| PRD-F03 | PPP-002, PPP-006, PPP-017 | Playwright `literal blank first frame` and hidden-frame animation suppression | E-01, E-04 |
+| PRD-F03 | PPP-002, PPP-006, PPP-017, PPP-022 | Playwright Projects entry, named blank project, literal blank canvas, and hidden-frame animation suppression | E-01, E-04, E-14 |
 | PRD-F04 | PPP-006 | Playwright shortcut and handle-hold Safe Mode | E-01, E-04 |
 | PRD-F05 | PPP-006, PPP-017 | Playwright broken-sidebar recovery and render-timeout preservation | E-01, E-04 |
-| PRD-F06 | PPP-003 | `ppp.session.store-test/new-session-is-a-complete-version-zero-product` | E-01, E-05 |
-| PRD-F07 | PPP-003, PPP-006 | Playwright session switch persistence | E-01, E-03 |
+| PRD-F06 | PPP-003, PPP-022 | complete version-zero product plus bounded-title HTTP/browser creation | E-01, E-05, E-14 |
+| PRD-F07 | PPP-003, PPP-006, PPP-022 | shared two-browser project listing and session switch persistence | E-01, E-03, E-14 |
 | PRD-F08 | PPP-007, PPP-015, PPP-018, PPP-019 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer and live-status contract | E-01 |
 | PRD-F09 | PPP-004, PPP-007 | `ppp.provider.queue-test/provider-queue-is-global-fifo-with-eight-waiting-slots` | E-01 |
 | PRD-F10 | PPP-007, PPP-015, PPP-018, PPP-019 | protocol schema plus WebSocket integration; guarded keyboard/composition submission and bounded phase presentation | E-01 |
@@ -59,6 +59,9 @@ Last updated: 2026-07-16
 | PRD-F42 | PPP-021 | PBT-14, public ingress/HMAC/rate/body/session HTTP integration | E-01, E-13 |
 | PRD-F43 | PPP-021 | PBT-15, Unicode FTS/vector determinism/isolation and browser search outcome | E-01, E-13 |
 | PRD-F44 | PPP-021 | resource-plane checkpoint/restore property and real Codex composite evolution | E-07, E-13 |
+| PRD-F45 | PPP-022 | logout/cookie disposal integration plus login-throttle PBT-17 | E-01, E-14 |
+| PRD-F46 | PPP-022 | provider rolling-window/restart/repair accounting PBT-16 | E-01, E-14 |
+| PRD-F47 | PPP-022 | exhausted-turn preservation integration and Playwright product-use continuity | E-01, E-14 |
 
 ## Property mapping
 
@@ -79,6 +82,8 @@ Last updated: 2026-07-16
 | PBT-13 durable-job lifecycle | PPP-021 | `ppp.property.resource-plane-test` plus scheduler integration |
 | PBT-14 ingress ownership/policy | PPP-021 | `ppp.property.resource-plane-test` plus public HTTP integration |
 | PBT-15 search bounds/determinism | PPP-021 | `ppp.runtime.resources-test` plus browser search outcome |
+| PBT-16 provider rolling starts | PPP-022 | `ppp.provider.budget-test` plus coordinator/restart integration |
+| PBT-17 shared-password throttle | PPP-022 | `ppp.access-test` generated login sequences plus HTTP integration |
 
 ## Ticket dependency graph
 
@@ -109,6 +114,8 @@ PPP-001
                               +---------------------------> PPP-020
                               |
                               +---------------------------> PPP-021
+                              |
+                              +---------------------------> PPP-022
 ```
 
 ## Completion ledger
@@ -136,3 +143,4 @@ PPP-001
 | PPP-019 | done | Real phases now drive a bounded one-line label/detail with decorative zero-to-three-dot motion, stable accessibility text, reduced-motion fallback, and no reasoning leakage. Clean `bb verify` passes 132 JVM/750 assertions, 23 CLJS/99 assertions, Chromium 19/19, Docker smoke, and a 161-file secret scan; stable 8787 passes 2/2 before the final zero-session restart. |
 | PPP-020 | done | Session-owned resource/effect model and generated-product identity are complete. Isolated `bb verify` passes 141 JVM/814 assertions, 24 CLJS/104 assertions, Chromium 22/22, Docker smoke, and a 167-file secret scan. Product accounts pass two 1,000-case properties, HTTP/cookie/restore integration, and three fresh browser contexts including a 6.5-second delayed frame. The real Codex evolution passes 7/7 through dark/floating/Tetris/SQLite ranking/server-rule/Gomoku/account changes; paired bundles were promoted and stable 8787 restarted with zero sessions/runtimes. |
 | PPP-021 | done | The complete session resource plane now covers durable blobs, post-commit product events, durable jobs, public ingress, and Unicode text/vector search. Isolated `bb verify` passes 163 JVM/985 assertions, 25 CLJS/110 assertions, Chromium 23/23, Docker smoke, and a clean 176-file secret scan. PBT-11 through PBT-15 run at least 1,000 cases/sequences each; the real eight-step Codex evolution passes 8/8 in one resumed thread with all repair versions retained and covered. Paired bundles were promoted together, stable 8787 passed Chromium 23/23 directly, and the final Codex OAuth restart reports zero sessions/runtimes. |
+| PPP-022 | done | Shared-password login/logout, common Projects, and persistent rolling provider-start capacity are complete. Isolated `bb verify` passes 174 JVM/1,262 assertions, 25 CLJS/110 assertions, 25 normal Chromium tests, two production restart phases across three fresh contexts, Docker smoke, and a clean secret scan. PBT-16 and PBT-17 each run 1,000 generated sequences; capacity exhaustion preserves source/SQLite/checkpoints while actions and restore continue. Paired bundles were promoted together and stable 8787 passed real-browser Login, Projects, blank-runtime, and conversation smoke. |

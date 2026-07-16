@@ -2,7 +2,7 @@
 
 Status: deployment contract; external deployment requires owner approval
 Supported target: Linux amd64
-Last updated: 2026-07-15
+Last updated: 2026-07-17
 
 ## 1. Deployment shape
 
@@ -39,11 +39,17 @@ Create deployment secrets outside the repository:
 PPP_ENV=production
 PPP_PORT=8787
 PPP_DATA_DIR=/var/lib/ppp
-PPP_ACCESS_CODE=<high-entropy judge code>
+PPP_ACCESS_CODE=<high-entropy shared judge password>
 PPP_COOKIE_SECRET=<at least 32 random characters>
+PPP_COOKIE_SECURE=true
+PPP_FRAGMENT_ACCESS_ENABLED=false
+PPP_LOGIN_FAILURE_LIMIT=10
+PPP_LOGIN_FAILURE_WINDOW_SECONDS=600
 PPP_AI_PROVIDER=codex
 PPP_CODEX_MODEL=gpt-5.6-terra
 PPP_CODEX_REASONING=medium
+PPP_PROVIDER_CALLS_PER_HOUR=100
+PPP_PROVIDER_WINDOW_SECONDS=3600
 PPP_REQUIRE_CLIENT_ACK=true
 PPP_PUBLIC_BASE_URL=https://your-host.example
 CODEX_HOME=/var/lib/codex
@@ -80,7 +86,10 @@ curl --fail http://localhost:8787/healthz
 curl --fail http://localhost:8787/readyz
 ```
 
-Open the access fragment URL. The browser removes the fragment after exchange.
+Open `https://your-host.example/` and enter the shared judge password. Successful
+sign-in opens the common Projects list. Do not put the password in the URL.
+`PPP_PUBLIC_BASE_URL` must exactly match the browser origin or the kernel rejects
+login and other mutations.
 
 ## 5. Container hardening contract
 
@@ -92,7 +101,7 @@ Open the access fragment URL. The browser removes the fragment after exchange.
 - Only `/var/lib/ppp` and `/var/lib/codex` are writable persistent mounts.
 - `auth.json` inside Codex volume is mode 0600.
 - No source repository, Docker socket, host home, or SSH directory is mounted.
-- Image contains no data, prompts, access code, connector secrets, or OAuth state.
+- Image contains no data, prompts, shared password, connector secrets, or OAuth state.
 - Application handles SIGTERM and stops accepting new jobs before process exit.
 
 Inspect package evidence:
@@ -125,6 +134,12 @@ Contains source, prompts, history, checkpoints, journals, and per-session SQLite
 Contains Codex configuration and OAuth credentials. Treat as a password store. Do not include it in normal session exports or share it with judges.
 
 Keep the volumes separate so session backup/restore does not copy OAuth material.
+
+The provider-start ledger is stored at
+`ppp-data/kernel/provider-starts.edn`. It records bounded timestamps only, never
+prompts, generated source, OAuth state, or judge identity. Inspect safe status
+with `bb provider-capacity`. Stop the application before the explicit owner
+reset command `bb reset-provider-capacity`.
 
 ## 7. Backup
 
@@ -191,6 +206,8 @@ Configuration checklist:
 - Configure `/healthz` liveness and `/readyz` readiness.
 - Set root filesystem read-only if supported and `/tmp` as ephemeral writable storage.
 - Set a single replica.
+- Keep a single replica while the rolling provider-start ledger is file-backed;
+  multi-replica coordination is outside the hackathon release.
 - Allow sufficient startup time for recovery and provider preflight.
 - Back up the session volume before each deployment.
 
@@ -228,6 +245,7 @@ Proves:
 - startup journal recovery completed;
 - current manifests are readable;
 - selected provider preflight succeeds.
+- the safe `change-capacity.available?` state for new conversation changes.
 
 Provider readiness checks login/configuration, not a billed generation.
 
@@ -243,9 +261,10 @@ Collect JSON metadata fields only. Do not collect prompt, source, SQL, cookies, 
 | `/readyz` reports OAuth | Re-run device auth in `codex-home`; do not recreate session volume. |
 | `/readyz` reports journal recovery | Keep traffic closed; inspect stable recovery error code and restore backup if automatic recovery cannot verify hashes. |
 | Generated sidebar unusable | Use immutable handle or `Ctrl+Alt+Shift+P`; restore a checkpoint. |
-| Quota reached | Stop new AI changes, back up, increase owner-approved storage; do not delete history automatically. |
+| Storage quota reached | Stop new AI changes, back up, increase owner-approved storage; do not delete history automatically. |
+| Change capacity unavailable | Existing projects, actions, data, checkpoints, restore, Safe Mode, and logout remain available. Wait for the rolling window; inspect safe status without resetting it during normal judging. |
 | New image fails | Follow image rollback procedure and session-format check. |
-| Access code leaked | Rotate secret, restart app, invalidate signed access cookies. |
+| Shared password leaked | Rotate `PPP_ACCESS_CODE`, rotate the cookie secret to invalidate signed access cookies, then restart the single app instance. |
 
 ## 13. Pre-deployment approval record
 
@@ -258,6 +277,7 @@ Image digest:
 Backup verified at:
 Rollback digest:
 Access delivery method:
+Provider capacity checked at:
 Owner approval:
 Deployment operator:
 ```

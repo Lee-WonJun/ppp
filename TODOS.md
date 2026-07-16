@@ -49,7 +49,7 @@ application category or convenience wrapper.
 
 ### Why
 
-The intended hosted product should feel like Figma or Notion: sign in, open a private workspace, invite collaborators later, and never operate infrastructure. The hackathon access code and fixed `local` workspace cannot provide per-person authorization, revocation, isolation, ownership, or billing.
+The intended hosted product should feel like Figma or Notion: sign in, open a private workspace, invite collaborators later, and never operate infrastructure. The hackathon shared password and fixed `local` workspace cannot provide per-person authorization, revocation, isolation, ownership, or billing.
 
 ### Trigger
 
@@ -64,7 +64,7 @@ Begin after the single-user demo has repeatable demand from at least three exter
 - Abuse prevention, rate limits, moderation, and legal data lifecycle.
 - Evaluator workload isolation beyond in-process SCI.
 - Migration plan from format version 1 local sessions.
-- Security review replacing the access-code assumptions in `docs/SECURITY.md`.
+- Security review replacing the shared-password assumptions in `docs/SECURITY.md`.
 
 ### Explicitly not now
 

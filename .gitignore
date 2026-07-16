@@ -1,0 +1,44 @@
+.cpcache/
+.clj-kondo/.cache/
+.shadow-cljs/
+.lsp/
+node_modules/
+target/
+data/
+.env
+connectors.edn
+playwright-report/
+test-results/
+live-eval/playwright-report-live/
+resources/public/js/
+resources/public/frame-js/
+resources/generated/
+!.gitkeep
+
+# Raw live-browser observations carry session-local identifiers and are not
+# publication evidence. Keep only the bounded evaluator reports referenced by
+# the release documents.
+artifacts/live-eval/*/
+!artifacts/live-eval/20260715-222618/
+artifacts/live-eval/20260715-222618/*
+!artifacts/live-eval/20260715-222618/report.edn
+
+artifacts/evolution-eval/*/
+!artifacts/evolution-eval/20260715-234942/
+artifacts/evolution-eval/20260715-234942/*
+!artifacts/evolution-eval/20260715-234942/report.edn
+
+artifacts/demo/*/
+!artifacts/demo/20260716-004803/
+artifacts/demo/20260716-004803/*
+!artifacts/demo/20260716-004803/report.edn
+
+artifacts/**/observations.json
+artifacts/**/.last-run.json
+
+# Codex credentials and local provider output are never repository data.
+.codex/
+auth.json
+*.jsonl
+
+.gstack/

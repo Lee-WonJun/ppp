@@ -1,0 +1,202 @@
+:root {
+  color-scheme: light;
+  --ppp-canvas: #ffffff;
+  --ppp-ink: #171714;
+  --ppp-muted: #6e6d65;
+  --ppp-line: #deddd6;
+  --ppp-surface: #f8f7f2;
+  --ppp-accent: #285a43;
+  --ppp-danger: #a33a32;
+  --ppp-sidebar-width: 420px;
+  --ppp-radius: 14px;
+  font-family: "IBM Plex Sans", "Aptos", "Segoe UI", sans-serif;
+  background: var(--ppp-canvas);
+  color: var(--ppp-ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#ppp-host {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--ppp-canvas);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+select {
+  color: inherit;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgb(40 90 67 / 28%);
+  outline-offset: 2px;
+}
+
+.ppp-host {
+  position: relative;
+  width: 100vw;
+  min-height: 100dvh;
+  background: var(--ppp-canvas);
+}
+
+.ppp-canvas-host,
+.ppp-sidebar-host,
+.ppp-frame-host {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+}
+
+.ppp-frame-host {
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ppp-runtime-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.ppp-runtime-frame-staged {
+  z-index: -1;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.ppp-canvas-host {
+  z-index: 0;
+  overflow: auto;
+}
+
+.ppp-sidebar-host {
+  z-index: 20;
+  pointer-events: none;
+}
+
+.ppp-recovery-host {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ppp-handle {
+  position: fixed;
+  z-index: 100;
+  top: 18px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--ppp-line);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 8px 30px rgb(23 23 20 / 10%);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 140ms ease, border-color 140ms ease;
+}
+
+.ppp-stage-probe {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ppp-stage-probe-canvas,
+.ppp-stage-probe-sidebar {
+  position: absolute;
+  inset: 0;
+}
+
+.ppp-handle:hover {
+  border-color: #aaa89e;
+  transform: translateY(-1px);
+}
+
+.ppp-handle::before,
+.ppp-handle::after {
+  position: absolute;
+  left: 11px;
+  width: 14px;
+  height: 1px;
+  background: var(--ppp-ink);
+  content: "";
+}
+
+.ppp-handle::before {
+  top: 15px;
+}
+
+.ppp-handle::after {
+  top: 21px;
+}
+
+.ppp-host-message {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: 28px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 11px 14px;
+  border: 1px solid var(--ppp-line);
+  border-radius: 10px;
+  background: var(--ppp-surface);
+  color: var(--ppp-ink);
+  box-shadow: 0 10px 36px rgb(23 23 20 / 12%);
+  transform: translateX(-50%);
+}
+
+.ppp-host-message[data-tone="error"] {
+  border-color: rgb(163 58 50 / 35%);
+  color: var(--ppp-danger);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --ppp-sidebar-width: 100vw;
+  }
+
+  .ppp-handle {
+    top: 12px;
+    right: 12px;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

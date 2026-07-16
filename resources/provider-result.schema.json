@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "assistant-message",
+    "clarification-question",
+    "restore-version",
+    "change"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["reply", "clarify", "change", "restore"]
+    },
+    "assistant-message": { "type": "string", "minLength": 1 },
+    "clarification-question": { "type": ["string", "null"] },
+    "restore-version": { "type": ["integer", "null"], "minimum": 0 },
+    "change": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["title", "writes", "deletes", "migrations"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "writes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "content"],
+            "properties": {
+              "path": { "type": "string" },
+              "content": { "type": "string" }
+            }
+          }
+        },
+        "deletes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "migrations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "sql"],
+            "properties": {
+              "name": { "type": "string" },
+              "sql": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

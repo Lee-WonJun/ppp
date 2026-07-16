@@ -1,0 +1,21 @@
+{:deps {:aliases [:cljs]}
+ :builds
+ {:app
+  {:target :browser
+   :output-dir "resources/public/js"
+   :asset-path "/js"
+   :modules {:app {:init-fn ppp.client.core/init!}}
+   :devtools {:http-root "resources/public"
+              :http-port 9630}}
+
+  :frame
+  {:target :browser
+   :output-dir "resources/public/frame-js"
+   :asset-path "/frame-js"
+   :modules {:frame {:init-fn ppp.client.frame/init!}}}
+
+  :test
+  {:target :node-test
+   :output-to "target/cljs-test.js"
+   :ns-regexp "-test$"
+   :autorun true}}}

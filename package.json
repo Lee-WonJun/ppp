@@ -1,0 +1,20 @@
+{
+  "name": "programmable-programming-page",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Where product conversations become running software.",
+  "scripts": {
+    "client:watch": "shadow-cljs watch app frame",
+    "client:release": "shadow-cljs release app frame",
+    "client:test": "shadow-cljs compile test",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "shadow-cljs": "3.4.11"
+  }
+}

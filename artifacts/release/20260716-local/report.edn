@@ -1,0 +1,28 @@
+{:format-version 1
+ :created-at #inst "2026-07-16T00:50:59.000-00:00"
+ :status :local-release-candidate
+ :clean-copy
+ {:path-kind :temporary-git-candidate-copy
+  :verify :passed
+  :jvm {:tests 132 :assertions 750 :failures 0}
+  :cljs {:tests 21 :assertions 89 :failures 0 :warnings 0}
+  :browser {:paths 11 :passed 11 :failed 0
+            :fresh-composer-contexts 3
+            :delayed-frame-ms 6500}
+  :docker-smoke :passed
+  :candidate-secret-scan :passed}
+ :live-evidence
+ {:provider-report "artifacts/live-eval/20260715-222618/report.edn"
+  :provider-scenarios {:records 24 :passed 24 :failed 0}
+  :evolution-report "artifacts/evolution-eval/20260715-234942/report.edn"
+  :evolution-scenarios {:records 6 :passed 6 :failed 0
+                        :thread-continuity :passed}}
+ :packaged-demo
+ {:report "artifacts/demo/20260716-004803/report.edn"
+  :image "programmable-programming-page:demo"
+  :image-digest "sha256:f1fd311cffb5ee0d47aaea15af674fab6810f47e9e02083612a42c99dfa14d97"
+  :runs 3
+  :passed 3
+  :failed 0
+  :conversation-submit :enter}
+ :external-actions :owner-approval-required}

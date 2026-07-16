@@ -1,0 +1,32 @@
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: clojure
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          cache: npm
+      - uses: DeLaGuardo/setup-clojure@13.2
+        with:
+          cli: 1.12.0.1530
+          bb: 1.12.208
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: bb verify

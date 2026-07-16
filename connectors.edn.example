@@ -1,0 +1,10 @@
+{:connectors
+ {:issues
+  {:description "Read issue records"
+   :base-url "https://api.example.com"
+   :allow {:methods #{:get}
+           :path-prefixes ["/v1/issues"]
+           :query-parameters ["state" "limit"]}
+   :secret-headers {"Authorization" {:env "EXAMPLE_TOKEN"}}
+   :timeout-ms 5000
+   :response-limit-bytes 1048576}}}

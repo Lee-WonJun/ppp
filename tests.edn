@@ -1,0 +1,9 @@
+#kaocha/v1
+{:tests
+ [{:id :unit
+   :type :kaocha.type/clojure.test
+   :test-paths ["test"]
+   :ns-patterns ["ppp\\.(?!integration\\.live-eval-test).*test$"]}]
+ :randomize? true
+ :fail-fast? false
+ :reporter [kaocha.report/dots]}

@@ -1,0 +1,267 @@
+:host {
+  color: #171714;
+  font-family: "IBM Plex Sans", "Aptos", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  --ppp-sidebar-width: 420px;
+  --ppp-ink: #171714;
+  --ppp-muted: #6e6d65;
+  --ppp-line: #deddd6;
+  --ppp-surface: #f8f7f2;
+  --ppp-accent: #285a43;
+  --ppp-danger: #a33a32;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+select {
+  color: inherit;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgb(40 90 67 / 32%);
+  outline-offset: 2px;
+}
+
+.ppp-shadow-mount {
+  width: 100%;
+  min-height: 100%;
+}
+
+.ppp-fallback-sidebar,
+.ppp-safe-sidebar {
+  position: fixed;
+  z-index: 1;
+  inset: 0 0 0 auto;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  width: min(var(--ppp-sidebar-width), 100vw);
+  min-height: 100dvh;
+  border-left: 1px solid var(--ppp-line);
+  background: #fbfaf6;
+  box-shadow: -18px 0 60px rgb(23 23 20 / 8%);
+  pointer-events: auto;
+}
+
+.ppp-fallback-header {
+  display: flex;
+  gap: 8px;
+  padding: 16px 58px 14px 16px;
+  border-bottom: 1px solid #e5e3dc;
+}
+
+.ppp-fallback-header select,
+.ppp-safe-content select {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #d6d4ca;
+  border-radius: 9px;
+  background: #fff;
+  padding: 9px 10px;
+}
+
+.ppp-fallback-header button,
+.ppp-safe-sidebar button {
+  border: 1px solid #d6d4ca;
+  border-radius: 9px;
+  background: #fff;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.ppp-fallback-header button {
+  width: 38px;
+  padding: 0;
+}
+
+.ppp-fallback-conversation {
+  overflow: auto;
+  padding: 24px 18px;
+}
+
+.ppp-fallback-empty,
+.ppp-fallback-notice {
+  max-width: 270px;
+  margin: 18vh auto 0;
+  text-align: center;
+}
+
+.ppp-fallback-empty strong,
+.ppp-fallback-notice strong {
+  display: block;
+  margin-bottom: 7px;
+}
+
+.ppp-fallback-empty p,
+.ppp-fallback-notice p {
+  margin: 0 0 16px;
+  color: var(--ppp-muted);
+}
+
+.ppp-fallback-message {
+  max-width: 340px;
+  margin: 0 0 18px;
+}
+
+.ppp-fallback-message p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.ppp-fallback-message-user {
+  margin-left: auto;
+  padding: 11px 13px;
+  border-radius: 12px 12px 3px 12px;
+  background: #eceae2;
+}
+
+.ppp-fallback-message small,
+.ppp-fallback-progress {
+  color: var(--ppp-muted);
+}
+
+.ppp-fallback-checkpoints,
+.ppp-safe-checkpoints {
+  display: grid;
+  gap: 7px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 12px 16px;
+  border-top: 1px solid #e5e3dc;
+}
+
+.ppp-fallback-checkpoints strong,
+.ppp-safe-checkpoints strong {
+  color: var(--ppp-muted);
+  font-size: 12px;
+}
+
+.ppp-fallback-checkpoints button,
+.ppp-safe-checkpoints button {
+  text-align: left;
+}
+
+.ppp-fallback-composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 9px;
+  padding: 14px 16px 18px;
+  border-top: 1px solid #e5e3dc;
+  background: #fbfaf6;
+}
+
+.ppp-fallback-composer textarea {
+  min-height: 68px;
+  resize: none;
+  border: 1px solid #cfcdc3;
+  border-radius: 11px;
+  background: #fff;
+  padding: 11px 12px;
+  color: inherit;
+}
+
+.ppp-fallback-composer button {
+  align-self: end;
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ppp-accent);
+  padding: 0 16px;
+  color: #fff;
+}
+
+.ppp-fallback-composer button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ppp-safe-sidebar {
+  grid-template-rows: auto 1fr;
+  padding: 0;
+}
+
+.ppp-safe-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 58px 20px 20px;
+  border-bottom: 1px solid #e5e3dc;
+}
+
+.ppp-safe-header strong {
+  font-size: 17px;
+}
+
+.ppp-safe-header p {
+  margin: 4px 0 0;
+  color: var(--ppp-muted);
+  font-size: 13px;
+}
+
+.ppp-safe-content {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  overflow: auto;
+  padding: 24px 20px;
+}
+
+.ppp-safe-content label {
+  color: var(--ppp-muted);
+  font-size: 13px;
+}
+
+.ppp-safe-content [role="alert"] {
+  color: var(--ppp-danger);
+}
+
+.ppp-safe-checkpoints {
+  max-height: none;
+  padding: 16px 0 0;
+  border-top: 0;
+}
+
+.ppp-safe-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  :host {
+    --ppp-sidebar-width: 100vw;
+  }
+
+  .ppp-fallback-sidebar,
+  .ppp-safe-sidebar {
+    width: 100vw;
+    border-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

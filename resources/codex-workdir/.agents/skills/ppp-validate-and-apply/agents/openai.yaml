@@ -1,0 +1,4 @@
+interface:
+  display_name: "PPP Validate and Apply"
+  short_description: "Repair generated runtime code before host staging"
+  default_prompt: "Use $ppp-validate-and-apply to produce a syntax-safe PPP runtime change and repair any rejected attempt."

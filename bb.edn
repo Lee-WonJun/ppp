@@ -1,0 +1,82 @@
+{:min-bb-version "1.3.190"
+ :tasks
+ {:requires ([babashka.process :refer [shell]])
+
+  deps
+  {:doc "Install JavaScript dependencies and warm JVM dependencies"
+   :task (do (shell "npm" "install")
+             (shell "clojure" "-P" "-M:test"))}
+
+  dev
+  {:doc "Run the JVM server"
+   :task (shell "clojure" "-M:run")}
+
+  client-watch
+  {:doc "Watch the authenticated host and sandboxed product frame"
+   :task (shell "npx" "shadow-cljs" "watch" "app" "frame")}
+
+  client-release
+  {:doc "Build the authenticated host and sandboxed product frame"
+   :task (shell "npx" "shadow-cljs" "release" "app" "frame")}
+
+  lint
+  {:doc "Lint Clojure and ClojureScript sources"
+   :task (shell "clojure" "-M:lint" "--lint" "src" "test" "scripts" "build.clj")}
+
+  format-check
+  {:doc "Check Clojure formatting without rewriting files"
+   :task (shell "clojure" "-M:fmt" "check" "src" "test" "scripts" "build.clj")}
+
+  format
+  {:doc "Format Clojure sources"
+   :task (shell "clojure" "-M:fmt" "fix" "src" "test" "scripts" "build.clj")}
+
+  test
+  {:doc "Run JVM unit, property, and integration tests"
+   :task (shell "clojure" "-M:test")}
+
+  client-test
+  {:doc "Run ClojureScript tests in Node"
+   :task (shell "npx" "shadow-cljs" "compile" "test")}
+
+  e2e
+  {:doc "Run semantic browser tests"
+   :task (shell "bb" "scripts/run_e2e.clj")}
+
+  secret-scan
+  {:doc "Fail on credential material in tracked project files"
+   :task (shell "bb" "scripts/secret_scan.clj")}
+
+  docker-smoke
+  {:doc "Build the amd64 image and smoke its packaged health endpoint"
+   :task (shell "bb" "scripts/docker_smoke.clj")}
+
+  demo-preflight
+  {:doc "Check local prerequisites for the isolated packaged demo rehearsal"
+   :task (shell "bb" "scripts/demo_preflight.clj")}
+
+  demo-reset
+  {:doc "Remove only disposable Docker resources labeled for demo rehearsal"
+   :task (shell "bb" "scripts/demo_reset.clj")}
+
+  demo-rehearsal
+  {:doc "Run the exact packaged browser demo three times with fresh volumes"
+   :task (shell "bb" "scripts/run_demo_rehearsal.clj")}
+
+  reset-dev-sessions
+  {:doc "Delete pre-release development sessions while preserving kernel state"
+   :task (shell "bb" "scripts/reset_dev_sessions.clj")}
+
+  verify
+  {:doc "Single local release gate"
+   :task (doseq [task ["lint" "format-check" "test" "client-test"
+                       "client-release" "e2e" "docker-smoke" "secret-scan"]]
+           (shell "bb" task))}
+
+  eval-live
+  {:doc "Explicitly run the 24-case OAuth Codex evaluation"
+   :task (shell "bb" "scripts/run_live_eval.clj")}
+
+  eval-evolution
+  {:doc "Evolve one real product through six OAuth Codex turns"
+   :task (shell "bb" "scripts/run_evolution_eval.clj")}}}

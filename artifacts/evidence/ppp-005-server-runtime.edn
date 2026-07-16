@@ -1,0 +1,25 @@
+{:captured-at "2026-07-15"
+ :capability-version 1
+ :runtime-inventory
+ {:runtime.api
+  ["connector-http!" "execute!" "public-http!" "query!" "register-action!"]
+  :clojure.string
+  ["blank?" "ends-with?" "includes?" "join" "lower-case" "replace"
+   "split" "split-lines" "starts-with?" "trim" "triml" "trimr" "upper-case"]
+  :denied
+  ["." ".." "add-watch" "agent" "alter-var-root" "await" "await-for"
+   "compile" "doto" "eval" "future" "future-call" "import" "intern"
+   "load-file" "load-reader" "load-string" "new" "ns-resolve" "pcalls"
+   "pmap" "remove-watch" "requiring-resolve" "resolve" "send" "send-off"
+   "shutdown-agents" "slurp" "spit"]}
+ :verification
+ {:jvm {:tests 49 :assertions 298 :failures 0}
+  :cljs {:tests 3 :assertions 11 :failures 0}
+  :properties
+  {:sql-forbidden-token-cases 1000
+   :gallery-score-and-tie-cases 1000
+   :sci-escape-cases 100}}
+ :sqlite
+ {:snapshot "SQLite online backup API through org.sqlite.core.DB/backup"
+  :gallery-seed-count 6
+  :runtime-kernel-tables ["_ppp_runtime_meta" "_ppp_migrations"]}}

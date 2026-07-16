@@ -1,0 +1,44 @@
+services:
+  app:
+    image: programmable-programming-page:local
+    build:
+      context: .
+      args:
+        CODEX_VERSION: "0.144.0"
+    environment:
+      PPP_ENV: ${PPP_ENV:-development}
+      PPP_PORT: "8787"
+      PPP_DATA_DIR: /var/lib/ppp
+      PPP_ACCESS_CODE: ${PPP_ACCESS_CODE:-ppp-local}
+      PPP_COOKIE_SECRET: ${PPP_COOKIE_SECRET:-development-only-cookie-secret-change-before-sharing}
+      PPP_AI_PROVIDER: ${PPP_AI_PROVIDER:-codex}
+      PPP_CODEX_MODEL: ${PPP_CODEX_MODEL:-gpt-5.6-terra}
+      PPP_CODEX_REASONING: ${PPP_CODEX_REASONING:-medium}
+      PPP_REQUIRE_CLIENT_ACK: ${PPP_REQUIRE_CLIENT_ACK:-true}
+      PPP_PUBLIC_BASE_URL: ${PPP_PUBLIC_BASE_URL:-http://localhost:8787}
+      CODEX_HOME: /var/lib/codex
+      HOME: /var/lib/codex
+    ports:
+      - "8787:8787"
+    volumes:
+      - ppp-data:/var/lib/ppp
+      - codex-home:/var/lib/codex
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    stop_grace_period: 15s
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8787/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  ppp-data:
+  codex-home:

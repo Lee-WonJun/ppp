@@ -41,8 +41,8 @@ Local completeness does not authorize remote or public state changes.
 - Enter-based packaged demo: `artifacts/demo/20260716-004803/report.edn`, three
   of three fresh-volume runs passed.
 - Aggregated bounded record: `artifacts/release/20260716-local/report.edn`.
-- Repository baseline: PPP-023 was first published on 2026-07-17; PPP-024
-  closure is ready for the same `origin/master` after the documented gate.
+- Repository baseline: PPP-024 implementation and closure are recorded in
+  intentional commits and published to `origin/master` on 2026-07-17.
 - Stable owner surface: `http://localhost:8787/` opens shared-password sign-in
   and Projects. Codex OAuth readiness, zero development sessions, zero
   in-memory runtimes, and no pending stages are required after the final reset.

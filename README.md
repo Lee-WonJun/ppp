@@ -7,8 +7,9 @@ Programmable Programming Page (PPP) is a self-hostable live product workspace fo
 The user never needs to install a development environment, clone a repository, inspect files, understand Git, or operate an AI coding agent. Developers still receive a complete source tree, domain tests, and an append-only record of every accepted change.
 
 Status: the complete session resource plane, shared judge workspace,
-on-demand generated-product diagnostics, and exact final-video story gate are
-implemented. External publication remains owner-controlled. Automated
+on-demand generated-product diagnostics, exact final-video story gate, and
+the verified 168.74-second local real-Codex video are complete. External
+publication remains owner-controlled. Automated
 verification, production-configured shared-access browser tests, the 24-case
 live Codex evaluation, the eight-step cumulative real-product evolution gate,
 the six-of-six final-video story, and three consecutive packaged demo

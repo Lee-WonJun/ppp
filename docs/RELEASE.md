@@ -1,6 +1,6 @@
 # Local Release Closure
 
-Status: locally complete through PPP-024; publication actions remain owner-controlled
+Status: locally complete through PPP-025; publication actions remain owner-controlled
 Last updated: 2026-07-17
 
 ## Definition of locally complete
@@ -34,6 +34,11 @@ Local completeness does not authorize remote or public state changes.
   in one project and one resumed provider thread through Snake, product auth,
   visible error repair, authenticated SQLite ranking, Game library, and
   preserved Tetris addition.
+- Local final video: PPP-025 captured the same real-Codex story at 1440x900,
+  edited it to 168.74 seconds with honest wait-compression cards, added Korean
+  narration and synchronized English subtitles, and verified the media and
+  first Projects frame. The bounded record is
+  `artifacts/evidence/ppp-025-real-codex-video-capture.md`.
 - Shared judge workspace evidence:
   `artifacts/evidence/ppp-022-shared-judge-workspace.md`.
 - On-demand active-product diagnostic evidence:
@@ -52,7 +57,7 @@ Local completeness does not authorize remote or public state changes.
 These actions remain deliberately unperformed until the owner approves them:
 
 1. Deploy the verified image to the chosen VPS/Coolify target.
-2. Record and upload the narrated sub-three-minute video.
+2. Upload the verified narrated sub-three-minute video.
 3. Add the public video and hosted-demo URLs to `docs/DEVPOST.md`.
 4. Deliver the shared password through the event-approved private channel.
 5. Select Work & Productivity and submit the Devpost entry.

@@ -1,7 +1,7 @@
 # Three-Minute Demo
 
-Status: real-Codex rehearsal passed 6/6; owner-controlled recording pending
-Target runtime: 175 seconds
+Status: real-Codex video captured and verified locally; publication pending
+Actual runtime: 168.74 seconds
 Voice: Korean
 Required subtitles: English
 
@@ -49,7 +49,7 @@ provider or product shown in the final video.
 ### Prompt 1: make the first game
 
 ```text
-Build the first game in this product: a polished Snake game. It must start moving automatically from a browser timer and accept ArrowUp, ArrowDown, ArrowLeft, and ArrowRight without a reload. Give the playable root the accessible name "Snake game". Show the score and expose live values named "Snake head row", "Snake head column", "Snake direction", and "Snake score" so the running game can be verified. Keep all game logic in the browser sandbox. Do not write server, shared-domain, test, or migration files yet.
+Build the first game in this product: a polished Snake game. It must start moving automatically from a browser timer and continue or restart automatically after a collision. Give the playable root the accessible name "Snake game", make that root keyboard-focusable, and handle real DOM ArrowUp, ArrowDown, ArrowLeft, and ArrowRight keydown events without a reload. Each accepted key must immediately update the direction state and visible direction output. Show the score and expose live values named "Snake head row", "Snake head column", "Snake direction", and "Snake score" so the running game can be verified. Keep all game logic in the browser sandbox. Do not write server, shared-domain, test, or migration files yet.
 ```
 
 Expected visible outcome:
@@ -138,8 +138,8 @@ Expected visible outcome:
 | 2:40-2:54 | Open Tetris, show automatic falling and arrow input, return to Snake and its ranking. | `Tetris runs in the browser. Accounts and rankings stay on the server. Both evolve inside one live product workspace.` |
 | 2:54-2:59 | Final frame: library, sidebar, and tagline. | `Where product conversations become running software.` |
 
-Target 170-179 seconds after removing dead air. Final export must remain below
-180 seconds.
+The verified cut is 168.74 seconds after removing dead air. Final export must
+remain below 180 seconds.
 
 ## 5. Camera and editing rules
 
@@ -159,7 +159,9 @@ Target 170-179 seconds after removing dead air. Final export must remain below
 
 ## 6. English subtitle file
 
-The exact English subtitles are in `artifacts/demo/ppp-demo.en.srt`.
+The synchronized English subtitle sidecar is in the ignored local capture
+directory beside `ppp-demo.mp4`; the MP4 also embeds the same English subtitle
+track.
 
 Subtitle review checks:
 
@@ -207,18 +209,18 @@ invalidates the take.
 
 ## 8. Capture checklist
 
-- [ ] First frame is Projects, not login.
-- [ ] Blank new project.
-- [ ] Real Codex progress appears honestly.
-- [ ] Playable timer/keyboard Snake.
-- [ ] Initial account form with Snake preserved.
-- [ ] Improved arcade account UI.
-- [ ] Visible invalid sign-in-ID error.
-- [ ] Create, sign out, sign in, reload as Player One.
-- [ ] Save score and prove ranking persistence after reload.
-- [ ] Game library lists Snake.
-- [ ] Game library lists Snake and Tetris.
-- [ ] Playable timer/keyboard Tetris.
-- [ ] Return to preserved Snake account and ranking.
-- [ ] No login, terminal, source, diff, SQL, test, or history shot.
-- [ ] Final frame includes product and tagline.
+- [x] First frame is Projects, not login.
+- [x] Blank new project.
+- [x] Real Codex progress appears honestly.
+- [x] Playable timer/keyboard Snake.
+- [x] Initial account form with Snake preserved.
+- [x] Improved arcade account UI.
+- [x] Visible invalid sign-in-ID error.
+- [x] Create, sign out, sign in, reload as Player One.
+- [x] Save score and prove ranking persistence after reload.
+- [x] Game library lists Snake.
+- [x] Game library lists Snake and Tetris.
+- [x] Playable timer/keyboard Tetris.
+- [x] Return to preserved Snake account and ranking.
+- [x] No login, terminal, source, diff, SQL, test, or history shot.
+- [x] Final frame includes product and tagline.

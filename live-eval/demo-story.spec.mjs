@@ -10,7 +10,7 @@ if (!observationPath) {
 }
 
 const prompts = {
-  "DEMO-01": `Build the first game in this product: a polished Snake game. It must start moving automatically from a browser timer and accept ArrowUp, ArrowDown, ArrowLeft, and ArrowRight without a reload. Give the playable root the accessible name "Snake game". Show the score and expose live values named "Snake head row", "Snake head column", "Snake direction", and "Snake score" so the running game can be verified. Keep all game logic in the browser sandbox. Do not write server, shared-domain, test, or migration files yet.`,
+  "DEMO-01": `Build the first game in this product: a polished Snake game. It must start moving automatically from a browser timer and continue or restart automatically after a collision. Give the playable root the accessible name "Snake game", make that root keyboard-focusable, and handle real DOM ArrowUp, ArrowDown, ArrowLeft, and ArrowRight keydown events without a reload. Each accepted key must immediately update the direction state and visible direction output. Show the score and expose live values named "Snake head row", "Snake head column", "Snake direction", and "Snake score" so the running game can be verified. Keep all game logic in the browser sandbox. Do not write server, shared-domain, test, or migration files yet.`,
   "DEMO-02": `Add real product signup and sign-in to this Snake product, while keeping Snake playable. Use the provided product-auth capabilities, not PPP workspace access, and never store passwords yourself. Start with a simple account area with fields named "Display name", "Sign-in ID", and "Password", a button named "Create account", and a switch named "Have an account? Sign in". The sign-in submit button must be named "Sign in" and the reverse switch must be named "Need an account? Create one". Store the public display-name profile in a host-approved migration keyed by the auth user id. After signup or sign-in show "Signed in as <display name>" and a button named "Sign out". Add rollback-only domain tests for signup, profile lookup, sign-in state, and rejection paths.`,
   "DEMO-03": `The account area feels bolted onto the game. Redesign it as a cohesive arcade account panel and make invalid input, duplicate-account, wrong-password, and server failures visibly explain what the player can fix. Keep the existing Snake game and every product-auth/server action unchanged. Put the latest visible account result in an output named "Account message". This is a client-only presentation and error-handling change: do not write server, shared-domain, test, or migration files.`,
   "DEMO-04": `Add a persistent Snake ranking for signed-in players. Keep the game and account experience. Add a button named "Save score" that sends the current Snake score to a registered server action. The action must require the authenticated product user, derive identity from the auth context instead of trusting a typed player name, store the player's best score in SQLite, and return a deterministic ranking ordered by score descending with stable ties. Render it in a region named "Snake ranking" and show the signed-in player's display name and score. Put action feedback in an output named "Ranking status". Add a host-approved migration and rollback-only domain tests for auth enforcement, best-score updates, ordering, response shape, and reload persistence.`,
@@ -26,7 +26,9 @@ const scenarioOrder = [
   "DEMO-05",
   "DEMO-06"
 ];
-const maximumSemanticRepairs = 3;
+const maximumSemanticRepairs = Number(
+  process.env.PPP_DEMO_SEMANTIC_REPAIRS || "3"
+);
 
 function productFrame(page) {
   return page.frameLocator(
@@ -101,7 +103,12 @@ async function submitTurn(page, prompt) {
     return current.progress === null && current.messages.length >= messageCount + 2;
   }, { timeout: 720_000 }).toBe(true);
   const after = await snapshot(page);
-  return { before, after, duration: Date.now() - started };
+  return {
+    before,
+    after,
+    duration: Date.now() - started,
+    "completed-at-ms": Date.now()
+  };
 }
 
 async function activeFrameCount(page) {
@@ -150,11 +157,15 @@ async function verifySnake(page) {
     timeout: 8_000
   }).not.toBe(beforePosition);
 
+  const currentDirection = String(await direction.textContent()).toLowerCase();
+  const vertical = currentDirection.includes("up")
+    || currentDirection.includes("down");
+  const expectedDirection = vertical ? "left" : "down";
   await game.focus();
-  await game.press("ArrowDown");
+  await game.press(vertical ? "ArrowLeft" : "ArrowDown");
   await expect.poll(async () => String(await direction.textContent()).toLowerCase(), {
     timeout: 3_000
-  }).toContain("down");
+  }).toContain(expectedDirection);
   return {
     "snake-timer-advanced": true,
     "snake-keyboard-moved": true,
@@ -426,6 +437,7 @@ async function verifyWithRepair(scenario, initialTurn, page, sessionId) {
   const before = initialTurn.before;
   let after = initialTurn.after;
   let duration = initialTurn.duration;
+  let completedAtMs = initialTurn["completed-at-ms"];
   let repairCount = Math.max(0, after.version - before.version - 1);
 
   while (true) {
@@ -437,7 +449,12 @@ async function verifyWithRepair(scenario, initialTurn, page, sessionId) {
         after.version
       );
       return {
-        turn: { before, after, duration },
+        turn: {
+          before,
+          after,
+          duration,
+          "completed-at-ms": completedAtMs
+        },
         outcomes: { ...outcomes, "semantic-repair-count": repairCount }
       };
     } catch (error) {
@@ -454,12 +471,20 @@ async function verifyWithRepair(scenario, initialTurn, page, sessionId) {
       expect(repairTurn.after.version).toBe(after.version + 1);
       after = repairTurn.after;
       duration += repairTurn.duration;
+      completedAtMs = repairTurn["completed-at-ms"];
       repairCount += 1;
     }
   }
 }
 
-async function appendAndRequire(page, sessionId, records, scenario, verified) {
+async function appendAndRequire(
+  page,
+  sessionId,
+  records,
+  scenario,
+  verified,
+  capture
+) {
   const frameCount = await activeFrameCount(page);
   const record = {
     scenario,
@@ -469,7 +494,8 @@ async function appendAndRequire(page, sessionId, records, scenario, verified) {
     "browser-outcome": true,
     "client-stage-valid": !verified.turn.after["debug-error"],
     outcomes: verified.outcomes,
-    "active-frame-count": frameCount
+    "active-frame-count": frameCount,
+    capture
   };
   records.push(record);
   writeObservations(sessionId, records);
@@ -480,6 +506,7 @@ async function appendAndRequire(page, sessionId, records, scenario, verified) {
 
 test("real Codex evolves Snake into a persistent game platform", async ({ page }) => {
   test.setTimeout(3_600_000);
+  const captureStartedAt = Date.now();
 
   let sessionId;
   let records;
@@ -504,6 +531,7 @@ test("real Codex evolves Snake into a persistent game platform", async ({ page }
 
   while (records.length < scenarioOrder.length) {
     const scenario = scenarioOrder[records.length];
+    const scenarioStartedAt = Date.now();
     const recordedVersion = records.at(-1)?.["after-version"] ?? 0;
     const current = await snapshot(page);
     let initialTurn;
@@ -512,7 +540,8 @@ test("real Codex evolves Snake into a persistent game platform", async ({ page }
       initialTurn = {
         before: { version: recordedVersion },
         after: current,
-        duration: 0
+        duration: 0,
+        "completed-at-ms": Date.now()
       };
     } else {
       initialTurn = await submitTurn(page, prompts[scenario]);
@@ -524,6 +553,11 @@ test("real Codex evolves Snake into a persistent game platform", async ({ page }
       page,
       sessionId
     );
-    await appendAndRequire(page, sessionId, records, scenario, verified);
+    await appendAndRequire(page, sessionId, records, scenario, verified, {
+      "scenario-start-ms": scenarioStartedAt - captureStartedAt,
+      "generation-complete-ms": verified.turn["completed-at-ms"]
+        - captureStartedAt,
+      "verification-complete-ms": Date.now() - captureStartedAt
+    });
   }
 });

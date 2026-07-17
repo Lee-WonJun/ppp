@@ -1,6 +1,6 @@
 # Devpost Submission Draft
 
-Status: evidence-complete draft; links and submission remain owner-controlled
+Status: local video and evidence complete; public links and submission remain owner-controlled
 Last updated: 2026-07-17
 
 ## Submission fields
@@ -225,7 +225,9 @@ Hero image should show the running generated product and sidebar together, not a
 - [x] 24 live evaluations meet thresholds.
 - [x] Three packaged demo runs succeed consecutively.
 - [x] Secret scan covers repository and image.
-- [ ] Video public, under three minutes, with English subtitles.
+- [x] Local video is verified under three minutes with synchronized English
+  subtitles.
+- [ ] Video uploaded and publicly accessible.
 - [x] Claims match completed evidence.
 - [x] Codex and model roles stated accurately.
 - [x] Feedback session ID recorded.
@@ -235,4 +237,4 @@ Hero image should show the running generated product and sidebar together, not a
 - [ ] Owner explicitly approves deployment and submission.
 
 Local release closure and the exact owner approval queue are tracked in
-`docs/RELEASE.md` and `tickets/PPP-024.md`.
+`docs/RELEASE.md` and `tickets/PPP-025.md`.

@@ -71,6 +71,11 @@
   {:doc "Run the exact final-video story once through real OAuth Codex"
    :task (shell "bb" "scripts/run_demo_live.clj")}
 
+  demo-capture
+  {:doc "Record and edit the real OAuth Codex story below three minutes"
+   :task (shell {:extra-env {"PPP_DEMO_LIVE_CAPTURE" "1"}}
+                "bb" "scripts/run_demo_live.clj")}
+
   reset-dev-sessions
   {:doc "Delete pre-release development sessions while preserving kernel state"
    :task (shell "bb" "scripts/reset_dev_sessions.clj")}

@@ -37,6 +37,9 @@ artifacts/demo-live/*/
 artifacts/demo-live/20260717-060709/*
 !artifacts/demo-live/20260717-060709/report.edn
 
+# Raw and edited video captures stay local until the owner authorizes upload.
+artifacts/demo-capture/
+
 artifacts/demo/*/
 !artifacts/demo/20260716-004803/
 artifacts/demo/20260716-004803/*

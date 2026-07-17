@@ -10,6 +10,9 @@
 (def base-url (str "http://127.0.0.1:" port))
 (def access-code "ppp-demo-live")
 (def model (or (System/getenv "PPP_CODEX_MODEL") "gpt-5.6-terra"))
+(def capture? (contains? #{"1" "true" "yes"}
+                         (some-> (System/getenv "PPP_DEMO_LIVE_CAPTURE")
+                                 str/lower-case)))
 (def keep-data? (contains? #{"1" "true" "yes"}
                            (some-> (System/getenv "PPP_DEMO_LIVE_KEEP_DATA")
                                    str/lower-case)))
@@ -37,8 +40,12 @@
 (def output-root
   (str (fs/absolutize
         (or resume-output-root
-            (str "artifacts/demo-live/" timestamp)))))
+            (str (if capture?
+                   "artifacts/demo-capture/"
+                   "artifacts/demo-live/")
+                 timestamp)))))
 (def observations-path (str (fs/path output-root "observations.json")))
+(def playwright-output (str (fs/path output-root "playwright")))
 (def project-root (fs/absolutize "."))
 (def work-root (fs/create-temp-dir {:prefix "ppp-demo-live-work-"}))
 
@@ -138,6 +145,7 @@
                   :scenarios 6
                   :sessions 1
                   :provider :codex
+                  :capture capture?
                   :resume-existing (boolean resume?)}))
 
 (prepare-work-root!)
@@ -154,7 +162,8 @@
                                :out :inherit
                                :err :inherit})
       browser-exit (atom 1)
-      report-exit (atom 1)]
+      report-exit (atom 1)
+      editor-exit (atom (if capture? 1 0))]
   (try
     (try
       (wait-for-server! server)
@@ -169,7 +178,10 @@
               :extra-env
               (cond-> {"PPP_LIVE_BASE_URL" base-url
                        "PPP_DEMO_LIVE_ACCESS_CODE" access-code
-                       "PPP_DEMO_LIVE_OBSERVATIONS" observations-path}
+                       "PPP_DEMO_LIVE_OBSERVATIONS" observations-path
+                       "PPP_DEMO_LIVE_PLAYWRIGHT_OUTPUT" playwright-output}
+                capture? (assoc "PPP_DEMO_LIVE_CAPTURE" "1")
+                capture? (assoc "PPP_DEMO_SEMANTIC_REPAIRS" "8")
                 resume? (assoc "PPP_DEMO_LIVE_RESUME_FINAL" "1"))})]
         (reset! browser-exit (:exit result)))
       (finally
@@ -184,11 +196,29 @@
       (println (pr-str {:demo-live :report-skipped
                         :reason :no-browser-observations
                         :path observations-path})))
+    (when (and capture?
+               (zero? @browser-exit)
+               (zero? @report-exit))
+      (let [videos (->> (fs/glob playwright-output "**/*.webm")
+                        (filter fs/regular-file?)
+                        vec)
+            raw-video (when (seq videos)
+                        (apply max-key fs/size videos))]
+        (if raw-video
+          (let [edit-result
+                (run-command
+                 ["bb" "scripts/edit_demo_video.clj"
+                  (str raw-video) observations-path output-root]
+                 {})]
+            (reset! editor-exit (:exit edit-result)))
+          (println (pr-str {:demo-live :capture-missing
+                            :path playwright-output})))))
     (finally
       (when (process/alive? server)
         (process/destroy-tree server))
       (let [failed? (not (and (zero? @browser-exit)
-                              (zero? @report-exit)))
+                              (zero? @report-exit)
+                              (zero? @editor-exit)))
             retain? (or keep-data? failed?)]
         (if retain?
           (do
@@ -201,5 +231,7 @@
           (do
             (fs/delete-tree data-root)
             (fs/delete-tree work-root))))))
-  (when-not (and (zero? @browser-exit) (zero? @report-exit))
+  (when-not (and (zero? @browser-exit)
+                 (zero? @report-exit)
+                 (zero? @editor-exit))
     (System/exit 1)))

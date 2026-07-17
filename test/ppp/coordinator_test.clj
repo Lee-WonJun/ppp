@@ -551,6 +551,57 @@
       (finally
         (close-context! context)))))
 
+(deftest exhausted-repairable-change-keeps-thread-for-the-next-explicit-repair
+  (let [requests (atom [])
+        thread-id "99999999-9999-4999-8999-999999999999"
+        repair-provider
+        (reify provider/Provider
+          (ready? [_] {:ready? true :provider :repair-fixture})
+          (generate! [_ request]
+            (let [attempt (count (swap! requests conj request))]
+              (provider/generation
+               (if (<= attempt 2)
+                 (provider/change-result
+                  "This proposal is still invalid."
+                  "Invalid proposal"
+                  [{:path "../../outside.clj" :content "(System/exit 0)"}]
+                  [])
+                 (provider/change-result
+                  "The corrected theme is running."
+                  "Corrected theme"
+                  [{:path "styles/runtime.css"
+                    :content ":host { color: #eee; background: #111; }\n"}]
+                  []))
+               thread-id))))
+        context (test-context {:test/provider repair-provider
+                               :change-generation-attempts 2})]
+    (try
+      (let [session-id (:id (coordinator/create-session! (:coordinator context)))
+            tab-id (random-uuid)]
+        (is (= :source/validation-failed
+               (exception-code
+                #(submit-and-await! context session-id tab-id 0
+                                    "Use a dark theme"))))
+        (is (= 2 (count @requests)))
+        (is (= thread-id
+               (:codex-thread-id (store/get-session (:store context)
+                                                    session-id))))
+        (is (= thread-id
+               (:provider-thread-id
+                (first (store/list-history (:store context) session-id)))))
+
+        (is (= {:kind :change :runtime-version 1}
+               (submit-and-await! context session-id tab-id 0
+                                  "Fix the rejected theme")))
+        (is (= thread-id (:thread-id (nth @requests 2))))
+        (is (= [:rejected :change]
+               (mapv :kind (store/list-history (:store context) session-id))))
+        (is (= thread-id
+               (:codex-thread-id (store/get-session (:store context)
+                                                    session-id)))))
+      (finally
+        (close-context! context)))))
+
 (deftest failed-generated-business-test-is-fed-back-and-repaired-before-commit
   (let [requests (atom [])
         thread-id "88888888-8888-4888-8888-888888888888"

@@ -550,7 +550,7 @@ Required controls:
   commands may inspect exact bounded status. Exhaustion includes a stable code
   and bounded retry delay without exposing OAuth or provider diagnostics.
 - Restore clears the stored thread ID so future context cannot assume the abandoned future state.
-- A repairable source, SQL, server SCI, or browser staging rejection is returned to the same Codex thread as structured feedback. The initial proposal plus at most two corrected attempts are allowed. Only the final successful proposal enters history as a change; exhausted attempts create one rejected event. Successful history records include the host-observed attempt count and affected runtime surfaces; the provider never declares its own trusted impact flag.
+- A repairable source, SQL, server SCI, or browser staging rejection is returned to the same Codex thread as structured feedback. The initial proposal plus at most two corrected attempts are allowed. Only the final successful proposal enters history as a change; exhausted attempts create one rejected event, retain that provider thread for the next explicit user correction, and never activate rejected source. Restore and non-repairable provider failures reset the thread. Successful history records include the host-observed attempt count and affected runtime surfaces; the provider never declares its own trusted impact flag.
 
 ### 8.3 On-demand client diagnostics Skill
 

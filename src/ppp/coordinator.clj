@@ -615,7 +615,8 @@
 (defn process-turn!
   [^Coordinator coordinator request]
   (let [generated? (atom false)
-        generated-result (atom nil)]
+        generated-result (atom nil)
+        generated-thread-id (atom nil)]
     (try
       (let [session (store/get-session (:store coordinator) (:session-id request))
             max-attempts (max 1 (long (get (:config coordinator)
@@ -633,6 +634,7 @@
                 result (:result generation)]
             (reset! generated? true)
             (reset! generated-result result)
+            (reset! generated-thread-id (:thread-id generation))
             (when (and (> attempt 1) (not= :change (:kind result)))
               (throw (ex-info "A repair attempt did not return a change"
                               {:code :provider/repair-kind-invalid
@@ -657,10 +659,22 @@
                       (throw cause)))
                   (:value outcome)))))))
       (catch Exception cause
-        (when @generated?
-          (store/reset-codex-thread! (:store coordinator) (:session-id request)))
         (let [code (or (exception-code cause) :turn/failed)
               message (user-safe-failure code (:details (ex-data cause)))]
+          ;; A fully exhausted but repairable change still contains the most
+          ;; useful context for the user's next explicit correction. Preserve
+          ;; that thread while keeping the rejected source out of current.
+          ;; Non-repairable failures continue to reset potentially poisoned or
+          ;; unusable provider context. Successful restore resets separately.
+          (when @generated?
+            (if (and (= :change (:kind @generated-result))
+                     (string? @generated-thread-id)
+                     (repairable-change-error? code))
+              (store/set-codex-thread! (:store coordinator)
+                                       (:session-id request)
+                                       @generated-thread-id)
+              (store/reset-codex-thread! (:store coordinator)
+                                         (:session-id request))))
           (try
             (store/append-history!
              (:store coordinator) (:session-id request)
@@ -673,7 +687,8 @@
                       :validation {:status :rejected
                                    :error-code code}}
                (= :change (:kind @generated-result))
-               (assoc :changes (:change @generated-result))))
+               (assoc :changes (:change @generated-result)
+                      :provider-thread-id @generated-thread-id)))
             (catch Exception _history-failure nil))
           (send-turn! coordinator
                       (:session-id request) (:tab-id request) (:request-id request)

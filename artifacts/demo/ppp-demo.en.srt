@@ -1,54 +1,58 @@
 1
-00:00:00,000 --> 00:00:12,000
-Product managers do not fail at prompting.
-They get blocked by installs, Git, builds, and authentication.
+00:00:00,000 --> 00:00:09,000
+The hard part for many product people is not prompting.
+It is getting past installs, Git, folders, builds, and authentication.
 
 2
-00:00:12,000 --> 00:00:23,000
-PPP moves that machinery behind the kind of browser workspace
-people already know.
+00:00:09,000 --> 00:00:24,000
+PPP starts where familiar browser tools start:
+open a project and describe the outcome.
 
 3
-00:00:23,000 --> 00:00:39,000
-The conversation is part of the product,
-so it can redesign itself without a refresh.
+00:00:24,000 --> 00:00:39,000
+The first result is a real browser game.
+Its timer and keyboard behavior are already running, with no refresh.
 
 4
-00:00:39,000 --> 00:01:06,000
-Now I ask for a real product: Gallery, Submit, Leaderboard,
-six seed projects, persistent voting, and server-side ranking.
+00:00:39,000 --> 00:00:55,000
+Now the same conversation crosses the server boundary
+and adds product accounts without replacing the game.
 
 5
-00:01:06,000 --> 00:01:23,000
-These are not mock cards. Votes live in this session's SQLite
-database and remain after a browser reload.
+00:00:55,000 --> 00:01:10,000
+Product work is iterative. The first form is not good enough,
+so I ask for a better interface and useful errors.
 
 6
-00:01:23,000 --> 00:01:48,000
-One conversation changes the business rule and presentation atomically.
-Judge votes now count for three points.
+00:01:10,000 --> 00:01:34,000
+This error comes from the real account boundary. I fix the input,
+create a player, sign out, sign back in, and the session survives reload.
 
 7
-00:01:48,000 --> 00:02:04,000
-Work is organized like a familiar SaaS file.
-A new session is blank, and the original product is still here.
+00:01:34,000 --> 00:01:51,000
+Next, Snake becomes a service. The signed-in player saves a score
+through a server action into SQLite.
 
 8
-00:02:04,000 --> 00:02:23,000
-Source, runtime behavior, and data move together.
-We can restore the older checkpoint and return to the newer one.
+00:01:51,000 --> 00:02:06,000
+The ranking is server-owned data, not a painted mockup.
+The account and score remain after reload.
 
 9
-00:02:23,000 --> 00:02:37,000
-The user never handles files, but developers receive real CLJ, CLJS,
-CSS, SQL, tests, and append-only history.
+00:02:06,000 --> 00:02:23,000
+A product decision changes the shape of the whole service.
+Snake is now one game in a platform, without losing its users or data.
 
 10
-00:02:37,000 --> 00:02:49,000
-A fixed recovery host remains outside generated code,
-so a failed interface cannot lock the user out.
+00:02:23,000 --> 00:02:40,000
+One more conversation adds a second game
+while preserving everything that already works.
 
 11
-00:02:49,000 --> 00:02:55,000
-Programmable Programming Page.
+00:02:40,000 --> 00:02:54,000
+Tetris runs in the browser. Accounts and rankings stay on the server.
+Both evolve inside one live product workspace.
+
+12
+00:02:54,000 --> 00:02:59,000
 Where product conversations become running software.

@@ -145,7 +145,7 @@ animate while a phase is active without creating additional progress events or
 repeatedly changing accessible live-region text. Progress remains one current
 line rather than a growing event log.
 
-Errors use plain language, identify whether loading, validation, initial drawing, bridge transport, action execution, or an active interaction failed, retain the current product, and offer a retry where safe. A generated change that fails a repairable validation or staging gate is returned to the provider with structured, bounded, non-secret feedback for up to two corrected attempts before the turn is rejected. A generic rejection without a concrete reason category is not an acceptable product outcome. Internal stages and error codes remain available in logs and test evidence.
+Errors use plain language, identify whether loading, validation, initial drawing, bridge transport, action execution, or an active interaction failed, retain the current product, and offer a retry where safe. A generated change that fails a repairable validation or staging gate is returned to the provider with structured, bounded, non-secret feedback for up to two corrected attempts before the turn is rejected. If those repairable attempts are exhausted, the rejected source never becomes current but the last valid provider thread remains available for the user's next explicit correction; restore and non-repairable provider failures still reset the thread. A generic rejection without a concrete reason category is not an acceptable product outcome. Internal stages and error codes remain available in logs and test evidence.
 
 ### 7.5 Sessions and checkpoints
 
@@ -277,19 +277,33 @@ inside that one product session.
 
 ## 9. Hackathon demo acceptance
 
-The packaged product must support this exact uninterrupted story:
+The final video must support this exact continuous real-Codex story:
 
-1. Enter the private shared password, choose New project from Projects, and
-   open its blank white canvas.
-2. Reveal the sidebar, ask for a floating sidebar, and see it replace itself
-   without refresh.
-3. Ask for a Gallery / Submit / Leaderboard product with six seed projects, public and judge voting, SQLite storage, and server actions.
-4. Cast a vote, reload the browser, and observe the vote still present.
-5. Ask for judge votes worth three points, public votes worth one, and a top-three podium.
-6. Create a second session, then switch back and see the first product and data restored.
-7. Restore an earlier checkpoint, then restore the newer checkpoint.
+1. Begin on Projects after workspace access is already established, create a
+   named project, and open its blank white canvas.
+2. Ask for Snake and immediately use its browser timer, arrow-key input, and
+   visible score without refresh.
+3. Ask for generated-product signup and sign-in while preserving Snake.
+4. Observe that the first account area needs work, ask for a cohesive arcade
+   account UI with useful errors, submit invalid input, and see the product
+   explain how to recover.
+5. Create a real product account, sign out, sign in, reload, and remain signed
+   in.
+6. Ask for an authenticated Snake ranking, save the signed-in player's current
+   score through a generated server action, reload, and see the SQLite-backed
+   account and score still present.
+7. Decide the product should be a game platform, turn the single-game page
+   into a Game library, and preserve Snake, the account, ranking, and score.
+8. Add timer/keyboard Tetris as the second listed game while every existing
+   server-owned feature remains available.
 
 The demo fails if any change requires a terminal, file picker, manual Apply control, build, server restart, or browser refresh.
+
+The visible recording starts on Projects and does not show PPP login, access
+codes, OAuth, generated source, files, diffs, SQL, tests, or filesystem history.
+The provider shown in the final video is real OAuth Codex. Fake-provider flows
+remain deterministic regression tests and must not be presented as live model
+generation.
 
 An extended playground gate also asks for accounts around an existing product,
 registers a new user, reloads while remaining signed in, enforces one
@@ -315,6 +329,8 @@ updates a second open tab, and the ingress changes only its matching session.
 
 - `bb verify` passes from a clean checkout.
 - The packaged demo completes three consecutive times.
+- The exact six-turn real-Codex game-platform rehearsal passes before the
+  final take.
 - All eight live Codex evaluation scenarios pass three times each before recording.
 - Every rejected test fixture preserves source and logical SQLite hashes.
 - Safe Mode recovers from a deliberately broken sidebar.

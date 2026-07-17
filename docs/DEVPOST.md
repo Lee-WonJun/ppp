@@ -53,13 +53,23 @@ SQL, tests, prompts, before/after source, and source-plus-data checkpoints.
 
 ## Demo
 
-The demo starts from a blank canvas. We ask PPP to redesign its own conversation sidebar as a floating panel. We then ask it to build a Gallery / Submit / Leaderboard application with six seed projects, public and judge voting, server-side ranking, and SQLite persistence.
+The video begins on Projects with workspace access already complete. A first
+conversation creates a playable Snake game with a real browser timer and
+keyboard input. The next adds signup and sign-in without replacing the game.
+We then react to the first account UI as a product team would: ask for a better
+arcade account experience and useful visible errors, deliberately submit an
+invalid identifier, correct it, create Player One, sign out, sign back in, and
+reload while still authenticated.
 
-After casting votes and proving they survive a reload, we change the rule in natural language: judge votes become three points, public votes remain one, ties stay deterministic, and the top three receive podium marks. The UI and server rule activate together without refreshing.
+Next, Snake becomes a service. One request adds an authenticated ranking whose
+server action derives the player from product auth and stores the best score in
+SQLite. The account and ranking survive reload. A product decision then turns
+the single game into a Game library with Snake preserved, and one final request
+adds timer/keyboard Tetris as the second game without losing the user or score.
 
-Finally, we create another project, return through Projects to the original
-product and data, restore an older checkpoint, return to the newest checkpoint,
-and recover a deliberately broken sidebar through immutable Safe Mode.
+The final capture uses real OAuth Codex in one resumed thread. The deterministic
+fake provider remains CI and packaged-regression infrastructure; its Gallery
+fixture does not appear in the video.
 
 ## How we built it
 
@@ -73,7 +83,9 @@ PPP is one JVM Clojure application that serves its ClojureScript browser host.
 - A versioned WebSocket protocol coordinates hidden browser staging and request-tab acknowledgement.
 - Filesystem history is canonical; each successful checkpoint contains source plus a consistent SQLite snapshot.
 - Codex CLI runs non-interactively with structured JSON output, a read-only sandbox, an empty work directory, and all tools disabled.
-- A deterministic fake provider drives CI and repeatable demo rehearsal without consuming live model quota.
+- A deterministic fake provider drives CI and packaged host regression without
+  consuming live model quota; the final-video rehearsal is a separate explicit
+  real-Codex gate.
 
 Generated server code has no shell, filesystem, Java interop, MCP, skills,
 dependency installation, secrets, or unrestricted network access. Generated
@@ -127,8 +139,9 @@ We intentionally avoided a low-code DSL. Codex writes real Clojure-family source
 ## Accomplishments
 
 - [x] A no-refresh full-stack product generated from one conversation.
-- [x] Persistent voting and project submission through generated server actions.
-- [x] Atomic client/server business-rule change.
+- [x] Generated product signup, sign-in, logout, and authenticated reload.
+- [x] Persistent ranking through generated server actions and SQLite.
+- [x] Browser-only game changes preserve existing server-owned features.
 - [x] Source-plus-SQLite checkpoint restore.
 - [x] Sidebar self-replacement with immutable Safe Mode recovery.
 - [x] Deterministic fake-provider CI and 24-run live Codex evaluation.
@@ -180,7 +193,7 @@ Docker
 
 ## Links
 
-- Repository: `TBD_PUBLIC_GITHUB_URL`
+- Repository: [github.com/Lee-WonJun/ppp](https://github.com/Lee-WonJun/ppp)
 - Demo video: `TBD_PUBLIC_YOUTUBE_URL`
 - Hosted demo: `TBD_HOSTED_URL`
 - Codex feedback session ID: `019f644a-b625-7a33-88f4-1ea260c3fdaa`
@@ -193,11 +206,11 @@ through the event's approved private field or judge instruction channel.
 Required images:
 
 1. Blank canvas with handle.
-2. Floating conversation sidebar.
-3. Generated Gallery product.
-4. Persistent vote and leaderboard.
-5. Weighted top-three podium.
-6. Checkpoint history and restore.
+2. Playable Snake with conversation sidebar.
+3. Improved account UI with a useful validation error.
+4. Signed-in Snake ranking after reload.
+5. Game library with Snake and Tetris.
+6. Playable Tetris with preserved player state.
 7. Architecture diagram.
 
 Hero image should show the running generated product and sidebar together, not a terminal or code screenshot.
@@ -205,7 +218,7 @@ Hero image should show the running generated product and sidebar together, not a
 ## Final submission checklist
 
 - [x] Reproducible local Git baseline and MIT license.
-- [ ] Repository pushed and publicly accessible.
+- [x] Repository pushed and publicly accessible.
 - [x] English README works from clean Linux amd64.
 - [ ] Work & Productivity selected.
 - [x] `bb verify` evidence complete.
@@ -222,4 +235,4 @@ Hero image should show the running generated product and sidebar together, not a
 - [ ] Owner explicitly approves deployment and submission.
 
 Local release closure and the exact owner approval queue are tracked in
-`docs/RELEASE.md` and `tickets/PPP-023.md`.
+`docs/RELEASE.md` and `tickets/PPP-024.md`.

@@ -1,6 +1,6 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-023 on-demand client diagnostics complete
+Status: PPP-024 real-Codex final-video story verified; publication pending
 Last updated: 2026-07-17
 
 ## 1. Scoring model
@@ -61,7 +61,7 @@ Scoring anchors:
 | User leverage | 6 | Demo shows a product manager changing persistent business behavior, not only copy or color. |
 | Handoff value | 5 | Complete source tree, domain tests, and change history are inspectable after the demo. |
 | Adoption path | 4 | Self-host instructions and the one-password hosted judge instance work; full hosted identity/tenancy remains explicitly future scope. |
-| Breadth with focus | 4 | Gallery demo proves UI, server, data, rules, session, and restore while keeping MVP exclusions honest. |
+| Breadth with focus | 4 | One product visibly evolves from Snake to accounts, useful errors, authenticated SQLite ranking, a game library, and Tetris without losing prior behavior. |
 
 Scoring anchors:
 
@@ -77,7 +77,7 @@ Scoring anchors:
 | Original synthesis | 7 | Connects live Lisp systems, AI conversation, browser SaaS UX, and developer-grade source history. |
 | Product thesis | 5 | THESIS accurately distinguishes live recovery from permanent source changes and explains PPP's extension. |
 | Architectural fit | 5 | CLJ/CLJS, SCI, Reagent, SQLite, and complete-file source changes solve the stated problem rather than decorate it. |
-| Demo memorability | 4 | Sidebar edits itself, then a real voting product and rule change appear without refresh. |
+| Demo memorability | 4 | A small Snake game visibly becomes an authenticated, persistent multi-game platform through one continuous product conversation. |
 | Honest scope | 4 | Security exception, single workspace, missing collaboration, and future source promotion are explicit. |
 
 Scoring anchors:
@@ -106,6 +106,7 @@ Scoring anchors:
 | E-13 | PPP-021 complete resource-plane report | Durable blob, search, job, ingress, event, restore, security, compiled-browser, and real-provider composition. |
 | E-14 | PPP-022 shared judge workspace report | Production password login/logout, shared Projects, persistent rolling provider budget, exhausted-state continuity, restart, browser, and package evidence. |
 | E-15 | PPP-023 on-demand client diagnostics report | Exact active-frame capture, parent/extension exclusion, volatile transport, provider Skill disclosure, redaction, browser repair evidence, and full release gate. |
+| E-16 | `bb demo-live` sanitized report | One real Codex thread passes Snake, product-auth UX repair, authenticated SQLite ranking, platformization, and preserved Tetris addition in the compiled browser. |
 
 ## 7. Automated release gate
 
@@ -174,6 +175,20 @@ Every record scores:
 
 LIVE-03, LIVE-04, and LIVE-05 must each pass 3/3 before recording the video.
 
+### 9.2 Exact final-video story
+
+`bb demo-live` is a separate explicit OAuth gate for the final capture. It must
+use one fresh project and one resumed real Codex thread for six accepted
+outcomes: timer/keyboard Snake, product accounts, client-only account UX/error
+repair, authenticated SQLite ranking, client-only Game library conversion, and
+client-only Tetris addition. The browser must create an invalid-signup error,
+create and reauthenticate Player One, reload authenticated, save and reload a
+ranking row, and return from Tetris to the preserved Snake account and score.
+
+This gate never runs from CI or `bb verify`. A bounded semantic repair is
+recorded rather than hidden, but the final recorded take must not depend on a
+manual source edit, fake-provider substitution, or terminal intervention.
+
 ### 9.1 Real product-evolution loop
 
 `bb eval-evolution` is a separate explicit OAuth gate. In one fresh session and
@@ -209,9 +224,12 @@ client staging, requires every server repair to pass the existing generated
 domain tests, and proves complete version and thread coverage. This is a repair
 gate, not permission to weaken the requested outcome or its semantic selector.
 
-## 10. Browser demo gate
+## 10. Deterministic package regression gate
 
-The packaged demo must pass three times consecutively with a newly created data directory:
+The deterministic packaged regression must pass three times consecutively with
+a newly created data directory. It remains a fake-provider host/recovery gate,
+not the final-video provider or story. Its legacy Gallery fixture deliberately
+stays separate from `bb demo-live`:
 
 1. production shared-password login;
 2. shared Projects list and named New project;
@@ -272,7 +290,7 @@ All conditions are required:
 - Devpost fields and Codex session ID are recorded;
 - actual deployment has separate owner approval.
 
-The evaluator records the current complete baseline below. PPP-023 E-15 and
+The evaluator records the current complete baseline below. PPP-024 E-16 and
 the expanded automated, production-browser, and live gates pass. Publication
 remains blocked only on the owner-controlled video, public links, deployment,
 and submission approval.
@@ -281,14 +299,14 @@ and submission approval.
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` (178 JVM/1,297 assertions, 27 CLJS/125 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases across three fresh contexts, Docker smoke, clean 189-file candidate scan); eight-step live Codex evolution 8/8 with retained repair coverage; `artifacts/evidence/ppp-023-on-demand-client-diagnostics.md`; PPP-007 through PPP-023 evidence | pass |
+| Technical implementation | 25/25 | isolated `bb verify` (181 JVM/1,317 assertions, 27 CLJS/125 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 198-file isolated scan) plus clean 195-file final candidate scan; exact final-video Codex story 6/6 in one resumed thread; eight-step live Codex evolution 8/8; E-15 and E-16; PPP-007 through PPP-024 evidence | pass |
 | Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests | pass |
-| Impact | 24/25 | `docs/PRD.md`; exact persistent Gallery demo; source/history handoff; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
+| Impact | 24/25 | `docs/PRD.md`; exact Snake-to-game-platform story with generated product accounts and persistent ranking; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |
 | Total | 97/100 | Minimum 80 and every category minimum 17 satisfied | pass |
 
 The two unawarded design points reserve final visual judgment for the recorded cut,
 and one impact point remains unawarded because private hosted identity/workspaces are not in
 the hackathon build. Automated, production-browser, live-provider, security, recovery, and packaged-demo
-gates pass. Final release remains blocked on the public video, repository URL, hosted
+gates pass. Final release remains blocked on the public video, hosted
 URL/access delivery, and explicit deployment/submission approval.

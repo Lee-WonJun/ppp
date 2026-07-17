@@ -6,13 +6,19 @@ Programmable Programming Page (PPP) is a self-hostable live product workspace fo
 
 The user never needs to install a development environment, clone a repository, inspect files, understand Git, or operate an AI coding agent. Developers still receive a complete source tree, domain tests, and an append-only record of every accepted change.
 
-Status: the complete session resource plane, shared judge workspace, and
-on-demand generated-product diagnostics are implemented. External publication
-remains owner-controlled. Automated verification, production-configured
-shared-access browser tests, the 24-case live Codex evaluation, the eight-step
-cumulative real-product evolution gate, and three consecutive packaged demo
+Status: the complete session resource plane, shared judge workspace,
+on-demand generated-product diagnostics, and exact final-video story gate are
+implemented. External publication remains owner-controlled. Automated
+verification, production-configured shared-access browser tests, the 24-case
+live Codex evaluation, the eight-step cumulative real-product evolution gate,
+the six-of-six final-video story, and three consecutive packaged demo
 rehearsals are the release evidence; exact current counts are recorded in
 `docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
+
+The final video uses a separate real-Codex story gate that evolves Snake into
+a product-authenticated, SQLite-ranked game platform and then adds Tetris. The
+deterministic fake provider remains test infrastructure and is never presented
+as final-video generation.
 
 In the conversation composer, Enter sends and Shift+Enter inserts a newline.
 
@@ -52,7 +58,9 @@ to open its literal blank canvas, or open any existing project. Everyone with
 the shared password sees the same `local` workspace; PPP does not invent judge
 accounts or private copies.
 
-The fake provider exists for repeatable development, CI, and demo rehearsal. It supports the exact prompts in `docs/DEMO.md`; it does not pretend to be a general model.
+The fake provider exists for repeatable development, CI, packaged host
+regression, and recovery checks. It does not pretend to be a general model and
+is not the provider used in the final video.
 
 For real Codex generation, authenticate once into the persistent `codex-home` volume:
 
@@ -102,15 +110,22 @@ Public runtime HTTP is HTTPS-only and rejects private/reserved DNS results, unsa
 
 ## Demo flow
 
-1. Sign in, create a named project from Projects, and open its white canvas.
-2. Ask the sidebar to redesign itself as a floating panel.
-3. Ask for a Gallery / Submit / Leaderboard product with six seed projects and persistent public/judge voting.
-4. Vote, reload, and verify persistence.
-5. Make judge votes worth three points, public votes worth one, and mark the top three.
-6. Create a second project, return through Projects, and recover the first product and data.
-7. Restore an old checkpoint, then return to the newer checkpoint.
+1. Begin the visible recording on Projects with workspace access already done.
+2. Create Snake and show its browser timer and keyboard input.
+3. Add generated-product signup and sign-in without removing Snake.
+4. Improve the first account UI, submit invalid input, and show a useful
+   product-auth error.
+5. Create a player, sign out, sign in, and reload while remaining signed in.
+6. Add an authenticated SQLite-backed Snake ranking, save a score, and prove
+   it survives reload.
+7. Turn the single game into a Game library with Snake preserved.
+8. Add Tetris as the second playable game while account and ranking data stay
+   intact.
 
-No change uses a technical Apply control, build, restart, or page refresh.
+No change activation uses a technical Apply control, build, restart, or page
+refresh. Reload is used only afterward to prove server-owned persistence.
+The edited video contains no login, terminal, source, diff, SQL, test, or
+history shot.
 
 ## Architecture
 
@@ -183,6 +198,7 @@ bb docker-smoke
 bb demo-preflight
 bb demo-reset
 bb demo-rehearsal
+bb demo-live
 bb verify
 bb provider-capacity
 ```
@@ -193,6 +209,11 @@ bb provider-capacity
 bb eval-live
 bb eval-evolution
 ```
+
+`bb demo-live` is the explicit final-video rehearsal. It uses the real OAuth
+Codex provider, one fresh project, one resumed thread, compiled browser
+outcomes, generated product auth, and SQLite. It never runs from CI or
+`bb verify`.
 
 `bb eval-evolution` uses one fresh session and one resumed Codex thread to move
 from dark and floating visual changes to timer/keyboard Tetris, SQLite-backed

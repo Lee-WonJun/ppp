@@ -64,8 +64,12 @@
    :task (shell "bb" "scripts/demo_reset.clj")}
 
   demo-rehearsal
-  {:doc "Run the exact packaged browser demo three times with fresh volumes"
+  {:doc "Run the deterministic packaged browser regression three times"
    :task (shell "bb" "scripts/run_demo_rehearsal.clj")}
+
+  demo-live
+  {:doc "Run the exact final-video story once through real OAuth Codex"
+   :task (shell "bb" "scripts/run_demo_live.clj")}
 
   reset-dev-sessions
   {:doc "Delete pre-release development sessions while preserving kernel state"

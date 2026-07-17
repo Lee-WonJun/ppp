@@ -10,6 +10,7 @@ connectors.edn
 playwright-report/
 test-results/
 live-eval/playwright-report-live/
+live-eval/playwright-report-demo-story/
 resources/public/js/
 resources/public/frame-js/
 resources/generated/
@@ -30,6 +31,11 @@ artifacts/evolution-eval/20260715-234942/*
 !artifacts/evolution-eval/20260716-141959/
 artifacts/evolution-eval/20260716-141959/*
 !artifacts/evolution-eval/20260716-141959/report.edn
+
+artifacts/demo-live/*/
+!artifacts/demo-live/20260717-060709/
+artifacts/demo-live/20260717-060709/*
+!artifacts/demo-live/20260717-060709/report.edn
 
 artifacts/demo/*/
 !artifacts/demo/20260716-004803/

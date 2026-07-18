@@ -4,8 +4,10 @@
             [clojure.string :as str]
             [ppp.provider.core :as provider]
             [ppp.runtime.policy :as policy]
+            [ppp.shared.protocol :as protocol]
             [ppp.util.fs :as fs])
-  (:import (java.io ByteArrayOutputStream File InputStream OutputStreamWriter)
+  (:import (java.io BufferedInputStream ByteArrayOutputStream File InputStream
+                    OutputStreamWriter)
            (java.nio.charset StandardCharsets)
            (java.nio.file CopyOption Files Path Paths StandardCopyOption)
            (java.util UUID)
@@ -18,6 +20,34 @@
 
 (def ^:private runtime-skill-name "ppp-validate-and-apply")
 (def ^:private diagnostics-skill-name "ppp-client-diagnostics")
+
+(def progress-details
+  {["turn.started" nil]
+   "Understanding the outcome you described"
+   ["item.started" "reasoning"]
+   "Thinking through your request"
+   ["item.completed" "reasoning"]
+   "Shaping a product direction"
+   ["item.started" "plan"]
+   "Organizing the next steps"
+   ["item.completed" "plan"]
+   "The next steps are organized"
+   ["item.started" "plan_update"]
+   "Organizing the next steps"
+   ["item.completed" "plan_update"]
+   "The next steps are organized"
+   ["item.started" "agent_message"]
+   "Preparing the proposed product"
+   ["item.completed" "agent_message"]
+   "The proposal is ready to check"})
+
+(defn progress-detail
+  "Return only Kernel-authored product language selected by event metadata.
+  Provider-authored event fields are intentionally never copied."
+  [event]
+  (protocol/normalize-progress-detail
+   :generating
+   (get progress-details [(:type event) (get-in event [:item :type])])))
 
 (def ^:private runtime-skill-files
   ["SKILL.md" "agents/openai.yaml"])
@@ -269,30 +299,74 @@
                                  "Codex process output could not be read"
                                  {:cause-type (str (class root-cause))})))))))
 
-(defn- parse-events!
-  [stdout]
-  (let [lines (remove str/blank? (str/split-lines stdout))
-        events
-        (mapv (fn [line]
-                (try
-                  (json/read-str line :key-fn keyword)
-                  (catch Exception _
-                    (throw (provider/error :provider/events-invalid
-                                           "Codex emitted invalid JSONL events")))))
-              lines)
-        thread-ids
-        (keep (fn [event]
-                (when (= "thread.started" (:type event))
-                  (parse-thread-id (or (:thread_id event) (:thread-id event)))))
-              events)]
-    (when (> (count (distinct thread-ids)) 1)
-      (throw (provider/error :provider/thread-mismatch
-                             "Codex emitted conflicting thread identifiers")))
-    {:thread-id (first thread-ids)
-     :event-count (count events)}))
+(defn- emit-progress!
+  [state on-progress detail]
+  (when (and detail (not= detail (:last-detail @state)))
+    (swap! state assoc :last-detail detail)
+    (when on-progress
+      (try
+        (on-progress detail)
+        (catch Exception _ nil)))))
+
+(defn- consume-event-line!
+  [state on-progress line]
+  (when-not (str/blank? line)
+    (let [event
+          (try
+            (json/read-str line :key-fn keyword)
+            (catch Exception _
+              (throw (provider/error :provider/events-invalid
+                                     "Codex emitted invalid JSONL events"))))]
+      (swap! state update :event-count inc)
+      (when (= "thread.started" (:type event))
+        (let [thread-id (parse-thread-id (or (:thread_id event)
+                                             (:thread-id event)))]
+          (swap! state update :thread-ids conj thread-id)
+          (when (> (count (distinct (:thread-ids @state))) 1)
+            (throw (provider/error :provider/thread-mismatch
+                                   "Codex emitted conflicting thread identifiers")))))
+      (emit-progress! state on-progress (progress-detail event)))))
+
+(defn- read-events!
+  [^InputStream stream limit on-progress]
+  (with-open [input (BufferedInputStream. stream)
+              line (ByteArrayOutputStream.)]
+    (let [state (atom {:thread-ids [] :event-count 0 :last-detail nil})]
+      (loop [total 0]
+        (let [value (.read input)]
+          (if (neg? value)
+            (do
+              (when (pos? (.size line))
+                (consume-event-line!
+                 state on-progress
+                 (.toString line StandardCharsets/UTF_8)))
+              {:thread-id (first (:thread-ids @state))
+               :event-count (:event-count @state)})
+            (let [next-total (inc total)]
+              (when (> next-total limit)
+                (throw (provider/error
+                        :provider/output-too-large
+                        "Codex output exceeded its configured limit")))
+              (if (= 10 value)
+                (do
+                  (consume-event-line!
+                   state on-progress
+                   (.toString line StandardCharsets/UTF_8))
+                  (.reset line))
+                (.write line value))
+              (recur next-total))))))))
+
+(defn- event-reader-task
+  [process stream limit on-progress]
+  (future
+    (try
+      (read-events! stream limit on-progress)
+      (catch Exception cause
+        (.destroyForcibly process)
+        (throw cause)))))
 
 (defn- run-process!
-  [^CodexProvider codex-provider command prompt ^Path job-dir]
+  [^CodexProvider codex-provider command prompt ^Path job-dir on-progress]
   (let [{:keys [provider-timeout-ms provider-output-limit codex-home]}
         (:config codex-provider)
         timeout-ms (long (or provider-timeout-ms 120000))
@@ -311,7 +385,8 @@
         (with-open [writer (OutputStreamWriter. (.getOutputStream process)
                                                 StandardCharsets/UTF_8)]
           (.write writer prompt))
-        (let [stdout-reader (reader-task process (.getInputStream process) output-limit)
+        (let [stdout-reader (event-reader-task process (.getInputStream process)
+                                               output-limit on-progress)
               stderr-reader (reader-task process (.getErrorStream process) output-limit)
               completed?
               (try
@@ -328,14 +403,14 @@
             (future-cancel stderr-reader)
             (throw (provider/error :provider/timeout
                                    "Codex generation timed out")))
-          (let [stdout (deref-reader! stdout-reader)
+          (let [events (deref-reader! stdout-reader)
                 _stderr (deref-reader! stderr-reader)
                 exit (.exitValue process)]
             (when-not (zero? exit)
               (throw (provider/error :provider/failed
                                      "Codex generation failed"
                                      {:exit exit})))
-            (merge {:exit exit} (parse-events! stdout))))
+            (assoc events :exit exit)))
         (catch clojure.lang.ExceptionInfo cause
           (throw cause))
         (catch Exception cause
@@ -407,7 +482,8 @@
       (install-diagnostics-skill! job-dir (:client-diagnostics request))
       (try
         (let [command (command-vector this job-dir output-file requested-thread-id)
-              execution (run-process! this command (request-prompt request) job-dir)
+              execution (run-process! this command (request-prompt request) job-dir
+                                      (:on-progress request))
               event-thread-id (:thread-id execution)
               _ (when (and requested-thread-id event-thread-id
                            (not= requested-thread-id event-thread-id))

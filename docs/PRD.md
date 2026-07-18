@@ -137,13 +137,16 @@ Applying
 Applied
 ```
 
-Each phase may include one bounded plain-language detail clause derived from
-the actual kernel phase, such as `Generating · Thinking through your request`.
-The detail is not a reasoning transcript: it never contains provider reasoning,
-diagnostics, generated source, or invented internal steps. A visual ellipsis may
-animate while a phase is active without creating additional progress events or
-repeatedly changing accessible live-region text. Progress remains one current
-line rather than a growing event log.
+Each phase may include one bounded plain-language detail clause. During
+generation, the Kernel may advance that clause from actual provider JSONL
+lifecycle events such as turn start, reasoning-item completion, plan update,
+and response preparation. The visible clause comes from a fixed allowlist
+selected only by event type and state; provider text is never copied. It is not
+a reasoning transcript and never contains provider reasoning, diagnostics,
+generated source, paths, commands, models, tokens, or invented event claims. A
+visual ellipsis may animate while a phase is active without creating additional
+progress events. Progress remains one current line rather than a growing event
+log and is never persisted.
 
 Errors use plain language, identify whether loading, validation, initial drawing, bridge transport, action execution, or an active interaction failed, retain the current product, and offer a retry where safe. A generated change that fails a repairable validation or staging gate is returned to the provider with structured, bounded, non-secret feedback for up to two corrected attempts before the turn is rejected. If those repairable attempts are exhausted, the rejected source never becomes current but the last valid provider thread remains available for the user's next explicit correction; restore and non-repairable provider failures still reset the thread. A generic rejection without a concrete reason category is not an acceptable product outcome. Internal stages and error codes remain available in logs and test evidence.
 
@@ -274,6 +277,7 @@ inside that one product session.
 | PRD-F46 | Limit the real Codex provider to 100 actual process starts in any rolling 60-minute window by default, count every repair attempt, persist the global ledger across restart, and exclude the fake provider. |
 | PRD-F47 | When provider capacity is exhausted, reject only new AI turns with a bounded retry signal while keeping project opening, generated actions, SQLite data, history, checkpoints, restore, Safe Mode, and logout available. |
 | PRD-F48 | Preserve bounded failures from the active generated product frame and make them available only to the next AI turn through an optional, progressively disclosed diagnostic Skill. Exclude parent-window and browser-extension noise, redact secrets, and never add the diagnostics to ordinary prompt context, history, or application logs. |
+| PRD-F49 | Stream actual provider lifecycle progress to the requesting tab as one volatile, bounded, event-type-derived product-language detail. Never copy provider event text or expose reasoning, source, paths, commands, models, tokens, diagnostics, or raw JSONL. |
 
 ## 9. Hackathon demo acceptance
 

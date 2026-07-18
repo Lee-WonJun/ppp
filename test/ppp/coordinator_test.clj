@@ -204,6 +204,59 @@
           :base-version version})]
     (coordinator/await-turn! (:coordinator context) (:request-id submission) 10000)))
 
+(deftest provider-progress-is-volatile-minimized-and-request-tab-scoped
+  (let [progress-provider
+        (reify provider/Provider
+          (ready? [_] {:ready? true :provider :progress-fixture})
+          (generate! [_ request]
+            ((:on-progress request) "Understanding the outcome you described")
+            ((:on-progress request) "src/private.cljs password=secret")
+            ((:on-progress request) "Shaping a product direction")
+            (provider/generation
+             {:kind :reply
+              :assistant-message "I understand the product direction."
+              :clarification-question nil
+              :restore-version nil
+              :change nil}
+             "66666666-6666-4666-8666-666666666666")))
+        context (test-context {:test/provider progress-provider})]
+    (try
+      (let [session-id (:id (coordinator/create-session! (:coordinator context)))
+            request-tab (random-uuid)
+            follower-tab (random-uuid)]
+        (doseq [[channel tab-id] [[:requester request-tab]
+                                  [:follower follower-tab]]]
+          (websocket/open! (:hub context) channel)
+          (websocket/receive!
+           (:hub context) channel
+           (websocket/encode-message
+            (protocol/envelope
+             {:session-id session-id
+              :request-id (random-uuid)
+              :runtime-version 0
+              :type :session/subscribe
+              :payload {:tab-id tab-id :current-version 0}}))))
+        (reset! (:sent context) [])
+        (submit-and-await! context session-id request-tab 0
+                           "Discuss the product direction")
+        (let [progress-messages
+              (->> @(:sent context)
+                   (filter #(= :turn/progress (get-in % [1 :type]))))
+              requester-details
+              (->> progress-messages
+                   (filter #(= :requester (first %)))
+                   (keep #(get-in % [1 :payload :detail]))
+                   vec)]
+          (is (= ["Understanding the outcome you described"
+                  "Shaping a product direction"]
+                 requester-details))
+          (is (not-any? #(str/includes? % "private.cljs") requester-details))
+          (is (empty? (filter #(= :follower (first %)) progress-messages)))
+          (is (not-any? #(contains? % :on-progress)
+                        (store/list-history (:store context) session-id)))))
+      (finally
+        (close-context! context)))))
+
 (deftest generated-product-accounts-survive-reload-and-restore-revokes-live-logins
   (let [context (test-context)]
     (try

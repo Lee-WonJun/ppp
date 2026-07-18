@@ -21,3 +21,14 @@
     (is (= {:label "Generating" :detail "Waiting for the current request"}
            (progress/presentation :generating
                                   "Waiting for the current request")))))
+
+(deftest provider-progress-uses-only-the-shared-allowlist
+  (is (= {:label "Generating" :detail "Shaping a product direction"}
+         (progress/presentation :generating
+                                "Shaping a product direction")))
+  (is (= {:label "Generating" :detail "Thinking through your request"}
+         (progress/presentation :generating
+                                "src/private.cljs password=secret")))
+  (is (= {:label "Validating" :detail "Checking the proposed product"}
+         (progress/presentation :validating
+                                "Shaping a product direction"))))

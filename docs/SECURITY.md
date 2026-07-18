@@ -165,7 +165,10 @@ Before a public SaaS release, implement a Responses API or other service-account
 - Clear inherited environment.
 - Provide source and capability context through stdin only.
 - Bound stdin, stdout, stderr, final message, time, and concurrency.
-- Do not return Codex reasoning or diagnostics to the browser.
+- Do not return Codex reasoning, event text, raw JSONL, or diagnostics to the
+  browser. The Kernel may return only a fixed product-language detail selected
+  from allowlisted lifecycle metadata (`type`, item `type`, and start/complete
+  state). It must discard all provider-authored text and unknown fields.
 - Validate the final JSON twice.
 - Before every real initial or repair invocation, atomically record one start
   in the Kernel-owned rolling ledger. Refuse starts beyond the configured

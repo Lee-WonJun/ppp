@@ -12,8 +12,14 @@ const phases = [
   ["applied", "Applied. Your product is ready"]
 ];
 
-async function setProgress(page, phase) {
-  await page.evaluate((value) => window.__PPP_TEST__.setProgress(value), phase);
+async function setProgress(page, phase, detail = null) {
+  await page.evaluate(
+    ([value, progressDetail]) => window.__PPP_TEST__.setProgress(
+      value,
+      progressDetail
+    ),
+    [phase, detail]
+  );
 }
 
 async function progressDecoration(status) {
@@ -69,6 +75,16 @@ test("live work status follows real phases in one accessible animated line", asy
   await expect(generating).toContainText(
     "Generating... · Thinking through your request"
   );
+
+  await setProgress(page, "generating", "Shaping a product direction");
+  await expect(productFrame(page).getByRole("status", {
+    name: "Generating. Shaping a product direction"
+  })).toBeVisible();
+
+  await setProgress(page, "generating", "src/private.cljs password=secret");
+  await expect(productFrame(page).getByRole("status", {
+    name: phases[0][1]
+  })).toBeVisible();
 
   const lineLayout = await generating.evaluate((element) => {
     const style = getComputedStyle(element);

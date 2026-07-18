@@ -184,14 +184,23 @@
                               version type payload))
 
 (defn- progress!
-  [coordinator request phase]
-  (send-turn! coordinator
-              (:session-id request)
-              (:tab-id request)
-              (:request-id request)
-              (:base-version request)
-              :turn/progress
-              {:phase phase}))
+  ([coordinator request phase]
+   (send-turn! coordinator
+               (:session-id request)
+               (:tab-id request)
+               (:request-id request)
+               (:base-version request)
+               :turn/progress
+               {:phase phase}))
+  ([coordinator request phase detail]
+   (when-let [detail (protocol/normalize-progress-detail phase detail)]
+     (send-turn! coordinator
+                 (:session-id request)
+                 (:tab-id request)
+                 (:request-id request)
+                 (:base-version request)
+                 :turn/progress
+                 {:phase phase :detail detail}))))
 
 (defn- append-conversation-event!
   [^Coordinator coordinator request result]
@@ -606,6 +615,7 @@
            :connector-catalog (outbound/catalog (:outbound coordinator))
            :ingress-verifier-catalog
            (outbound/ingress-catalog (:outbound coordinator))
+           :on-progress #(progress! coordinator request :generating %)
            :source (store/current-source-map (:store coordinator)
                                              (:session-id request))}
     (seq (:client-diagnostics request))

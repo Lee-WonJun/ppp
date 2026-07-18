@@ -1,6 +1,6 @@
 # Local Release Closure
 
-Status: locally complete through PPP-025; publication actions remain owner-controlled
+Status: locally complete through PPP-026; publication actions remain owner-controlled
 Last updated: 2026-07-17
 
 ## Definition of locally complete
@@ -24,11 +24,10 @@ Local completeness does not authorize remote or public state changes.
 - Eight-turn complete-product evolution: `artifacts/evolution-eval/20260716-141959/report.edn`.
 - Real Codex stable composer smoke: Enter sends once, Shift+Enter remains a
   newline, and the composer returns to an editable state.
-- Clean candidate-copy release gate: 181 JVM tests/1,317 assertions, 27 CLJS
-  tests/125 assertions, 25 normal Chromium tests plus one intentional skip,
-  two production restart phases across three fresh browser contexts, Docker
-  smoke, a 198-file isolated-gate scan, and a clean 195-file final candidate
-  scan after test artifacts were removed.
+- Clean candidate-copy release gate: 186 JVM tests/1,336 assertions, 29 CLJS
+  tests/132 assertions, 25 normal Chromium tests plus one intentional skip,
+  two production restart phases, Docker smoke, and a clean 201-file secret
+  scan.
 - Exact final-video real Codex story:
   `artifacts/demo-live/20260717-060709/report.edn`, six of six scenarios passed
   in one project and one resumed provider thread through Snake, product auth,
@@ -39,6 +38,10 @@ Local completeness does not authorize remote or public state changes.
   narration and synchronized English subtitles, and verified the media and
   first Projects frame. The bounded record is
   `artifacts/evidence/ppp-025-real-codex-video-capture.md`.
+- Streamed real-Codex progress: PPP-026 incrementally parses bounded JSONL and
+  delivers only metadata-derived product-language details to the requesting
+  tab. Real OAuth browser observation and the complete gate are recorded in
+  `artifacts/evidence/ppp-026-streamed-codex-progress.md`.
 - Shared judge workspace evidence:
   `artifacts/evidence/ppp-022-shared-judge-workspace.md`.
 - On-demand active-product diagnostic evidence:

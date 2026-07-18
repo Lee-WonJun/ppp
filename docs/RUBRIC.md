@@ -1,6 +1,6 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-025 real-Codex final video verified locally; publication pending
+Status: PPP-026 streamed real-Codex progress verified; publication pending
 Last updated: 2026-07-17
 
 ## 1. Scoring model
@@ -108,6 +108,7 @@ Scoring anchors:
 | E-15 | PPP-023 on-demand client diagnostics report | Exact active-frame capture, parent/extension exclusion, volatile transport, provider Skill disclosure, redaction, browser repair evidence, and full release gate. |
 | E-16 | `bb demo-live` sanitized report | One real Codex thread passes Snake, product-auth UX repair, authenticated SQLite ranking, platformization, and preserved Tetris addition in the compiled browser. |
 | E-17 | PPP-025 local final-video record | Real-Codex 6/6 capture, 168.74-second H.264/AAC media, Korean narration, synchronized English subtitles, honest wait compression, and visual safety review. |
+| E-18 | PPP-026 streamed Codex progress report | Incremental bounded JSONL parsing, metadata-only product-language details, requesting-tab delivery, real OAuth browser observation, and no reasoning/source leakage. |
 
 ## 7. Automated release gate
 
@@ -292,15 +293,15 @@ All conditions are required:
 - actual deployment has separate owner approval.
 
 The evaluator records the current complete baseline below. PPP-024 E-16,
-PPP-025 E-17, and the expanded automated, production-browser, and live gates
-pass. Publication remains blocked only on uploading the verified video, public
-links, deployment, and submission approval.
+PPP-025 E-17, PPP-026 E-18, and the expanded automated, production-browser,
+and live gates pass. Publication remains blocked only on uploading the verified
+video, public links, deployment, and submission approval.
 
 ## 13. Release assessment
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` (181 JVM/1,317 assertions, 27 CLJS/125 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 198-file isolated scan) plus clean 195-file final candidate scan; exact final-video Codex story 6/6 in one resumed thread; eight-step live Codex evolution 8/8; E-15 through E-17; PPP-007 through PPP-025 evidence | pass |
+| Technical implementation | 25/25 | isolated `bb verify` (186 JVM/1,336 assertions, 29 CLJS/132 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 201-file secret scan); real OAuth streamed-progress observation; exact final-video Codex story 6/6 in one resumed thread; eight-step live Codex evolution 8/8; E-15 through E-18; PPP-007 through PPP-026 evidence | pass |
 | Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests; manually reviewed 1440x900 final cut | pass |
 | Impact | 24/25 | `docs/PRD.md`; exact Snake-to-game-platform story with generated product accounts and persistent ranking; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |

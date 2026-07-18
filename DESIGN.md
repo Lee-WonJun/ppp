@@ -245,14 +245,18 @@ or internal tool name appears.
 Progress is a single current line, not a growing event log.
 
 ```text
-Generating... · Thinking through your request
+Generating... · Understanding the outcome you described
+Generating... · Shaping a product direction
+Generating... · Preparing the proposed product
 Validating... · Checking the proposed product
 Applying... · Updating the live product
 Applied... · Your product is ready
 ```
 
-- The phase word is the source of truth. Its detail is a short translation of
-  the real phase, never a simulated thought transcript.
+- The phase word is the source of truth. During generation, its detail may
+  advance only when a corresponding real provider lifecycle event arrives.
+  The words are Kernel-authored from a fixed allowlist and never quote event
+  text or simulate an event that did not occur.
 - The ellipsis cycles visually through zero, one, two, and three dots in a
   fixed-width slot so neighboring text does not move.
 - The status has one stable accessible label per phase. Animated dots are
@@ -261,7 +265,8 @@ Applied... · Your product is ready
   surfaces instead of changing sidebar geometry.
 - Reduced-motion mode shows a static three-dot ellipsis.
 - `Applied` may remain attached to the assistant response as a quiet completion note.
-- The number and timing of internal events are not part of the UI contract.
+- The number and timing of internal events are not part of the UI contract;
+  duplicate and unknown events do not change the line.
 - If a stage fails, the assistant response explains that the current product was preserved.
 
 ## Checkpoints

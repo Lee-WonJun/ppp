@@ -4,6 +4,9 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer [deftest is]]
+            [clojure.test.check :as tc]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
             [ppp.provider.codex :as codex]
             [ppp.provider.core :as provider]
             [ppp.util.fs :as fs])
@@ -63,6 +66,13 @@
    "write_thread() {\n"
    "  printf '%s\\n' '{\"type\":\"thread.started\",\"thread_id\":\"" thread-id "\"}'\n"
    "}\n"
+   "write_progress() {\n"
+   "  printf '%s\\n' '{\"type\":\"turn.started\",\"private\":\"DO_NOT_STREAM_TURN\"}'\n"
+   "  printf '%s\\n' '{\"type\":\"item.started\",\"item\":{\"type\":\"reasoning\",\"text\":\"DO_NOT_STREAM_REASONING /private/runtime.cljs\"}}'\n"
+   "  printf '%s\\n' '{\"type\":\"item.completed\",\"item\":{\"type\":\"reasoning\",\"text\":\"DO_NOT_STREAM_RESULT\"}}'\n"
+   "  printf '%s\\n' '{\"type\":\"item.started\",\"item\":{\"type\":\"agent_message\",\"text\":\"DO_NOT_STREAM_MESSAGE\"}}'\n"
+   "  printf '%s\\n' '{\"type\":\"item.started\",\"item\":{\"type\":\"unknown\",\"text\":\"DO_NOT_STREAM_UNKNOWN\"}}'\n"
+   "}\n"
    "case \"$prompt\" in\n"
    "  *MODE_TIMEOUT*) /bin/sleep 2 ;;\n"
    "  *MODE_NONZERO*) printf '%s\\n' 'private fixture diagnostic' >&2; exit 7 ;;\n"
@@ -73,7 +83,8 @@
    "  *MODE_JSON_INVALID*) printf '%s' '{' > \"$output\"; write_thread; exit 0 ;;\n"
    "  *MODE_OVERSIZE_FINAL*) i=0; while [ \"$i\" -lt 2048 ]; do printf x; i=$((i + 1)); done > \"$output\"; write_thread; exit 0 ;;\n"
    "  *MODE_OVERSIZE_STDOUT*) write_valid; i=0; while [ \"$i\" -lt 2048 ]; do printf x; i=$((i + 1)); done; printf '\\n'; exit 0 ;;\n"
-   "  *) write_valid; write_thread ;;\n"
+   "  *MODE_PROGRESS*) write_valid; write_thread; printf '%s\\n' '{\"type\":\"turn.started\"}'; /bin/sleep 0.4; write_progress ;;\n"
+   "  *) write_valid; write_thread; write_progress ;;\n"
    "esac\n"))
 
 (defn- test-context
@@ -230,6 +241,74 @@
                      #{"OPENAI_API_KEY" "PPP_ACCESS_CODE" "PPP_COOKIE_SECRET"
                        "AWS_SECRET_ACCESS_KEY"}
                      (set (keys environment))))))
+      (finally
+        (fs/delete-tree! root)))))
+
+(deftest provider-events-map-only-metadata-to-fixed-progress-language
+  (let [result
+        (tc/quick-check
+         1000
+         (prop/for-all
+          [event-type gen/string-alphanumeric
+           item-type gen/string-alphanumeric
+           private-text gen/string]
+          (let [event {:type event-type
+                       :item {:type item-type
+                              :text private-text
+                              :command private-text
+                              :path private-text}
+                       :private private-text}
+                changed (assoc-in event [:item :text]
+                                  (str "different-" private-text))]
+            (and (= (codex/progress-detail event)
+                    (codex/progress-detail changed))
+                 (or (nil? (codex/progress-detail event))
+                     (contains? (set (vals codex/progress-details))
+                                (codex/progress-detail event))))))
+         :seed 26001)]
+    (is (:pass? result) (pr-str (dissoc result :result-data))))
+  (is (= "Shaping a product direction"
+         (codex/progress-detail
+          {:type "item.completed"
+           :item {:type "reasoning"
+                  :text "password=private /runtime/client.cljs"}})))
+  (is (nil? (codex/progress-detail
+             {:type "item.completed"
+              :item {:type "command_execution"
+                     :command "print every secret"}}))))
+
+(deftest supported-progress-is-observable-before-the-codex-process-exits
+  (let [{:keys [root provider]} (test-context {:provider-timeout-ms 2000})
+        observed (promise)]
+    (try
+      (let [generation
+            (future
+              (provider/generate!
+               provider
+               (assoc (request "MODE_PROGRESS")
+                      :on-progress #(deliver observed %))))]
+        (is (= "Understanding the outcome you described"
+               (deref observed 1000 ::timed-out)))
+        (is (not (realized? generation)))
+        (is (= :reply (get-in @generation [:result :kind]))))
+      (finally
+        (fs/delete-tree! root)))))
+
+(deftest streamed-progress-discards-provider-authored-event-content
+  (let [{:keys [root provider]} (test-context)
+        details (atom [])]
+    (try
+      (provider/generate!
+       provider
+       (assoc (request "Stream safe progress")
+              :on-progress #(swap! details conj %)))
+      (is (= ["Understanding the outcome you described"
+              "Thinking through your request"
+              "Shaping a product direction"
+              "Preparing the proposed product"]
+             @details))
+      (is (not-any? #(str/includes? % "DO_NOT_STREAM") @details))
+      (is (not-any? #(str/includes? % "runtime.cljs") @details))
       (finally
         (fs/delete-tree! root)))))
 

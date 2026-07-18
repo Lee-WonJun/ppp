@@ -478,7 +478,8 @@ Input:
  :prompt "..."
  :source {path complete-content}
  :transcript-summary "..."
- :thread-id "optional-codex-thread-id"}
+ :thread-id "optional-codex-thread-id"
+ :on-progress (fn [bounded-kernel-detail])}
 ```
 
 Output:
@@ -535,7 +536,10 @@ Required controls:
 - The process environment is cleared, then receives only the minimum `CODEX_HOME`, `HOME`, and locale values.
 - At kernel startup, npm-style `#!/usr/bin/env node` launchers are resolved to absolute
   Node and Codex paths. The child therefore works without inheriting `PATH`.
-- Stdout JSONL is bounded and parsed for `thread.started`.
+- Stdout JSONL is byte-bounded and parsed line by line while the process runs.
+  `thread.started` preserves continuity. An allowlist maps only event type,
+  item type, and lifecycle state to fixed product-language details; event text
+  and every unknown field are discarded. Duplicate details are suppressed.
 - The final message file is bounded to 512 KiB and parsed as JSON.
 - Static JSON Schema validation occurs in Codex, then Malli validates again in the host.
 - Default timeout is 120 seconds.
@@ -707,7 +711,7 @@ Server to client:
 | Type | Payload |
 |---|---|
 | `:turn/queued` | queue position and job ID. |
-| `:turn/progress` | one of `:generating`, `:validating`, `:applying`, `:applied`. |
+| `:turn/progress` | one of `:generating`, `:validating`, `:applying`, `:applied`, plus an optional bounded allowlisted `detail`. |
 | `:runtime/stage` | complete staged client source, CSS, transaction ID, base and target versions. |
 | `:runtime/activate` | committed manifest and target version. |
 | `:runtime/resync` | current complete client source and manifest. |
@@ -1124,13 +1128,13 @@ Structured log fields:
 timestamp level event request-id job-id session-id runtime-version duration-ms error-code
 ```
 
-Never log:
+Never log or persist:
 
 - shared password or cookie value;
 - prompt or transcript;
 - generated source or SQL;
 - connector headers or environment names;
-- Codex stdout reasoning or `auth.json` content.
+- Codex JSONL, progress details, stdout reasoning, or `auth.json` content.
 
 `/healthz` proves process liveness. `/readyz` proves storage, recovery, and selected provider preflight. Provider model execution is not performed on every readiness check.
 

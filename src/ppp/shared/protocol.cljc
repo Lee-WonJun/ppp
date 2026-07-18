@@ -215,6 +215,23 @@
   #{:turn/queued :turn/progress :turn/completed :turn/failed
     :runtime/stage :runtime/activate :runtime/resync :product/event})
 
+(def generating-progress-details
+  #{"Understanding the outcome you described"
+    "Waiting for the current request"
+    "Thinking through your request"
+    "Shaping a product direction"
+    "Organizing the next steps"
+    "The next steps are organized"
+    "Preparing the proposed product"
+    "The proposal is ready to check"})
+
+(defn normalize-progress-detail
+  [phase detail]
+  (when (and (= :generating phase)
+             (string? detail)
+             (contains? generating-progress-details detail))
+    detail))
+
 (defn- version-pair-valid?
   [{:keys [base-version target-version]}]
   (and (nat-int? base-version)

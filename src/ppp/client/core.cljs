@@ -628,7 +628,7 @@
                      "Waiting for the current request"))
 
     :turn/progress
-    (set-progress! (:phase payload))
+    (set-progress! (:phase payload) (:detail payload))
 
     :runtime/stage
     (stage-from-message! message)
@@ -1095,9 +1095,9 @@
                :submitPrompt (fn [value]
                                (set-draft! value)
                                (submit-draft!))
-               :setProgress (fn [phase]
+               :setProgress (fn [phase detail]
                               (set-progress!
-                               (when phase (keyword (str phase)))))
+                               (when phase (keyword (str phase))) detail))
                :snapshot (fn []
                            (clj->js
                             {:version (frame/active-version)

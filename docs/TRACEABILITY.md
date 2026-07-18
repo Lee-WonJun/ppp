@@ -63,6 +63,7 @@ Last updated: 2026-07-17
 | PRD-F46 | PPP-022 | provider rolling-window/restart/repair accounting PBT-16 | E-01, E-14 |
 | PRD-F47 | PPP-022 | exhausted-turn preservation integration and Playwright product-use continuity | E-01, E-14 |
 | PRD-F48 | PPP-023 | PBT-18, provider Skill/stdin separation, exact active-frame action failure and parent-noise exclusion browser regression | E-01, E-15 |
+| PRD-F49 | PPP-026 | streamed JSONL minimization/early-observation property plus compiled-browser semantic progress sequence | E-01, E-18 |
 
 ## Property mapping
 
@@ -124,6 +125,8 @@ PPP-001
                               +---------------------------> PPP-024
                               |
                               +---------------------------> PPP-025
+                              |
+                              +---------------------------> PPP-026
 ```
 
 ## Completion ledger
@@ -155,3 +158,4 @@ PPP-001
 | PPP-023 | done | Bounded active-frame action/runtime/Promise/console/network reasons now flow through a volatile 12-record next-turn ring into an optional isolated provider Skill; parent, extension, foreign-frame, and persisted context are excluded. PBT-18 runs at least 1,000 generated inputs. Isolated `bb verify` passes 178 JVM/1,297 assertions, 27 CLJS/125 assertions, 25 normal Chromium tests with one intentional skip, production restart phases, Docker smoke, and a clean 189-file candidate scan. Paired bundles were promoted together, stable 8787 passed the diagnostic smoke without a real Codex call, and the final restart reports zero sessions/runtimes. |
 | PPP-024 | done | The exact final-video path uses real OAuth Codex, one project, and one resumed thread to pass Snake, product auth, visible validation repair, authenticated SQLite ranking, platformization, and preserved Tetris addition 6/6. A repairable exhausted rejection now preserves the provider thread while rejected source stays inactive. Isolated `bb verify` passes 181 JVM tests/1,317 assertions, 27 CLJS tests/125 assertions, 25 Chromium paths with one intentional skip, production restart phases, Docker smoke, and a clean 195-file final candidate scan. |
 | PPP-025 | done | A real OAuth Codex browser run passes all six final-story scenarios in one project and one resumed thread. The locally verified 168.74-second 1440x900 H.264/AAC MP4 begins on Projects, uses honest generation-compression cards, includes Korean narration and synchronized English subtitles, and contains no fake-provider output, credentials, terminal, source, identifiers, or private paths. Publication remains separately owner-controlled. |
+| PPP-026 | done | Codex stdout JSONL is parsed incrementally and only allowlisted lifecycle metadata selects volatile product-language progress for the requesting tab. The real OAuth browser advanced through multiple event-derived details before its final reply with no console/network failure. `bb verify` passes 186 JVM tests/1,336 assertions, 29 CLJS tests/132 assertions, 25 Chromium paths with one intentional skip, two production restart phases, Docker smoke, and a clean 201-file secret scan. |

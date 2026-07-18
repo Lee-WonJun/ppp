@@ -81,6 +81,30 @@
     (is (not (protocol/valid-envelope? (assoc value :protocol-version 2))))
     (is (not (protocol/valid-envelope? (assoc value :workspace-id "other"))))))
 
+(deftest provider-progress-detail-boundary-property
+  (let [result
+        (tc/quick-check
+         1000
+         (prop/for-all
+          [phase (gen/one-of [(gen/elements [:generating :validating
+                                             :applying :applied])
+                              gen/keyword])
+           detail gen/string]
+          (let [normalized (protocol/normalize-progress-detail phase detail)]
+            (or (nil? normalized)
+                (and (= :generating phase)
+                     (contains? protocol/generating-progress-details
+                                normalized)))))
+         :seed 26002)]
+    (is (:pass? result) (pr-str (dissoc result :result-data))))
+  (is (= "Shaping a product direction"
+         (protocol/normalize-progress-detail
+          :generating "Shaping a product direction")))
+  (is (nil? (protocol/normalize-progress-detail
+             :generating "Inspecting src/private.clj with model tokens")))
+  (is (nil? (protocol/normalize-progress-detail
+             :validating "Shaping a product direction"))))
+
 (deftest browser-rejection-details-are-bounded
   (let [base
         (protocol/envelope

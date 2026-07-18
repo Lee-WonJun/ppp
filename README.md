@@ -16,6 +16,11 @@ the six-of-six final-video story, and three consecutive packaged demo
 rehearsals are the release evidence; exact current counts are recorded in
 `docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
 
+While Codex works, the conversation now advances one calm progress line from
+actual provider lifecycle events. The Kernel exposes only fixed
+product-language summaries; raw reasoning, event text, source, paths, commands,
+models, and token details never reach the browser.
+
 The final video uses a separate real-Codex story gate that evolves Snake into
 a product-authenticated, SQLite-ranked game platform and then adds Tetris. The
 deterministic fake provider remains test infrastructure and is never presented

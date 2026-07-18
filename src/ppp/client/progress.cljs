@@ -1,4 +1,5 @@
-(ns ppp.client.progress)
+(ns ppp.client.progress
+  (:require [ppp.shared.protocol :as protocol]))
 
 (def phase-copy
   {:generating {:label "Generating"
@@ -18,8 +19,9 @@
   ([phase]
    (presentation phase nil))
   ([phase detail]
-   (cond-> (get phase-copy phase neutral-copy)
-     detail (assoc :detail detail))))
+   (let [detail (protocol/normalize-progress-detail phase detail)]
+     (cond-> (get phase-copy phase neutral-copy)
+       detail (assoc :detail detail)))))
 
 (defn accessible-label
   [{:keys [label detail]}]

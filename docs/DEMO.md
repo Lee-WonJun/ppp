@@ -1,8 +1,9 @@
 # Three-Minute Demo
 
-Status: real-Codex video captured and verified locally; publication pending
+Status: real-Codex English submission cut captured and verified locally;
+publication pending
 Actual runtime: 168.74 seconds
-Voice: Korean
+Voice: English
 Required subtitles: English
 
 ## 1. Demo purpose
@@ -138,8 +139,10 @@ Expected visible outcome:
 | 2:40-2:54 | Open Tetris, show automatic falling and arrow input, return to Snake and its ranking. | `Tetris runs in the browser. Accounts and rankings stay on the server. Both evolve inside one live product workspace.` |
 | 2:54-2:59 | Final frame: library, sidebar, and tagline. | `Where product conversations become running software.` |
 
-The verified cut is 168.74 seconds after removing dead air. Final export must
-remain below 180 seconds.
+The verified English cut is 168.74 seconds after removing dead air. The final
+export remains below 180 seconds and explicitly explains that
+Codex uses GPT-5.6 to produce structured source changes that PPP validates
+before activation.
 
 ## 5. Camera and editing rules
 
@@ -166,6 +169,9 @@ track.
 Subtitle review checks:
 
 - every spoken sentence is represented;
+- narration and subtitles are both English;
+- the spoken and written story explicitly explains how Codex and GPT-5.6 are
+  used;
 - `PPP workspace account` and `generated product account` are never conflated;
 - browser-only and server-owned changes match what is visible;
 - no subtitle claims fake output is live generation;

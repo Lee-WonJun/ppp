@@ -1,7 +1,7 @@
 # PPP-025 Real Codex Video Capture
 
 Date: 2026-07-17
-Status: passed locally; publication not authorized
+Status: English submission cut passed locally; publication not authorized
 
 ## Capture contract
 
@@ -11,8 +11,10 @@ Status: passed locally; publication not authorized
 - Continuity: one project, one resumed provider thread
 - Story result: six of six scenarios passed
 - Final runtime: 168.74 seconds
-- Media: H.264 video, AAC Korean narration, embedded English `mov_text`
-  subtitles, and an English SRT sidecar
+- Media: H.264 video, AAC English narration, embedded English
+  `mov_text` subtitles, and an English SRT sidecar
+- OpenAI disclosure: narration and subtitles explain that Codex uses GPT-5.6
+  to generate structured changes that PPP validates before activation
 - Disclosure: every removed model wait is replaced by a visible
   `Generation time compressed / Real Codex output` card
 
@@ -37,7 +39,9 @@ Status: passed locally; publication not authorized
   thread continuity.
 - The media probe reported 168.74 seconds, 1440x900, H.264, AAC, and embedded
   English subtitles.
-- Audio analysis reported non-silent narration.
+- Audio analysis reported non-silent Microsoft Zira English narration. Each
+  generated narration clip fits its visual segment without overlapping the next
+  spoken clip.
 - Manual frame review confirmed Projects at one second, the running products,
   explicit wait-compression cards, and the final title card.
 - The capture contains no PPP login, password, access fragment, terminal,
@@ -46,9 +50,11 @@ Status: passed locally; publication not authorized
 
 ## Local artifacts
 
-The ignored local capture directory contains `final/ppp-demo.mp4` and
-`final/ppp-demo.en.srt`. Raw recordings, observations, generated-product data,
-and session identifiers remain ignored and must not be published.
+The ignored local capture directory
+`artifacts/demo-capture/20260720-english-final/final/` contains
+`ppp-demo.mp4` and `ppp-demo.en.srt`. Raw recordings, observations,
+generated-product data, and session identifiers remain ignored and must not be
+published.
 
 Uploading the final MP4, publishing a URL, deploying the product, and
 submitting to Devpost remain separate owner-approved actions.

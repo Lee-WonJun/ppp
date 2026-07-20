@@ -1,7 +1,7 @@
 # Devpost Submission Draft
 
-Status: local video and evidence complete; public links and submission remain owner-controlled
-Last updated: 2026-07-17
+Status: hosted demo and local video complete; upload and submission remain owner-controlled
+Last updated: 2026-07-20
 
 ## Submission fields
 
@@ -195,7 +195,7 @@ Docker
 
 - Repository: [github.com/Lee-WonJun/ppp](https://github.com/Lee-WonJun/ppp)
 - Demo video: `TBD_PUBLIC_YOUTUBE_URL`
-- Hosted demo: `TBD_HOSTED_URL`
+- Hosted demo: [ppp.openai.slopbook.org](https://ppp.openai.slopbook.org)
 - Codex feedback session ID: `019f644a-b625-7a33-88f4-1ea260c3fdaa`
 
 Do not place the shared password in the public Devpost body or URL. Share it
@@ -225,16 +225,18 @@ Hero image should show the running generated product and sidebar together, not a
 - [x] 24 live evaluations meet thresholds.
 - [x] Three packaged demo runs succeed consecutively.
 - [x] Secret scan covers repository and image.
-- [x] Local video is verified under three minutes with synchronized English
-  subtitles.
+- [x] Local video is verified under three minutes with English narration,
+  synchronized English subtitles, and an explicit explanation of how Codex and
+  GPT-5.6 are used.
 - [ ] Video uploaded and publicly accessible.
 - [x] Claims match completed evidence.
 - [x] Codex and model roles stated accurately.
 - [x] Feedback session ID recorded.
-- [ ] Hosted URL works from an unauthenticated browser.
+- [x] Hosted URL works from an unauthenticated browser and opens shared sign-in.
 - [ ] Shared password delivered privately and can be rotated.
 - [x] Production browser gate proves three fresh contexts, a common Projects list, and JVM restart persistence.
-- [ ] Owner explicitly approves deployment and submission.
+- [x] Owner explicitly approved the judge deployment.
+- [ ] Owner explicitly approves the Devpost submission.
 
 Local release closure and the exact owner approval queue are tracked in
 `docs/RELEASE.md` and `tickets/PPP-025.md`.

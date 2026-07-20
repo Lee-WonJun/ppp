@@ -245,7 +245,10 @@ docker compose run --rm app codex login status
 docker compose up --build
 ```
 
-See `docs/DEPLOYMENT.md`. No VPS or Coolify deployment is performed without explicit owner approval.
+The approved judge instance is available at
+[ppp.openai.slopbook.org](https://ppp.openai.slopbook.org). See
+`docs/DEPLOYMENT.md`; future VPS or Coolify deployments still require explicit
+owner approval.
 
 ## Testing philosophy
 

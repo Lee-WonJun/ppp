@@ -348,7 +348,9 @@ updates a second open tab, and the ingress changes only its matching session.
 
 - Internal rubric score is at least 80/100.
 - Public secret scan is clean.
-- Video is under three minutes with English subtitles.
+- Video is under three minutes with English narration and synchronized English
+  subtitles. The narration explicitly explains how Codex and GPT-5.6 turn the
+  current product context into validated runtime changes.
 - README setup and sample flow work on Linux amd64.
 
 ## 11. Non-goals for the hackathon

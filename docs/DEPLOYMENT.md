@@ -1,8 +1,8 @@
 # Self-Host Deployment
 
-Status: deployment contract; external deployment requires owner approval
+Status: deployment contract; PPP judge instance verified on Coolify
 Supported target: Linux amd64
-Last updated: 2026-07-17
+Last updated: 2026-07-20
 
 ## 1. Deployment shape
 
@@ -211,7 +211,11 @@ Configuration checklist:
 - Allow sufficient startup time for recovery and provider preflight.
 - Back up the session volume before each deployment.
 
-Do not initiate the Coolify deployment from this repository workflow. The owner must explicitly approve the target, DNS, access delivery, backup, and rollback window.
+Do not initiate the Coolify deployment from this repository workflow without
+explicit owner approval for the target, DNS, access delivery, backup, and
+rollback window. PPP-027 records the approved hackathon judge deployment on
+the Coolify `localhost` server; this exception does not authorize future
+deployments.
 
 ## 10. GHCR and CI
 
@@ -268,16 +272,24 @@ Collect JSON metadata fields only. Do not collect prompt, source, SQL, cookies, 
 
 ## 13. Pre-deployment approval record
 
-Leave blank until the owner authorizes an external deployment.
+The owner authorized the PPP-027 hackathon judge deployment on 2026-07-19.
+Secrets and provider credentials are intentionally omitted.
 
 ```text
-Target:
-Domain:
-Image digest:
-Backup verified at:
-Rollback digest:
-Access delivery method:
-Provider capacity checked at:
-Owner approval:
-Deployment operator:
+Target: Coolify localhost, one application replica
+Domain: https://ppp.openai.slopbook.org
+Source commit: 4020cae406cd18729b22a0dcf806ee5174dfb439
+Persistent mounts: separate ppp-data and codex-home volumes
+Backup verified at: pre-deploy instance had no PPP session data
+Rollback source: previous verified public commit and volume-backup procedure
+Access delivery method: shared password delivered privately, never in the URL
+Provider capacity checked at: recorded in PPP-027 evidence after OAuth readiness
+Owner approval: explicit in the deployment task
+
+The approved judge instance is live at `https://ppp.openai.slopbook.org`.
+PPP-027 verifies TLS, shared access, distinct persistent data and Codex volumes,
+ChatGPT OAuth persistence through a rolling restart, public readiness, and a
+real Codex browser change. This approval remains specific to that judge
+instance and does not authorize future deployment targets.
+Deployment operator: Codex under owner-approved scope
 ```

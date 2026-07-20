@@ -7,42 +7,42 @@
 (def scenario-copy
   {"DEMO-01"
    {:prompt "Describe a playable Snake game"
-    :prompt-narration "첫 요청으로 타이머와 키보드가 동작하는 스네이크 게임을 만들어 달라고 합니다."
-    :caption "The first request becomes a real browser game with a timer, keyboard input, and no refresh."
-    :narration "프로젝트를 열고 말로 요청하자, 새로고침 없이 타이머와 키보드가 동작하는 스네이크 게임이 만들어졌습니다."}
+    :prompt-narration "My first request is a playable Snake game with a real browser timer and keyboard controls."
+    :caption "Codex uses GPT-5.6 to turn the current product context into a structured change that PPP validates before activation."
+    :narration "Codex uses GPT-5.6 to generate a change. PPP validates it before activating the game without a refresh."}
    "DEMO-02"
    {:prompt "Add real product accounts"
-    :prompt-narration "이제 기존 게임을 유지한 채 실제 회원가입과 로그인 기능을 추가해 달라고 요청합니다."
+    :prompt-narration "Next I ask for real product accounts without replacing the running game."
     :caption "The same conversation crosses the server boundary and adds real product accounts without replacing Snake."
-    :narration "같은 대화에서 서버 경계를 넘어 실제 회원가입과 로그인 기능이 추가됐고, 기존 게임은 그대로 유지됩니다."}
+    :narration "The same conversation crosses the server boundary and adds real signup and sign-in while preserving Snake."}
    "DEMO-03"
    {:prompt "Improve the account experience"
-    :prompt-narration "첫 계정 화면은 어색합니다. 디자인과 오류 안내를 함께 개선합니다."
+    :prompt-narration "The first account screen feels bolted on, so I ask for better design and useful errors."
     :caption "A visible validation error is repaired, then Player One signs up, signs out, signs in, and survives reload."
-    :narration "첫 화면이 마음에 들지 않아 개선을 요청했습니다. 잘못된 입력은 실제 계정 경계의 오류로 표시되고, 가입과 재로그인, 새로고침 뒤 세션까지 확인합니다."}
+    :narration "A real validation error explains what to fix. Then Player One signs up, signs out, signs in, and stays signed in after reload."}
    "DEMO-04"
    {:prompt "Add an authenticated Snake ranking"
-    :prompt-narration "로그인한 플레이어의 점수를 저장하는 서버 랭킹을 추가합니다."
+    :prompt-narration "Now I add a persistent ranking for the signed-in player."
     :caption "The signed-in player saves a score through a server action, and SQLite keeps the ranking after reload."
-    :narration "이제 로그인한 플레이어의 점수를 서버 액션으로 저장합니다. 에스큐엘라이트 랭킹은 새로고침 뒤에도 그대로 남습니다."}
+    :narration "The signed-in player saves a score through a server action. SQLite keeps the ranking after reload."}
    "DEMO-05"
    {:prompt "Turn one game into a platform"
-    :prompt-narration "스네이크 하나의 화면을 여러 게임을 담는 플랫폼으로 바꿉니다."
+    :prompt-narration "A product decision turns the single game into a platform."
     :caption "A product decision creates a Game library while preserving Snake, the account, and ranking data."
-    :narration "제품 방향을 게임 플랫폼으로 바꾸자, 스네이크와 계정, 랭킹 데이터를 보존한 채 게임 라이브러리로 확장됩니다."}
+    :narration "The product becomes a game library while preserving Snake, the account, and the ranking data."}
    "DEMO-06"
    {:prompt "Add Tetris without losing anything"
-    :prompt-narration "마지막으로 기존 데이터와 기능을 보존한 채 테트리스를 추가합니다."
+    :prompt-narration "Finally I add Tetris without losing any existing behavior or data."
     :caption "Tetris joins the platform while the existing browser game and server-owned data remain intact."
-    :narration "테트리스를 두 번째 게임으로 추가해도 기존 기능은 사라지지 않습니다. 브라우저 게임과 서버 데이터가 하나의 제품 안에서 함께 진화합니다."}})
+    :narration "Tetris joins as the second game. Browser interactions and server-owned data keep evolving inside one live product workspace."}})
 
 (def intro-copy
   {:caption "For many product people, the hardest part is not prompting. It is getting past installs, Git, builds, and authentication."
-   :narration "기획자와 디자이너에게 가장 어려운 건 프롬프트가 아니라 설치와 깃, 빌드 같은 시작 장벽입니다."})
+   :narration "For many product people, the hardest part is not prompting. It is getting past installs, Git, builds, and authentication."})
 
 (def final-copy
   {:caption "Where product conversations become running software."
-   :narration "대화가 실행 중인 소프트웨어가 되는 곳, 프로그래머블 프로그래밍 페이지입니다."})
+   :narration "Where product conversations become running software."})
 
 (def required-scenarios
   ["DEMO-01" "DEMO-02" "DEMO-03" "DEMO-04" "DEMO-05" "DEMO-06"])
@@ -222,9 +222,10 @@
                            caption narration 6.0)])))
        (range)
        records)
-      [(card-segment "FINAL" "Programmable Programming Page"
-                     "Where product conversations become running software"
-                     6.0)]))))
+      [(assoc (card-segment "FINAL" "Programmable Programming Page"
+                            "Where product conversations become running software"
+                            6.0)
+              :narration (:narration final-copy))]))))
 
 (defn- segment-duration
   [segment]
@@ -269,6 +270,18 @@
                        (timestamp final-start) " --> " (timestamp final-end) "\n"
                        caption "\n")))))]
     (spit (str path) (str/join "\n" entries))))
+
+(defn- validate-language-contract!
+  [timeline subtitles]
+  (let [spoken (str/join " " (keep :narration timeline))
+        written (slurp (str subtitles))]
+    (when (or (re-find #"[가-힣]" spoken)
+              (re-find #"[가-힣]" written)
+              (not-every? #(and (str/includes? written %)
+                                (str/includes? spoken %))
+                          ["Codex" "GPT-5.6"]))
+      (throw (ex-info "Demo narration and subtitles must be English and explain Codex/GPT-5.6 use"
+                      {:code :demo-capture/language-contract-invalid})))))
 
 (defn- ffmpeg!
   [ffmpeg command]
@@ -357,7 +370,7 @@
    (str "param([string]$OutputPath, [string]$Text)\n"
         "Add-Type -AssemblyName System.Speech\n"
         "$voice = New-Object System.Speech.Synthesis.SpeechSynthesizer\n"
-        "$voice.SelectVoice('Microsoft Heami Desktop')\n"
+        "$voice.SelectVoice('Microsoft Zira Desktop')\n"
         "$voice.Rate = 1\n"
         "$voice.Volume = 100\n"
         "$voice.SetOutputToWaveFile($OutputPath)\n"
@@ -484,6 +497,7 @@
     (fs/create-dirs final-root)
     (fs/create-dirs segments-root)
     (write-subtitles! subtitles timeline)
+    (validate-language-contract! timeline subtitles)
     (let [paths (render-segments! ffmpeg windows? raw segments-root timeline)]
       (concat-segments! ffmpeg windows? segments-root paths silent-video))
     (let [narrations (render-narration! windows? final-root timeline)]

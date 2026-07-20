@@ -107,8 +107,9 @@ Scoring anchors:
 | E-14 | PPP-022 shared judge workspace report | Production password login/logout, shared Projects, persistent rolling provider budget, exhausted-state continuity, restart, browser, and package evidence. |
 | E-15 | PPP-023 on-demand client diagnostics report | Exact active-frame capture, parent/extension exclusion, volatile transport, provider Skill disclosure, redaction, browser repair evidence, and full release gate. |
 | E-16 | `bb demo-live` sanitized report | One real Codex thread passes Snake, product-auth UX repair, authenticated SQLite ranking, platformization, and preserved Tetris addition in the compiled browser. |
-| E-17 | PPP-025 local final-video record | Real-Codex 6/6 capture, 168.74-second H.264/AAC media, Korean narration, synchronized English subtitles, honest wait compression, and visual safety review. |
+| E-17 | PPP-025 local final-video record | Real-Codex 6/6 capture, 168.74-second H.264/AAC media, English narration, synchronized English subtitles, explicit Codex/GPT-5.6 use, honest wait compression, and visual safety review. |
 | E-18 | PPP-026 streamed Codex progress report | Incremental bounded JSONL parsing, metadata-only product-language details, requesting-tab delivery, real OAuth browser observation, and no reasoning/source leakage. |
+| E-19 | PPP-027 Coolify judge deployment report | Exact-origin HTTPS, shared access, isolated volumes, persistent ChatGPT OAuth, restart survival, real Codex browser change, checkpoint replay, and clean public-browser diagnostics. |
 
 ## 7. Automated release gate
 
@@ -288,20 +289,21 @@ All conditions are required:
 - no-refresh UI and business-rule changes are visible;
 - Safe Mode recovery works;
 - secret scan is clean;
-- video is under three minutes and has English subtitles;
+- video is under three minutes, has English narration and synchronized English
+  subtitles, and explicitly explains how Codex and GPT-5.6 are used;
 - Devpost fields and Codex session ID are recorded;
 - actual deployment has separate owner approval.
 
 The evaluator records the current complete baseline below. PPP-024 E-16,
-PPP-025 E-17, PPP-026 E-18, and the expanded automated, production-browser,
-and live gates pass. Publication remains blocked only on uploading the verified
-video, public links, deployment, and submission approval.
+PPP-025 E-17, PPP-026 E-18, PPP-027 E-19, and the expanded automated,
+production-browser, public-deployment, and live gates pass. Publication remains
+blocked only on uploading the verified video and submission approval.
 
 ## 13. Release assessment
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` (186 JVM/1,336 assertions, 29 CLJS/132 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 201-file secret scan); real OAuth streamed-progress observation; exact final-video Codex story 6/6 in one resumed thread; eight-step live Codex evolution 8/8; E-15 through E-18; PPP-007 through PPP-026 evidence | pass |
+| Technical implementation | 25/25 | isolated `bb verify` (186 JVM/1,336 assertions, 29 CLJS/132 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 205-file secret scan); real OAuth streamed-progress observation; exact final-video Codex story 6/6 in one resumed thread; eight-step live Codex evolution 8/8; public persistent-OAuth canary; E-15 through E-19; PPP-007 through PPP-027 evidence | pass |
 | Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests; manually reviewed 1440x900 final cut | pass |
 | Impact | 24/25 | `docs/PRD.md`; exact Snake-to-game-platform story with generated product accounts and persistent ranking; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |
@@ -311,5 +313,6 @@ The design score remains deliberately conservative pending external judging,
 and one impact point remains unawarded because private hosted
 identity/workspaces are not in the hackathon build. Automated,
 production-browser, live-provider, security, recovery, packaged-demo, and
-local final-video gates pass. Final release remains blocked on public video
-and hosted URLs, access delivery, and explicit deployment/submission approval.
+local final-video and public judge deployment gates pass. Final release remains
+blocked on public video upload, private access delivery, and explicit Devpost
+submission approval.

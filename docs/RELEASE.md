@@ -1,7 +1,7 @@
 # Local Release Closure
 
-Status: locally complete through PPP-026; publication actions remain owner-controlled
-Last updated: 2026-07-17
+Status: public judge deployment verified; upload and submission remain owner-controlled
+Last updated: 2026-07-20
 
 ## Definition of locally complete
 
@@ -26,17 +26,17 @@ Local completeness does not authorize remote or public state changes.
   newline, and the composer returns to an editable state.
 - Clean candidate-copy release gate: 186 JVM tests/1,336 assertions, 29 CLJS
   tests/132 assertions, 25 normal Chromium tests plus one intentional skip,
-  two production restart phases, Docker smoke, and a clean 201-file secret
+  two production restart phases, Docker smoke, and a clean 205-file secret
   scan.
 - Exact final-video real Codex story:
   `artifacts/demo-live/20260717-060709/report.edn`, six of six scenarios passed
   in one project and one resumed provider thread through Snake, product auth,
   visible error repair, authenticated SQLite ranking, Game library, and
   preserved Tetris addition.
-- Local final video: PPP-025 captured the same real-Codex story at 1440x900,
-  edited it to 168.74 seconds with honest wait-compression cards, added Korean
-  narration and synchronized English subtitles, and verified the media and
-  first Projects frame. The bounded record is
+- Local final video: PPP-025 captured the same real-Codex story at 1440x900 and
+  verified a 168.74-second submission cut with honest wait-compression cards,
+  English narration, synchronized English subtitles, and explicit
+  Codex/GPT-5.6 use. The bounded record is
   `artifacts/evidence/ppp-025-real-codex-video-capture.md`.
 - Streamed real-Codex progress: PPP-026 incrementally parses bounded JSONL and
   delivers only metadata-derived product-language details to the requesting
@@ -46,6 +46,11 @@ Local completeness does not authorize remote or public state changes.
   `artifacts/evidence/ppp-022-shared-judge-workspace.md`.
 - On-demand active-product diagnostic evidence:
   `artifacts/evidence/ppp-023-on-demand-client-diagnostics.md`.
+- Public judge deployment: `https://ppp.openai.slopbook.org` passes TLS,
+  shared-password access, persistent ChatGPT OAuth through restart, readiness,
+  one real Codex change, persisted checkpoint replay, and a clean post-login
+  browser canary. The bounded record is
+  `artifacts/evidence/ppp-027-coolify-judge-deployment.md`.
 - Enter-based packaged demo: `artifacts/demo/20260716-004803/report.edn`, three
   of three fresh-volume runs passed.
 - Aggregated bounded record: `artifacts/release/20260716-local/report.edn`.
@@ -59,10 +64,10 @@ Local completeness does not authorize remote or public state changes.
 
 These actions remain deliberately unperformed until the owner approves them:
 
-1. Deploy the verified image to the chosen VPS/Coolify target.
-2. Upload the verified narrated sub-three-minute video.
-3. Add the public video and hosted-demo URLs to `docs/DEVPOST.md`.
-4. Deliver the shared password through the event-approved private channel.
-5. Select Work & Productivity and submit the Devpost entry.
+1. Upload the verified narrated sub-three-minute video.
+2. Add the public video URL to `docs/DEVPOST.md` (the hosted demo URL is
+   `https://ppp.openai.slopbook.org`).
+3. Deliver the shared password through the event-approved private channel.
+4. Select Work & Productivity and submit the Devpost entry.
 
 The public Devpost body must never contain the shared password.

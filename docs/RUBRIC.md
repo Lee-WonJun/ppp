@@ -150,6 +150,7 @@ Scoring anchors:
 | E-20 | PPP-028 judge-readiness and feedback-session report | Live criteria comparison, external risk-adjusted scoring, high-signal session reading guide, completed project copy, and remaining owner-only submission blockers. |
 | E-21 | PPP-029 REPL-lineage report | Direct Emacs, nREPL, JPL, and first-hand DS1 source review; accurate live-recovery wording; and explicit public-REPL distinction. |
 | E-22 | PPP-030 runtime-profile report | Precise staged-REPL terminology, current public POC rationale and limits, Workspace Capsule target, source reconciliation contract, and unchanged current security gates. |
+| E-23 | PPP-031 REPL-driven runtime report | Standard loopback nREPL attachment, persistent project namespace, live inspect/eval/action/migration/browser operations, same-turn repair, SQLite reload persistence, rollback, and precise shared-versus-workspace scope. |
 
 ## 7. Automated release gate
 
@@ -191,6 +192,7 @@ Each property runs at least 1,000 generated sequences unless a documented cost a
 | PBT-16 | Real-provider starts never exceed the configured rolling limit, expire exactly at the boundary, and retain the same decision across restart. |
 | PBT-17 | Shared-password failures remain isolated by kernel-observed remote address, reveal no match detail, and recover after the rolling window. |
 | PBT-18 | Arbitrary client diagnostic shapes and strings either normalize into the strict bounded/redacted allowlist or are rejected; no accepted record can add a newline, exceed a field/ring bound, or enter ordinary provider stdin, history, or logs. |
+| PBT-19 | A long-lived project nREPL preserves its namespace and state across at least 1,000 generated evaluation sequences, while another project cannot select that state. |
 
 ## 9. Live Codex evaluation
 

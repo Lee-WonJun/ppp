@@ -41,11 +41,25 @@ data, tests, and history for engineering handoff.
 ### Current implementation
 
 The public hackathon build uses fresh SCI contexts on the JVM and in an
-opaque-origin browser frame. SCI reads and evaluates generated CLJ/CLJS source;
-the resulting functions remain in the active version's context; product
-rendering and action results provide the observable output; the next
-conversation repeats the loop. This is a **staged REPL runtime**, even though it
-is not a terminal REPL and Codex does not currently connect through nREPL.
+opaque-origin browser frame. SCI reads and evaluates complete generated
+CLJ/CLJS candidates; the Host invokes their tests, actions, and isolated
+browser render; a successful context atomically replaces the prior active
+version. This is an **SCI-evaluated transactional hot swap**. It uses REPL-like
+evaluation, but Codex does not connect to nREPL or progressively redefine the
+same live context in this public profile.
+
+For trusted local development, set `PPP_RUNTIME_PROFILE=workspace-repl`. In
+that profile Codex is given a single project-scoped client connected through
+standard loopback nREPL to the already-running JVM. It inspects and evaluates
+the live server by defining and redefining actual JVM Vars in a persistent
+project namespace. The active action router retains those Vars, so the next
+real HTTP request sees a new `defn` immediately. The same turn can evaluate the
+requesting browser runtime, repair failures, and return source only as the
+durable reconciliation of behavior it already exercised. The host records the
+eval evidence and refuses a change that skipped an affected runtime.
+
+This opt-in profile is deliberately refused in production while all projects
+share one JVM; loopback is transport containment, not tenant isolation.
 
 ### Why it is implemented this way
 
@@ -129,7 +143,7 @@ Sources: [GNU Emacs](https://www.gnu.org/software/emacs/),
 [JPL's Deep Space 1 Remote Agent record](https://www.jpl.nasa.gov/nmp/ds1/tech/autora.html),
 and [Ron Garret's account](https://corecursive.com/lisp-in-space-with-ron-garret/).
 
-### This is not ordinary hot reload
+### Hot swap is the mechanism, not the product thesis
 
 Hot reload is an excellent developer tool, but it starts after a developer,
 repository, source edit, build watcher, and runtime already exist. PPP changes
@@ -146,7 +160,9 @@ the authoring model and the activation contract:
 | Failure | Build/runtime error may leave the developer to repair state | Candidate is rejected; the last successful product and data remain active |
 | Audience | Speeds up an existing coding workflow | Removes the coding workflow as a prerequisite for product collaboration |
 
-Hot reload shortens the loop from **developer edit to running code**. PPP
+The current POC does use hot swapping internally. What differs is the authoring
+and collaboration contract. Hot reload normally shortens the loop from
+**developer edit to running code**. PPP
 creates a different loop: **product conversation to validated running software
 to recoverable engineering artifact**. It may use live replacement techniques
 internally, but replacing code quickly is not the product boundary.

@@ -5,7 +5,7 @@ Status: approved implementation baseline
 Protocol version: 1
 Session format version: 1
 Capability version: 1
-Last updated: 2026-07-17
+Last updated: 2026-07-20
 
 ## 1. Purpose
 
@@ -47,29 +47,53 @@ Using the same language family does not make these the same runtime. The fixed k
 
 ### 2.1 Runtime profile and terminology
 
-This specification describes the **Shared Public POC Profile** currently
-implemented and released. Its evaluator is REPL-derived rather than a direct
-nREPL integration:
+The default **Shared Public POC Profile** uses an **SCI-evaluated transactional
+hot swap**:
 
 ```text
-read    SCI parses complete generated source
-eval    fresh server and browser SCI contexts evaluate that source
-print   rendered UI, action results, tests, and bounded failure evidence
-loop    the next conversation stages another complete runtime version
+generate   Codex returns complete candidate source files
+stage      fresh server and browser SCI contexts evaluate those files
+observe    the Host invokes actions, tests, and an isolated browser render
+activate   a successful context replaces the prior active version atomically
+persist    candidate source, database, history, and checkpoint become current
 ```
 
 The context and evaluated functions remain alive for the active runtime
-version. Calling this a staged SCI REPL runtime is accurate. Saying that the
-current Codex process connects to nREPL is not.
+version, but the next change does not normally redefine that same context in
+place. It builds and evaluates a fresh candidate image, then swaps the active
+version. This preserves REPL-like runtime evaluation and observation, but it is
+closer to a validated hot swap than traditional REPL-driven development.
+Saying that the public `shared-poc` profile connects Codex to nREPL is
+incorrect.
 
-The target **Workspace Capsule Profile** is intentionally not implemented by
-this specification. It moves the trust boundary from individual forms to a
-disposable per-workspace container, gVisor sandbox, or microVM. Inside that
-boundary Codex may use the project filesystem, shell, dependencies, server
-nREPL, shadow-cljs, browser CLJS REPL, and normal application processes. The
-external Control Plane retains credentials, identity, workspace lifecycle,
-routing, quotas, snapshots, and cross-workspace isolation. `TODOS.md` owns its
-trigger and prerequisites.
+This distinction does not weaken the product proof. The POC demonstrates the
+conversation, full-stack staging, semantic runtime history, failure isolation,
+and recovery contract. The target profile below changes the authoring mechanism
+from complete-source candidate replacement to genuine REPL-first exploration.
+
+The development-only **Workspace REPL Profile** is also implemented. It starts
+a standard nREPL server on loopback, keeps one nREPL session and namespace per
+project, and installs a single `./ppp-repl` client in Codex's empty job
+directory. Codex uses it to inspect and incrementally evaluate the already
+running project server. Server forms are ordinary quoted Clojure forms
+evaluated in that JVM namespace. Registered actions retain Vars rather than
+copied function values, so redefining a `defn` changes the next action without
+source staging or a server restart. Client forms travel from that same nREPL turn through
+the exact requesting WebSocket tab to the active opaque-origin browser runtime.
+Affected server/client evals are host-observed; a complete-file answer without
+those evals cannot become a Workspace REPL change. Successful live state is
+then independently validated and reconciled to source, tests, SQLite, history,
+and a checkpoint. An exhausted turn reconstructs the last durable server and
+browser runtime.
+
+This same-process profile is not an isolation boundary and production refuses
+to start it. The target **Workspace Capsule Profile** moves the trust boundary
+to a disposable per-workspace container, gVisor sandbox, or microVM. Inside
+that boundary Codex may additionally use the project filesystem, shell,
+dependencies, shadow-cljs, and normal application processes. The external
+Control Plane retains credentials, identity, workspace lifecycle, routing,
+quotas, snapshots, and cross-workspace isolation. `TODOS.md` owns the remaining
+capsule prerequisites.
 
 REPL-first experiments in the target profile are provisional. A shareable
 checkpoint must reconcile the successful runtime definitions to source, tests,
@@ -86,7 +110,7 @@ REPL state.
 | HTTP and WebSocket | http-kit |
 | Routing | Reitit |
 | Lifecycle | Integrant |
-| Generated evaluation | SCI on JVM and browser |
+| Generated evaluation | SCI on JVM/browser in Shared Public POC; direct JVM Vars over standard nREPL plus browser SCI in trusted Workspace REPL |
 | UI | Reagent in an opaque-origin sandbox with serializable state handoff |
 | Persistence | SQLite JDBC and next.jdbc |
 | Shared validation | Malli schemas in CLJC |
@@ -123,6 +147,10 @@ src/ppp/
 │   ├── core.clj                provider protocol
 │   ├── codex.clj               Codex CLI implementation
 │   └── fake.clj                deterministic tests and demo fixture
+├── repl/
+│   ├── service.clj             loopback nREPL server and project sessions
+│   ├── client.clj              project-scoped Codex nREPL client
+│   └── bridge.clj              live server/browser operations and audit
 ├── runtime/
 │   ├── auth.clj               product identity, credentials, and login effects
 │   ├── resources.clj          blobs, search documents, and durable job state
@@ -534,7 +562,7 @@ Output:
 
 Initial turns use `codex exec`; later turns use `codex exec resume <thread-id>`. The exact argument vector is constructed with `ProcessBuilder`, never a shell string.
 
-Required controls:
+Required controls for `shared-poc`:
 
 ```text
 --json
@@ -564,7 +592,16 @@ Required controls:
 
 - Source and catalog context enter through stdin only.
 - The work directory is unrelated to the repository and session directory. It contains only the fixed, packaged `ppp-validate-and-apply` provider Skill plus bounded result files.
-- The provider explicitly invokes that Skill on every change and repair attempt. The Skill has no tools or execution authority; it documents the syntax and compatibility checklist used before host validation.
+- The provider explicitly invokes that Skill on every change and repair
+  attempt. In `shared-poc` the Skill has no tools or execution authority; it
+  documents the syntax and compatibility checklist used before host
+  validation.
+- In `workspace-repl`, the job instead uses `--sandbox danger-full-access` and
+  retains the shell tool solely so Codex can execute the generated `./ppp-repl`
+  client in its otherwise empty work directory. The fixed client connects only
+  to the loopback endpoint and project UUID written by the Kernel. No project
+  filesystem, session database, OAuth path, arbitrary host command, or public
+  nREPL endpoint is supplied.
 - The process environment is cleared, then receives only the minimum `CODEX_HOME`, `HOME`, and locale values.
 - At kernel startup, npm-style `#!/usr/bin/env node` launchers are resolved to absolute
   Node and Codex paths. The child therefore works without inheriting `PATH`.
@@ -574,7 +611,9 @@ Required controls:
   and every unknown field are discarded. Duplicate details are suppressed.
 - The final message file is bounded to 512 KiB and parsed as JSON.
 - Static JSON Schema validation occurs in Codex, then Malli validates again in the host.
-- Default timeout is 120 seconds.
+- Default timeout is 120 seconds in `shared-poc` and 240 seconds in
+  `workspace-repl`, where inspect/evaluate/observe/repair and durable
+  reconciliation happen in one provider turn.
 - Global concurrency is one, per-session concurrency is one, FIFO capacity is eight.
 - The real Codex provider consumes one global start immediately before every
   `generate!` invocation, including repair attempts. At most 100 starts are
@@ -586,7 +625,13 @@ Required controls:
   commands may inspect exact bounded status. Exhaustion includes a stable code
   and bounded retry delay without exposing OAuth or provider diagnostics.
 - Restore clears the stored thread ID so future context cannot assume the abandoned future state.
-- A repairable source, SQL, server SCI, or browser staging rejection is returned to the same Codex thread as structured feedback. The initial proposal plus at most two corrected attempts are allowed. Only the final successful proposal enters history as a change; exhausted attempts create one rejected event, retain that provider thread for the next explicit user correction, and never activate rejected source. Restore and non-repairable provider failures reset the thread. Successful history records include the host-observed attempt count and affected runtime surfaces; the provider never declares its own trusted impact flag.
+- A repairable source, SQL, server SCI, or browser staging rejection is returned to the same Codex thread as structured feedback. The initial proposal plus at most five corrected attempts are allowed by default. Only the final successful proposal enters history as a change; exhausted attempts create one rejected event with the observed attempt count, retain that provider thread for the next explicit user correction, and never activate rejected source. Restore and non-repairable provider failures reset the thread. Successful history records include the host-observed attempt count and affected runtime surfaces; the provider never declares its own trusted impact flag.
+- A Workspace REPL change must contain host-observed accepted operations for
+  every affected surface. Server work requires incremental evaluation and a
+  real action invocation; schema work additionally requires the exact live
+  migration; client or style work requires evaluation in the requesting active
+  frame. Complete returned files without these observations are repairable but
+  cannot be accepted.
 
 ### 8.3 On-demand client diagnostics Skill
 
@@ -756,6 +801,8 @@ and runtime; they are never stage acknowledgements and never advance a version.
 
 ## 11. Change state machine
 
+The following is the public `shared-poc` transaction:
+
 ```text
 queued
   |
@@ -796,6 +843,39 @@ append history, create checkpoint, activate, broadcast
   v
 applied
 ```
+
+The development `workspace-repl` authoring loop precedes durable
+reconciliation and intentionally changes the live project before file staging:
+
+```text
+queued -> snapshot current SQLite -> begin audited nREPL turn
+  |
+  v
+Codex inspects running server
+  |
+  +-> apply migration to live session database when required
+  +-> evaluate incremental server forms in the active project runtime
+  +-> invoke real actions and observe results
+  +-> evaluate incremental client forms in the exact open sandbox frame
+  |        failure -> bounded result -> repair in the same project nREPL
+  v
+Codex returns complete source/tests/migrations as reconciliation
+  |
+  v
+require accepted host observations for every affected surface
+  |
+  v
+run the ordinary source/SQL/test/hidden-render transaction above
+  |
+  +-> success: durable source + SQLite + history + checkpoint
+  |
+  +-> terminal failure: restore pre-turn SQLite, rebuild active server from
+                       last durable source, resync browser, retain rejection
+```
+
+The semantic history record stores the bounded operation sequence and status,
+including inspect, migration, server evaluation, action invocation, and client
+evaluation. Provider claims never substitute for these Kernel observations.
 
 ### 11.1 Commit invariants
 

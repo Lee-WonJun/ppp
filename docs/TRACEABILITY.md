@@ -22,26 +22,26 @@ Last updated: 2026-07-20
 | PRD-F05 | PPP-006, PPP-017 | Playwright broken-sidebar recovery and render-timeout preservation | E-01, E-04 |
 | PRD-F06 | PPP-003, PPP-022 | complete version-zero product plus bounded-title HTTP/browser creation | E-01, E-05, E-14 |
 | PRD-F07 | PPP-003, PPP-006, PPP-022, PPP-025 | shared two-browser project listing, session switch persistence, and readable Projects video opening | E-01, E-03, E-14, E-17 |
-| PRD-F08 | PPP-007, PPP-015, PPP-018, PPP-019 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer and live-status contract | E-01 |
+| PRD-F08 | PPP-007, PPP-015, PPP-018, PPP-019, PPP-031 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer, live status, and Workspace REPL turn contract | E-01, E-23 |
 | PRD-F09 | PPP-004, PPP-007 | `ppp.provider.queue-test/provider-queue-is-global-fifo-with-eight-waiting-slots` | E-01 |
 | PRD-F10 | PPP-007, PPP-015, PPP-018, PPP-019 | protocol schema plus WebSocket integration; guarded keyboard/composition submission and bounded phase presentation | E-01 |
-| PRD-F11 | PPP-006, PPP-007, PPP-017, PPP-024, PPP-025 | hidden render, animation-independent DOM commit, no-refresh Playwright, and captured real-Codex game-platform story | E-01, E-03, E-16, E-17 |
-| PRD-F12 | PPP-005, PPP-024, PPP-025 | server action integration plus captured authenticated ranking in the real-Codex game-platform story | E-01, E-16, E-17 |
+| PRD-F11 | PPP-006, PPP-007, PPP-017, PPP-024, PPP-025, PPP-031 | hidden render, animation-independent DOM commit, no-refresh Playwright, captured real-Codex game-platform story, and active browser form evaluation | E-01, E-03, E-16, E-17, E-23 |
+| PRD-F12 | PPP-005, PPP-024, PPP-025, PPP-031 | server action integration, captured authenticated ranking, and live nREPL action redefinition/invocation against SQLite | E-01, E-16, E-17, E-23 |
 | PRD-F13 | PPP-005 | `ppp.property.gallery-domain-test/fake-gallery-seeds-once-persists-and-ranks-deterministically` | E-01, E-03 |
 | PRD-F14 | PPP-006, PPP-013, PPP-015, PPP-018 | sandbox state handoff; composer draft/focus tests; revision-ordered Korean IME regression | E-01 |
-| PRD-F15 | PPP-004, PPP-005, PPP-013, PPP-030 | JVM escape property, sandbox browser-API Playwright test, and current-versus-target runtime boundary | E-01, E-02, E-22 |
+| PRD-F15 | PPP-004, PPP-005, PPP-013, PPP-030, PPP-031 | JVM escape property, sandbox browser-API Playwright test, current-versus-target runtime boundary, and development-only loopback nREPL policy | E-01, E-02, E-22, E-23 |
 | PRD-F16 | PPP-001, PPP-005, PPP-007 | `ppp.runtime.policy-test/forbidden-sql-token-property` | E-01 |
-| PRD-F17 | PPP-005, PPP-007, PPP-024, PPP-025 | failed-stage isolation plus captured real-Codex authenticated ranking reload persistence | E-01, E-16, E-17 |
+| PRD-F17 | PPP-005, PPP-007, PPP-024, PPP-025, PPP-031 | failed-stage isolation, captured real-Codex authenticated ranking reload persistence, live migration/action observation, and pre-turn SQLite rollback | E-01, E-16, E-17, E-23 |
 | PRD-F18 | PPP-006, PPP-007, PPP-013, PPP-017 | hidden opaque-origin frame Playwright stage with animation scheduling disabled | E-01 |
 | PRD-F19 | PPP-007 | exact request-tab ACK integration | E-01 |
 | PRD-F20 | PPP-007 | PBT-08 and stale multi-tab Playwright | E-01 |
-| PRD-F21 | PPP-007, PPP-010, PPP-017 | PBT-02 plus failed or unsignaled DOM commit preservation | E-01 |
-| PRD-F22 | PPP-003, PPP-007 | `ppp.session.store-test/history-sequences-remain-unique-under-concurrency` | E-01, E-05 |
-| PRD-F23 | PPP-003 | `ppp.session.store-test/current-source-must-match-its-manifest` | E-01 |
-| PRD-F24 | PPP-008 | snapshot integrity and checkpoint test | E-01 |
+| PRD-F21 | PPP-007, PPP-010, PPP-017, PPP-031 | PBT-02 plus failed/unsignaled DOM preservation and terminal live-turn reconstruction | E-01, E-23 |
+| PRD-F22 | PPP-003, PPP-007, PPP-031 | concurrent append uniqueness plus semantic nREPL operation history | E-01, E-05, E-23 |
+| PRD-F23 | PPP-003, PPP-031 | current source/manifest consistency and accepted runtime-to-source reconciliation | E-01, E-23 |
+| PRD-F24 | PPP-008, PPP-031 | snapshot integrity, checkpoint tests, and Workspace REPL pre-turn database backup | E-01, E-23 |
 | PRD-F25 | PPP-008 | PBT-04 crash-point matrix | E-01 |
-| PRD-F26 | PPP-008 | PBT-03 and thread reset test | E-01, E-03 |
-| PRD-F27 | PPP-004, PPP-028, PPP-029, PPP-030 | provider tests, submitted majority-build session guide, nREPL distinction, and intended Codex-operated workspace profile | E-01, E-02, E-20, E-21, E-22 |
+| PRD-F26 | PPP-008, PPP-031 | PBT-03, thread reset, and restored Workspace REPL session reconstruction | E-01, E-03, E-23 |
+| PRD-F27 | PPP-004, PPP-028, PPP-029, PPP-030, PPP-031 | provider tests, majority-build session guide, nREPL lineage/distinction, and implemented Codex-operated Workspace REPL profile | E-01, E-02, E-20, E-21, E-22, E-23 |
 | PRD-F28 | PPP-001, PPP-004 | `ppp.shared.protocol-test/provider-kind-boundary-property` | E-01 |
 | PRD-F29 | PPP-009 | PBT-06 and redirect integration | E-01 |
 | PRD-F30 | PPP-009 | connector secret redaction/injection tests | E-01 |
@@ -87,6 +87,7 @@ Last updated: 2026-07-20
 | PBT-16 provider rolling starts | PPP-022 | `ppp.provider.budget-test` plus coordinator/restart integration |
 | PBT-17 shared-password throttle | PPP-022 | `ppp.access-test` generated login sequences plus HTTP integration |
 | PBT-18 client diagnostic boundary | PPP-023 | `ppp.shared.protocol-test`, `ppp.provider.codex-test`, coordinator/HTTP integration, and Playwright |
+| PBT-19 persistent project nREPL | PPP-031 | `ppp.repl.service-test/workspace-nrepl-retains-state-across-one-thousand-generated-sequences` |
 
 ## Ticket dependency graph
 
@@ -171,3 +172,4 @@ PPP-001
 | PPP-028 | done | Live Devpost criteria were compared with the verified product; the public project copy now has problem-first description, technology, repository, and hosted-demo fields; the majority-build Codex task is titled and documented with a ninety-second reading guide; README and Devpost copy distinguish full-stack activation from preview generation. `bb lint`, formatting, reference existence, staged diff, and the 206-file secret scan pass. Video upload, private access delivery, and final submission remain owner-controlled. |
 | PPP-029 | done | README, thesis, and Devpost inspiration connect Emacs, Lisp, nREPL, Deep Space 1, and PPP while distinguishing live un-wedging from a permanent flight-source patch, raw nREPL from PPP's bounded change contract, and developer hot reload from atomic full-stack source-and-data activation. Direct sources were checked; Devpost version 5 contains the aligned wording while video and `submitted_at` remain empty; lint, formatting, diff, link, and staged secret checks pass. |
 | PPP-030 | done | Vision, current staged SCI REPL implementation, public-POC rationale, current limitations, and the intended Codex-operated Workspace Capsule architecture are separated across PRD, specification, security, thesis, README, TODO, and Devpost documents. Workspace-local shell/dependencies are profile-specific rather than permanent gaps; Control Plane and cross-workspace authority remain permanently denied. Devpost version 6 contains the same five-part positioning with video and `submitted_at` still empty. Lint, formatting, reference, conflict-search, diff, and staged secret checks pass. |
+| PPP-031 | in_progress | Standard loopback nREPL, persistent project JVM namespaces and Var-backed action redefinition, live action/migration and exact-tab browser evaluation, turn-wide repair observations, runtime-to-source reconciliation, terminal SQLite/server/browser reconstruction, 1,000-sequence PBT, and real OAuth Chromium counter/notes evidence are implemented. `bb verify` after the direct-Var refinement passes 196 JVM/1,409 assertions, 31 CLJS/145 assertions, 25 Chromium paths plus one intentional skip, production restart checks, Docker smoke, and a 218-file secret scan. The dedicated OAuth Workspace REPL evolution passes EVOLVE-01 through EVOLVE-06 but EVOLVE-07 remains uncommitted after generated-test exhaustion and a later provider clarification; PPP-031 stays open. |

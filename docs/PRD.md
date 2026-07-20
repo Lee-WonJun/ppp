@@ -4,28 +4,51 @@ Product: Programmable Programming Page
 Tagline: Where product conversations become running software.
 Status: approved implementation baseline
 Category: Work & Productivity
-Last updated: 2026-07-17
+Last updated: 2026-07-20
 
 ## 1. Summary
 
-Programmable Programming Page is a SaaS-style live programming workspace for product managers and designers. A user changes a running full-stack product through one natural-language conversation. The system generates real Clojure-family source and SQLite migrations, validates them in isolated server and browser runtimes, applies them without a page refresh, and records source, data, and history for later engineering work. Each PPP session behaves like a private programmable product sandbox: normal browser, server, identity, data, and integration behavior is available through session-owned resources, while the fixed Kernel prevents access to PPP credentials, host resources, and other sessions.
+Programmable Programming Page is a SaaS-style live programming workspace for
+product managers and designers. A user changes a running full-stack product
+through one natural-language conversation. The system evaluates real
+Clojure-family programs in isolated server and browser runtimes, applies
+validated behavior without a page refresh, and records the intent, observed
+outcome, source, data, tests, and checkpoint for later product and engineering
+work. Each PPP session behaves like a private programmable product sandbox:
+normal browser, server, identity, data, and integration behavior is available
+through session-owned resources, while the fixed Kernel prevents access to PPP
+credentials, host resources, and other sessions.
 
 This PRD is the acceptance contract for the public hackathon proof, not the
-maximum authority of the intended product. The current single-process build is
-a staged SCI REPL runtime: generated source is read and evaluated into live
-version contexts, but Codex does not connect to a raw nREPL. The product vision
-is a Codex-operated full REPL workspace inside a disposable per-workspace
-container or stronger sandbox. There, workspace-local source, shell,
-filesystem, dependencies, server nREPL, and browser CLJS REPL are ordinary
-creative tools; the permanent boundary protects the Control Plane,
-credentials, host, and other workspaces.
+maximum authority of the intended product. The build now has two explicit
+profiles. `shared-poc` is the public default: an SCI-evaluated transactional hot
+swap in fresh candidate contexts. `workspace-repl` is the trusted development
+profile: Codex receives a project tool backed by a standard loopback nREPL
+connection to the already-running JVM, defines and redefines actual Clojure
+Vars used by the live action router, observes the changed runtime, repairs it
+in the same session, and only then reconciles
+source and a checkpoint. Because that nREPL still shares the PPP JVM, the
+profile is refused outside development until each workspace has a disposable
+container or stronger sandbox. In that target deployment, workspace-local
+source, shell, filesystem, dependencies, server nREPL, and browser CLJS REPL
+are ordinary creative tools; the permanent boundary protects the Control
+Plane, credentials, host, and other workspaces.
+
+The product is based on a stronger belief than “AI can generate code.” Product
+managers and designers will increasingly create real working behavior, not
+only requirements and mockups. Today they are often blocked before the first
+useful prompt by installation, Git, folders, OAuth, local servers, and broken
+environment recovery. PPP removes that operational threshold and makes the
+running product the shared planning surface.
 
 The five-part positioning is therefore:
 
 1. **Vision:** product conversation directly programs a running full-stack
-   product and remains a developer-continuable artifact.
-2. **Current implementation:** in-process JVM/browser SCI with validated,
-   versioned, atomic activation.
+   product and its semantic runtime history remains a developer-continuable
+   artifact.
+2. **Current implementation:** public `shared-poc` SCI transactional hot swap,
+   plus a trusted `workspace-repl` path that attaches Codex to the running
+   server and requesting browser before durable reconciliation.
 3. **Implementation reason:** the public POC shares one JVM and consumes the
    owner's OAuth capacity, so arbitrary host authority is unsafe.
 4. **Current limit:** typed capabilities cannot equal a normal development
@@ -44,6 +67,11 @@ AI coding products assume that the user can cross a development-environment thre
 - understanding files, branches, diffs, builds, and local servers;
 - recovering from a broken generated change.
 
+That is not a lack of product judgment. It is a tooling-access problem. Asking
+every planner and designer to become a repository and local-environment
+operator before they can create executable behavior wastes the new capability
+AI provides.
+
 Product managers and designers already collaborate successfully in browser-based tools such as Figma and Notion. They need the same operational simplicity for executable product work.
 
 Current alternatives leave a handoff gap:
@@ -55,9 +83,27 @@ Current alternatives leave a handoff gap:
 
 ## 3. Product insight
 
-The running product can be the product specification.
+The running product can be the product specification, and a semantic runtime
+transition can be the unit of product collaboration.
 
-A conversation should be able to change the interface, server action, persistent schema, and business rule in one validated transaction. The system should preserve those changes as source and checkpoints so a developer inherits executable intent rather than a static approximation.
+A conversation should be able to change the interface, server action,
+persistent schema, and business rule in one validated transaction. The primary
+record is not a line-level diff. It is the causal loop:
+
+```text
+intent
+-> runtime evaluation
+-> observed product outcome
+-> validation evidence
+-> source-and-data checkpoint
+-> next conversation
+```
+
+Source remains essential for reproducibility and engineering, but editing it
+is not the user's interaction model. Git remains an appropriate downstream
+tool for hardened production work, but a Git commit does not by itself capture
+why a product change was requested, what was observed in the running system,
+or which outcome was accepted.
 
 ## 4. Target users
 
@@ -76,9 +122,10 @@ A conversation should be able to change the interface, server action, persistent
 
 ### Secondary: developer receiving the handoff
 
-- Needs real CLJ, CLJS, CLJC, CSS, SQL, tests, and change history.
+- Needs real CLJ, CLJS, CLJC, CSS, SQL, tests, and causal runtime history.
 - Needs deterministic checkpoints and failure evidence.
-- Must be able to harden and extend the generated product conventionally.
+- Must be able to distinguish accepted product intent from incidental generated
+  implementation, then harden, rewrite, and extend it conventionally.
 
 ## 5. Jobs to be done
 
@@ -89,7 +136,7 @@ A conversation should be able to change the interface, server action, persistent
 | JTBD-03 | When a visual surface feels wrong, I want to change it in the same conversation without a build or refresh. |
 | JTBD-04 | When an experiment fails, I want the prior working product to remain available. |
 | JTBD-05 | When I explore alternatives, I want named checkpoints that restore source and data together. |
-| JTBD-06 | When engineering continues the work, I want the executable source and rationale to survive the handoff. |
+| JTBD-06 | When engineering continues the work, I want accepted intent, observed outcomes, evidence, source, and data to survive the handoff. |
 
 ## 6. Product principles
 
@@ -107,6 +154,13 @@ A conversation should be able to change the interface, server action, persistent
 10. Sensitive primitives are mediated, not omitted. The Kernel owns secrets,
     credentials, tokens, host networking policy, and resource limits while
     generated code owns the product rules built from those capabilities.
+11. Runtime history is the primary collaboration record. Source snapshots and
+    eventual Git promotion support engineering; textual diffs do not define
+    the user's product-planning loop.
+12. PPP is language-enabled, not language-exclusive. Clojure and SCI make live
+    evaluation, redefinition, and inspectable forms natural, but an equivalent
+    persistent evaluator and history contract could be implemented in another
+    language.
 
 ## 7. Core experience
 
@@ -172,7 +226,7 @@ visual ellipsis may animate while a phase is active without creating additional
 progress events. Progress remains one current line rather than a growing event
 log and is never persisted.
 
-Errors use plain language, identify whether loading, validation, initial drawing, bridge transport, action execution, or an active interaction failed, retain the current product, and offer a retry where safe. A generated change that fails a repairable validation or staging gate is returned to the provider with structured, bounded, non-secret feedback for up to two corrected attempts before the turn is rejected. If those repairable attempts are exhausted, the rejected source never becomes current but the last valid provider thread remains available for the user's next explicit correction; restore and non-repairable provider failures still reset the thread. A generic rejection without a concrete reason category is not an acceptable product outcome. Internal stages and error codes remain available in logs and test evidence.
+Errors use plain language, identify whether loading, validation, initial drawing, bridge transport, action execution, or an active interaction failed, retain the current product, and offer a retry where safe. A generated change that fails a repairable validation or staging gate is returned to the provider with structured, bounded, non-secret feedback for up to five corrected attempts before the turn is rejected. If those repairable attempts are exhausted, the rejected source never becomes current but the last valid provider thread remains available for the user's next explicit correction; restore and non-repairable provider failures still reset the thread. A generic rejection without a concrete reason category is not an acceptable product outcome. Internal stages and error codes remain available in logs and test evidence.
 
 ### 7.5 Sessions and checkpoints
 
@@ -259,7 +313,7 @@ inside that one product session.
 
 | ID | Requirement |
 |---|---|
-| PRD-F22 | Preserve prompt, assistant explanation, before/after source, validation, and event metadata in append-only history. |
+| PRD-F22 | Preserve intent, assistant explanation, observed outcome, before/after source, validation, checkpoint identity, and event metadata in append-only semantic runtime history. |
 | PRD-F23 | Materialize the current successful manifest instead of replaying all history on load. |
 | PRD-F24 | Checkpoint source, manifest, and a consistent SQLite snapshot together. |
 | PRD-F25 | Recover an interrupted commit by deterministically finalizing or rolling back a journal. |

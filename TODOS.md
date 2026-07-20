@@ -12,9 +12,14 @@ dependency manager, Clojure nREPL, and browser CLJS REPL as freely as a
 developer, while product managers and designers remain in the browser
 conversation.
 
-The hackathon cannot safely do this because its public judge deployment shares
-one JVM and the owner's Codex OAuth capacity. The current staged SCI runtime is
-the Shared Public POC Profile, not the maximum product vision.
+The public judge deployment cannot safely grant that authority because it
+shares one JVM and the owner's Codex OAuth capacity. The current staged SCI
+runtime is the Shared Public POC Profile, not the maximum product vision. A
+development-only Workspace REPL profile now proves the authoring loop with a
+standard loopback nREPL, persistent project namespace, live server/action/SQLite
+observation, direct JVM Var redefinition used by the active action router,
+active browser evaluation, and source reconciliation. What remains
+is moving that authority out of the shared PPP process and into the capsule.
 
 ### Target shape
 
@@ -52,15 +57,17 @@ Begin when either:
 - Default-deny host, metadata, and cross-workspace networking; scoped egress
   and connector proxy where required.
 - Separate product origin and no Control Plane cookie or object access.
-- Internal-only nREPL transport, preferably a Unix socket; never a public raw
-  evaluator endpoint.
-- Server nREPL and browser CLJS REPL session routing and health recovery.
+- Move the delivered loopback nREPL transport into the capsule, preferably a
+  Unix socket; never expose a public raw evaluator endpoint.
+- Replace same-process project routing with capsule lifecycle, health, and
+  reconnect recovery while retaining exact browser-tab routing.
 - Source/REPL reconciliation and reproducible dependency lockfiles.
 - Filesystem, database, and runtime snapshot/restore consistency.
 - Hosted multi-tenant decision between gVisor, Kata, or microVM isolation;
   plain Docker is acceptable only for the trusted self-host profile after its
   own threat review.
-- Migration from the current per-session SCI source/history format.
+- Migration from the current per-session SCI source/history format while
+  preserving the delivered semantic REPL operation history.
 
 ### What remains outside every capsule
 

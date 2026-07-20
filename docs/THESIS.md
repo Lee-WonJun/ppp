@@ -1,11 +1,18 @@
 # Product Thesis
 
 Status: source of truth
-Last updated: 2026-07-15
+Last updated: 2026-07-20
 
 ## The claim
 
 The next useful interface for product planning is not a better prompt box around a code editor. It is a running product that can be discussed and changed in place.
+
+We believe product managers and designers will increasingly create real
+working product behavior, including server rules and persistent data. The
+limiting factor is not whether they can imagine the product or write a clever
+prompt. Many never reach the first useful prompt because installing Codex,
+Git, runtimes, dependencies, a repository, OAuth, and a local server is already
+a development project.
 
 Programmable Programming Page (PPP) gives a product manager or designer a familiar SaaS surface. They sign in, open a workspace, and describe an outcome. The workspace changes immediately. The server behavior, persistent data, interface, and business rules remain real source code that a developer can inspect and extend later.
 
@@ -92,9 +99,59 @@ continue the conversation
 return to an earlier checkpoint when needed
 ```
 
-The resulting artifact is stronger than a document or mockup. It contains executable business rules, a persistent SQLite database, client behavior, server actions, domain tests, and a versioned source tree.
+The resulting artifact is stronger than a document or mockup. It contains
+executable business rules, a persistent SQLite database, client behavior,
+server actions, domain tests, causal runtime history, and materialized source.
 
-## Why this is not hot reload
+## The AI-era REPL development loop
+
+PPP is REPL-driven development translated from a developer tool into a product
+collaboration model:
+
+```text
+describe intent
+-> evaluate in the running environment
+-> use and observe the result
+-> repair through the next conversation
+-> accept or restore a checkpoint
+```
+
+The collaboration unit is a **semantic runtime transition**, not a textual
+patch. A useful history entry answers:
+
+- What outcome did the collaborator request?
+- What client, server, data, and rule behavior was evaluated?
+- What did the running product actually demonstrate?
+- Which domain and safety evidence passed?
+- Which complete source-and-data state was accepted or restored?
+
+This is why code is deliberately absent from the normal product surface. The
+planner or designer is editing product behavior. Materialized source exists so
+the runtime is reproducible and engineering can continue it, not because file
+editing is secretly still the collaboration model.
+
+## Could this be Python plus hot reload?
+
+Yes. Another language can reproduce the visible PPP experience if it provides
+a persistent evaluator, safe isolation, transactional staging, observable
+results, semantic history, and source reconciliation. The product thesis does
+not depend on claiming that only Lisp can do live programming.
+
+Clojure is a strong implementation fit because code forms are data, long-lived
+namespaces and Vars are designed to be redefined, and REPL-driven development
+is an established practice rather than an added file-watcher convention. SCI
+also lets the public proof create explicit, isolated evaluation contexts on
+the JVM and in the browser.
+
+The meaningful distinction is therefore not “Clojure can, Python cannot.” It
+is **runtime-first collaboration versus file-first collaboration**. A typical
+hot-reload loop treats the edited file as the canonical cause and reloads the
+runtime as a consequence. A REPL-first loop changes the living environment,
+observes it, repairs it through further evaluation, and reconciles an accepted
+state to durable source afterward. A Python system built around that latter
+contract would be philosophically compatible with PPP.
+
+## Why hot swap is not the product thesis
 
 Hot reload observes a developer's file changes, recompiles or reloads the
 affected module, and updates a development runtime. It is an implementation
@@ -102,27 +159,42 @@ technique inside an already established coding workflow. It assumes someone
 has the repository, understands the source, runs the watcher, and owns any
 repair when the new module fails.
 
-PPP begins before that workflow. A nontechnical collaborator describes an
+The default Shared Public POC does use an SCI-evaluated transactional hot swap:
+it evaluates complete candidate source in fresh contexts and activates the
+successful version. PPP begins before the ordinary file-watcher workflow,
+however. A nontechnical collaborator describes an
 outcome; Codex writes complete source; the fixed host validates paths, syntax,
 capabilities, SQL, and domain tests; the server stages code and a database copy;
 and the requesting browser renders the same candidate version in an isolated
 frame. Only then do source, server registry, client manifest, SQLite, history,
 and checkpoint advance together.
 
-Therefore live replacement is a mechanism PPP may use, not its defining
-contract. The contract is a validated, atomic, recoverable transition of a
-running full-stack product, authored through product conversation and retained
-as an engineering artifact.
+PPP now also has a trusted Workspace REPL implementation. Codex uses a standard
+nREPL client to attach to the already-running JVM, evaluates incremental forms
+as real Clojure Vars in a persistent project namespace, and registers those
+Vars in the current action router. A later `defn` changes what the next real
+HTTP action invokes. Codex observes that server action or browser
+render, and repairs failures in the same session. Complete source is returned
+afterward as reconciliation, not as the mechanism that caused the first live
+behavior. That is the REPL-driven loop; transactional hot swap remains the
+bounded public judge profile.
 
 ## The handoff contract
 
 PPP does not remove developers. It changes the point at which they enter the process.
 
 - The product manager or designer works with observable outcomes.
-- The runtime records complete CLJ, CLJS, CLJC, CSS, SQL, and tests.
-- Each accepted change records the prompt, prior source, resulting source, validation, and data checkpoint.
-- A developer can read the same source tree and history without reverse-engineering a mockup.
+- The runtime records the intent, observed result, validation, checkpoint, and
+  complete CLJ, CLJS, CLJC, CSS, SQL, and tests.
+- A developer sees the causal product decisions and accepted behavior before
+  judging incidental generated implementation choices.
+- A developer can reproduce the same state, then harden, rewrite, or extend it
+  without reverse-engineering a mockup or inheriting an unexplained code dump.
 - Future source-promotion tooling may turn accepted runtime work into a branch or pull request, but that automation is outside the hackathon MVP.
+
+Git remains valuable at that engineering boundary. It is not the primary PPP
+interaction because line changes alone do not preserve product intent,
+runtime observation, or the data state against which a decision was accepted.
 
 ## Why a bounded runtime
 
@@ -142,8 +214,10 @@ surface shared with non-programmers.
 The bounded SCI runtime is the implementation profile for this public proof,
 not the complete product ambition. It protects one shared JVM and the owner's
 Codex OAuth capacity while judges can submit arbitrary prompts. This is why the
-current Codex process proposes source and the Host performs evaluation instead
-of giving Codex a direct nREPL connection.
+public `shared-poc` Codex process proposes source and the Host performs
+evaluation. The development-only `workspace-repl` profile makes the opposite
+trade: it gives Codex a project tool backed by direct loopback nREPL and is
+refused outside development until workspaces are process-isolated.
 
 ## Vision, implementation, reason, limits, and wannabe
 
@@ -155,11 +229,13 @@ is the shared product specification.
 
 ### Current implementation
 
-Server and browser SCI read and evaluate generated source into fresh contexts.
-The successful context stays alive as the active version, rendered UI and
-actions expose its results, and the next conversation repeats the cycle. It is
-a staged REPL runtime, but not a conventional terminal session or current
-nREPL connection.
+The public profile lets server and browser SCI evaluate complete generated
+source in fresh candidate contexts, so it remains a transactional hot swap.
+The trusted development profile keeps a standard project nREPL session and
+namespace alive across turns. Codex changes the running server and browser
+before it returns complete source; the Host then validates that materialization
+and creates the durable checkpoint. The distinction is explicit in
+configuration and evidence rather than hidden behind the word “REPL.”
 
 ### Implementation reason
 
@@ -196,3 +272,12 @@ later forms built around Workspace Capsules:
 Both forms keep the same promise:
 
 > Product conversations become running software, and running software remains an inspectable engineering artifact.
+
+A further public form could behave like a programmable whiteboard: anyone may
+fork an accepted checkpoint, express an alternative through conversation, run
+it, and compare observable outcomes before a direction is adopted. Here
+“decentralized planning” means that executable alternatives need not pass
+through one spec author or one developer. It is not a blockchain claim. Public
+identity, moderation, branch/merge semantics, isolation, attribution, and cost
+controls are prerequisites, so this remains a long-term direction rather than
+a hackathon promise.

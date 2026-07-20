@@ -1,7 +1,7 @@
 # Security Model
 
 Status: release-blocking source of truth
-Last updated: 2026-07-17
+Last updated: 2026-07-20
 
 ## 1. Security objective
 
@@ -192,7 +192,27 @@ Before a public SaaS release, implement a Responses API or other service-account
 - Fake-provider work, generated actions, product jobs, and checkpoint restores
   do not touch the ledger. A rejected start receives no provider process.
 
-The packaged provider Skill is instruction-only. It is copied into the child Codex CWD so that `codex exec` discovers it as a repository-scoped Skill, and the stdin prompt invokes it explicitly. It cannot access session files, run validation, connect to a raw REPL, or grant generated code a new capability. Host policy, temporary SQLite, server SCI, and browser SCI remain authoritative.
+The packaged provider Skill is copied into the child Codex CWD so that
+`codex exec` discovers it as a repository-scoped Skill, and the stdin prompt
+invokes it explicitly. In `shared-poc` it is instruction-only and cannot access
+session files, tools, or a REPL. In development-only `workspace-repl`, the job
+directory additionally contains one generated `./ppp-repl` client whose fixed
+metadata selects only the current project on the loopback nREPL service. No
+session filesystem or secret is copied into the job. The Kernel observes the
+server/client eval operations and still independently validates the reconciled
+source. Same-process nREPL is trusted development authority, not multi-tenant
+isolation. Server forms in this profile are ordinary JVM Clojure Vars, not SCI
+guest definitions, so configuration refuses this profile outside development.
+Loopback limits transport reachability but does not sandbox the evaluated form.
+
+Workspace REPL evaluation is deliberately live rather than a hidden candidate
+branch. Before the turn, the Kernel takes a private SQLite backup. A terminal
+provider, validation, browser, or reconciliation failure restores that backup,
+rebuilds the server runtime from the last durable source, and resynchronizes
+the requesting browser. Accepted migrations receive their deterministic
+source filename before live application so later reconciliation cannot rename
+the operation. The nREPL code and combined result are bounded; project IDs must
+parse as UUIDs, and the listener rejects non-loopback binds.
 
 When bounded active-frame diagnostics exist, the Kernel may also create a
 temporary `ppp-client-diagnostics` Skill in that same isolated job directory.

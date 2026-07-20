@@ -8,13 +8,14 @@ PPP has one product vision and two execution profiles:
 
 | Profile | Purpose | REPL model | Isolation boundary |
 |---|---|---|---|
-| Shared Public POC | Current judge deployment using owner OAuth | Fresh persistent-per-version SCI contexts; Host-controlled staged evaluation | Individual generated forms and typed session capabilities inside one JVM |
+| Shared Public POC | Current judge deployment using owner OAuth | Fresh persistent-per-version SCI contexts; Host-controlled transactional hot swap | Individual generated forms and typed session capabilities inside one JVM |
 | Workspace Capsule | Intended self-hosted/hosted product | Codex-operated server nREPL plus browser CLJS REPL, shell, source, dependencies, and processes | Disposable per-workspace container, hardened sandbox, or microVM |
 
-The current implementation is legitimately REPL-derived: SCI reads and
-evaluates source, the active context retains evaluated functions, UI/actions
-make results observable, and another conversation repeats the loop. It is not
-a direct current nREPL connection.
+The current implementation uses REPL-like evaluation but is more precisely a
+transactional hot swap: SCI evaluates complete source in a fresh context, the
+Host observes UI/actions, and a successful candidate replaces the active
+version. Codex does not progressively redefine the active context and does not
+have a direct current nREPL connection.
 
 ## Implementation reason
 
@@ -46,7 +47,7 @@ security gate.
 
 The guarded Devpost update inserted the same five-part explanation after the
 existing lineage paragraph and produced project version `6`. A post-update read
-confirmed staged-REPL terminology, the owner-OAuth implementation reason, the
+confirmed transactional-hot-swap terminology, the owner-OAuth implementation reason, the
 Wannabe Architecture, and REPL-first source reconciliation. Project state
 remains `published`, while the OpenAI Build Week `submitted_at` and video URL
 remain empty.

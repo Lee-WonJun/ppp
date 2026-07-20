@@ -35,10 +35,21 @@ browser conversation. The result remains a developer-continuable engineering
 artifact.
 
 **Current implementation.** The public build uses server and browser SCI to
-read and evaluate generated Clojure-family source into live, versioned
-contexts. Rendering and action results are the observable output, and each
-conversation repeats the evaluation loop. This is a staged REPL runtime, not a
-claim that Codex currently connects through nREPL.
+read and evaluate complete generated Clojure-family candidates in fresh,
+versioned contexts. The Host invokes tests, actions, and an isolated browser
+render, then atomically replaces the active version. This is an SCI-evaluated
+transactional hot swap, not a claim that Codex currently connects through or
+progressively mutates a live nREPL.
+
+The repository also includes a development-only Workspace REPL profile that
+does implement that missing loop. It starts standard nREPL on loopback, keeps a
+long-lived project session, and gives Codex one project-scoped client. Codex
+inspects the running server, defines and redefines actual JVM Vars used by the
+active action router, invokes real
+actions against SQLite, and routes client forms to the active sandboxed browser
+before reconciling the accepted behavior to complete source and a checkpoint.
+It is disabled in production because same-process nREPL is trusted developer
+authority, not tenant isolation.
 
 **Why this implementation.** The judge demo is a public application sharing
 one JVM and consuming the owner's Codex OAuth capacity. Giving generated code a
@@ -73,9 +84,11 @@ permanently patched in space; the lesson is that a live system can be understood
 and recovered without waiting for a conventional rebuild-and-redeploy loop.
 
 PPP brings that power out of the terminal and into a bounded SaaS experience.
-It is inspired by nREPL, but it never publishes a raw nREPL endpoint: the host
-accepts a structured change, validates it, stages both runtimes and SQLite, and
-keeps the last successful product recoverable.
+It never publishes a raw nREPL endpoint. The public profile accepts a
+structured change and stages both runtimes and SQLite; the trusted development
+profile attaches Codex through an internal project-scoped nREPL and then
+reconciles the observed live result. Both keep the last successful product
+recoverable.
 
 ## What it does
 
@@ -96,13 +109,15 @@ server rules, tests, schema, and persistent data can evolve together. Failed
 candidates never replace the last successful source or database, and every
 accepted state remains recoverable.
 
-It is also more than hot reload. Hot reload watches a developer's saved file
+The current POC uses hot swapping, but its product contract is broader than a
+file watcher. Hot reload watches a developer's saved file
 and replaces a module in an existing development environment. PPP starts with
 a product conversation, generates the source, validates client/server/SQL/test
 boundaries, renders the candidate in isolation, and advances browser code,
 server behavior, SQLite, history, and checkpoint as one version. Hot reload
-shortens a coding loop; PPP removes that loop as a prerequisite for product
-collaboration while leaving a real engineering artifact behind.
+shortens a coding loop; PPP changes the authoring unit to a product
+conversation and preserves the observed full-stack transition for
+collaboration, while leaving a real engineering artifact behind.
 
 The hosted judge flow begins with one shared password and one server-wide
 Projects list. Judges do not receive fabricated accounts or private copies;

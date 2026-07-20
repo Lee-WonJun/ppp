@@ -21,6 +21,22 @@ The hackathon release is:
 
 It is not a public multi-tenant SaaS. Before public signup, identity, tenancy, provider credentials, workload isolation, abuse prevention, and data lifecycle require a separate security review.
 
+These restrictions describe the Shared Public POC Profile because generated
+programs, PPP Kernel authority, other projects, and the owner's Codex OAuth
+capacity currently meet in one application process. They are not a claim that
+workspace-local shell, filesystem, dependencies, or nREPL must be permanently
+absent from PPP.
+
+The intended Workspace Capsule Profile moves arbitrary development authority
+inside a disposable per-workspace container or stronger sandbox. Codex may then
+use shell, source, dependencies, server nREPL, and browser CLJS REPL inside the
+capsule. The permanent security boundary remains outside it: no Control Plane,
+host filesystem, container runtime socket, owner/provider credential, cloud
+metadata, or other workspace access. A public multi-tenant implementation must
+prefer a hardened runtime such as gVisor, Kata, or a microVM over treating a
+plain shared Docker daemon as sufficient isolation, and requires a new threat
+model before release.
+
 ## 3. Protected assets
 
 | Asset | Impact if compromised |

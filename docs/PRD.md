@@ -10,6 +10,30 @@ Last updated: 2026-07-17
 
 Programmable Programming Page is a SaaS-style live programming workspace for product managers and designers. A user changes a running full-stack product through one natural-language conversation. The system generates real Clojure-family source and SQLite migrations, validates them in isolated server and browser runtimes, applies them without a page refresh, and records source, data, and history for later engineering work. Each PPP session behaves like a private programmable product sandbox: normal browser, server, identity, data, and integration behavior is available through session-owned resources, while the fixed Kernel prevents access to PPP credentials, host resources, and other sessions.
 
+This PRD is the acceptance contract for the public hackathon proof, not the
+maximum authority of the intended product. The current single-process build is
+a staged SCI REPL runtime: generated source is read and evaluated into live
+version contexts, but Codex does not connect to a raw nREPL. The product vision
+is a Codex-operated full REPL workspace inside a disposable per-workspace
+container or stronger sandbox. There, workspace-local source, shell,
+filesystem, dependencies, server nREPL, and browser CLJS REPL are ordinary
+creative tools; the permanent boundary protects the Control Plane,
+credentials, host, and other workspaces.
+
+The five-part positioning is therefore:
+
+1. **Vision:** product conversation directly programs a running full-stack
+   product and remains a developer-continuable artifact.
+2. **Current implementation:** in-process JVM/browser SCI with validated,
+   versioned, atomic activation.
+3. **Implementation reason:** the public POC shares one JVM and consumes the
+   owner's OAuth capacity, so arbitrary host authority is unsafe.
+4. **Current limit:** typed capabilities cannot equal a normal development
+   environment without repeatedly recreating platform functions.
+5. **Wannabe architecture:** Codex freely uses nREPL and the browser REPL inside
+   a workspace capsule; checkpoint acceptance reconciles runtime, source,
+   tests, data, and history.
+
 ## 2. Problem
 
 AI coding products assume that the user can cross a development-environment threshold. The intended user often fails before AI becomes useful:

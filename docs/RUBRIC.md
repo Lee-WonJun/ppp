@@ -1,6 +1,6 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-029 REPL-lineage review complete; publication pending
+Status: PPP-030 runtime-profile positioning complete; publication pending
 Last updated: 2026-07-20
 
 ## 1. Scoring model
@@ -149,6 +149,7 @@ Scoring anchors:
 | E-19 | PPP-027 Coolify judge deployment report | Exact-origin HTTPS, shared access, isolated volumes, persistent ChatGPT OAuth, restart survival, real Codex browser change, checkpoint replay, and clean public-browser diagnostics. |
 | E-20 | PPP-028 judge-readiness and feedback-session report | Live criteria comparison, external risk-adjusted scoring, high-signal session reading guide, completed project copy, and remaining owner-only submission blockers. |
 | E-21 | PPP-029 REPL-lineage report | Direct Emacs, nREPL, JPL, and first-hand DS1 source review; accurate live-recovery wording; and explicit public-REPL distinction. |
+| E-22 | PPP-030 runtime-profile report | Precise staged-REPL terminology, current public POC rationale and limits, Workspace Capsule target, source reconciliation contract, and unchanged current security gates. |
 
 ## 7. Automated release gate
 

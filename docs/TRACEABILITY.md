@@ -15,7 +15,7 @@ Last updated: 2026-07-20
 
 | Requirement | Ticket | Verification target | Release evidence |
 |---|---|---|---|
-| PRD-F01 | PPP-002, PPP-022, PPP-028, PPP-029 | shared-password/fragment-policy integration, production Playwright login, judge quick-test guidance, and accurate product lineage | E-01, E-03, E-14, E-20, E-21 |
+| PRD-F01 | PPP-002, PPP-022, PPP-028, PPP-029, PPP-030 | shared-password/fragment-policy integration, production Playwright login, judge quick-test guidance, product lineage, and vision-versus-POC positioning | E-01, E-03, E-14, E-20, E-21, E-22 |
 | PRD-F02 | PPP-002 | `ppp.access-test/csrf-required` | E-01 |
 | PRD-F03 | PPP-002, PPP-006, PPP-017, PPP-022, PPP-024, PPP-025 | Playwright Projects entry, named blank project, literal blank canvas, hidden-frame animation suppression, and final-video Projects opening | E-01, E-04, E-14, E-16, E-17 |
 | PRD-F04 | PPP-006 | Playwright shortcut and handle-hold Safe Mode | E-01, E-04 |
@@ -29,7 +29,7 @@ Last updated: 2026-07-20
 | PRD-F12 | PPP-005, PPP-024, PPP-025 | server action integration plus captured authenticated ranking in the real-Codex game-platform story | E-01, E-16, E-17 |
 | PRD-F13 | PPP-005 | `ppp.property.gallery-domain-test/fake-gallery-seeds-once-persists-and-ranks-deterministically` | E-01, E-03 |
 | PRD-F14 | PPP-006, PPP-013, PPP-015, PPP-018 | sandbox state handoff; composer draft/focus tests; revision-ordered Korean IME regression | E-01 |
-| PRD-F15 | PPP-004, PPP-005, PPP-013 | JVM escape property plus sandbox browser-API Playwright test | E-01, E-02 |
+| PRD-F15 | PPP-004, PPP-005, PPP-013, PPP-030 | JVM escape property, sandbox browser-API Playwright test, and current-versus-target runtime boundary | E-01, E-02, E-22 |
 | PRD-F16 | PPP-001, PPP-005, PPP-007 | `ppp.runtime.policy-test/forbidden-sql-token-property` | E-01 |
 | PRD-F17 | PPP-005, PPP-007, PPP-024, PPP-025 | failed-stage isolation plus captured real-Codex authenticated ranking reload persistence | E-01, E-16, E-17 |
 | PRD-F18 | PPP-006, PPP-007, PPP-013, PPP-017 | hidden opaque-origin frame Playwright stage with animation scheduling disabled | E-01 |
@@ -41,13 +41,13 @@ Last updated: 2026-07-20
 | PRD-F24 | PPP-008 | snapshot integrity and checkpoint test | E-01 |
 | PRD-F25 | PPP-008 | PBT-04 crash-point matrix | E-01 |
 | PRD-F26 | PPP-008 | PBT-03 and thread reset test | E-01, E-03 |
-| PRD-F27 | PPP-004, PPP-028, PPP-029 | provider tests, submitted majority-build session guide, and nREPL-versus-bounded-provider distinction | E-01, E-02, E-20, E-21 |
+| PRD-F27 | PPP-004, PPP-028, PPP-029, PPP-030 | provider tests, submitted majority-build session guide, nREPL distinction, and intended Codex-operated workspace profile | E-01, E-02, E-20, E-21, E-22 |
 | PRD-F28 | PPP-001, PPP-004 | `ppp.shared.protocol-test/provider-kind-boundary-property` | E-01 |
 | PRD-F29 | PPP-009 | PBT-06 and redirect integration | E-01 |
 | PRD-F30 | PPP-009 | connector secret redaction/injection tests | E-01 |
 | PRD-F31 | PPP-013 | parent DOM/cookie/origin isolation Playwright suite | E-01, E-02 |
 | PRD-F32 | PPP-014 | impact-classification PBT, client-only registry reuse integration, `bb eval-evolution` | E-01, E-07 |
-| PRD-F33 | PPP-020 | capability matrix review plus SCI/host/cross-session negative suite | E-01, E-12 |
+| PRD-F33 | PPP-020, PPP-030 | current capability matrix and negative suite plus adopted environment-level target boundary | E-01, E-12, E-22 |
 | PRD-F34 | PPP-020 | generated signup/login/current-user/protected-action/logout integration and Playwright | E-01, E-12 |
 | PRD-F35 | PPP-020 | credential/token redaction, reserved-table denial, HttpOnly cookie inspection | E-01, E-12 |
 | PRD-F36 | PPP-020, PPP-024, PPP-025 | PBT-09/PBT-10 plus captured final-story signup, logout, login, and authenticated reload | E-01, E-12, E-16, E-17 |
@@ -133,6 +133,8 @@ PPP-001
                               +---------------------------> PPP-028
                               |
                               +---------------------------> PPP-029
+                              |
+                              +---------------------------> PPP-030
 ```
 
 ## Completion ledger
@@ -168,3 +170,4 @@ PPP-001
 | PPP-027 | done | The public Coolify judge instance serves valid HTTPS from the recorded public commit without changing Slopbook. Shared access, separate data/Codex volumes, persistent ChatGPT OAuth through rolling restart, HTTP 200 readiness, a real Codex browser change, checkpoint replay, and clean post-login browser diagnostics pass. The English submission cut is 168.74 seconds with English narration/subtitles and explicit Codex/GPT-5.6 use. Final `bb verify` passes 186 JVM/1,336 assertions, 29 CLJS/132 assertions, 25 Chromium paths plus one intentional skip, production restart phases, Docker smoke, and a 205-file secret scan. |
 | PPP-028 | done | Live Devpost criteria were compared with the verified product; the public project copy now has problem-first description, technology, repository, and hosted-demo fields; the majority-build Codex task is titled and documented with a ninety-second reading guide; README and Devpost copy distinguish full-stack activation from preview generation. `bb lint`, formatting, reference existence, staged diff, and the 206-file secret scan pass. Video upload, private access delivery, and final submission remain owner-controlled. |
 | PPP-029 | done | README, thesis, and Devpost inspiration connect Emacs, Lisp, nREPL, Deep Space 1, and PPP while distinguishing live un-wedging from a permanent flight-source patch, raw nREPL from PPP's bounded change contract, and developer hot reload from atomic full-stack source-and-data activation. Direct sources were checked; Devpost version 5 contains the aligned wording while video and `submitted_at` remain empty; lint, formatting, diff, link, and staged secret checks pass. |
+| PPP-030 | done | Vision, current staged SCI REPL implementation, public-POC rationale, current limitations, and the intended Codex-operated Workspace Capsule architecture are separated across PRD, specification, security, thesis, README, TODO, and Devpost documents. Workspace-local shell/dependencies are profile-specific rather than permanent gaps; Control Plane and cross-workspace authority remain permanently denied. Devpost version 6 contains the same five-part positioning with video and `submitted_at` still empty. Lint, formatting, reference, conflict-search, diff, and staged secret checks pass. |

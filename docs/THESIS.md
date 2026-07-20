@@ -139,9 +139,56 @@ system—and nREPL's separation between tools and runtime, while removing the
 host-level authority that makes a raw public endpoint unsuitable for a product
 surface shared with non-programmers.
 
+The bounded SCI runtime is the implementation profile for this public proof,
+not the complete product ambition. It protects one shared JVM and the owner's
+Codex OAuth capacity while judges can submit arbitrary prompts. This is why the
+current Codex process proposes source and the Host performs evaluation instead
+of giving Codex a direct nREPL connection.
+
+## Vision, implementation, reason, limits, and wannabe
+
+### Vision
+
+Codex and a nontechnical collaborator should be able to discuss and directly
+program a running product. The live system—not a static requirements document—
+is the shared product specification.
+
+### Current implementation
+
+Server and browser SCI read and evaluate generated source into fresh contexts.
+The successful context stays alive as the active version, rendered UI and
+actions expose its results, and the next conversation repeats the cycle. It is
+a staged REPL runtime, but not a conventional terminal session or current
+nREPL connection.
+
+### Implementation reason
+
+The hackathon host is public, shares one JVM across projects, and spends the
+owner's OAuth capacity. In-process arbitrary shell, filesystem, dependencies,
+or nREPL would collapse the boundary between a generated prototype and PPP
+itself. Capability-limited SCI made a safe, testable public proof possible.
+
+### Current limits
+
+Form-level containment requires the Kernel to virtualize common application
+effects. It cannot offer the same freedom as a normal development environment
+without continually adding capabilities. This optimizes shared-process safety
+and density over unrestricted prototyping.
+
+### Wannabe architecture
+
+Each workspace becomes a disposable execution capsule with real source, shell,
+dependencies, database, server nREPL, and browser CLJS REPL. Codex receives
+broad authority inside that capsule and can work REPL-first. The Control Plane
+protects identity, credentials, routing, quotas, snapshots, the host, and other
+workspaces. At checkpoint time PPP reconciles live definitions into source,
+tests, data, and history for restart and developer handoff.
+
 ## The long-term view
 
-The hackathon uses one local workspace, a shared-password gate, and per-session SQLite. The architecture is intended to support two later forms:
+The hackathon uses one local workspace, a shared-password gate, per-session
+SQLite, and in-process staged SCI. The architecture is intended to support two
+later forms built around Workspace Capsules:
 
 1. A hosted, Figma-like SaaS where a signed-in person or team owns private workspaces.
 2. A self-hosted application where an organization controls the runtime, data, identity, and AI provider.

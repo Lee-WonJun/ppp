@@ -27,6 +27,36 @@ Use one category unless the event form requires otherwise.
 
 PPP is a browser workspace where product managers and designers build and change a running full-stack product through conversation, without installing tools or seeing code, files, or Git. Every accepted change remains real Clojure-family source, persistent SQLite data, tests, and recoverable history for developers to continue.
 
+## Vision and hackathon proof
+
+**Vision.** Codex should freely program a running product through its live
+language environment while a product manager or designer stays in a familiar
+browser conversation. The result remains a developer-continuable engineering
+artifact.
+
+**Current implementation.** The public build uses server and browser SCI to
+read and evaluate generated Clojure-family source into live, versioned
+contexts. Rendering and action results are the observable output, and each
+conversation repeats the evaluation loop. This is a staged REPL runtime, not a
+claim that Codex currently connects through nREPL.
+
+**Why this implementation.** The judge demo is a public application sharing
+one JVM and consuming the owner's Codex OAuth capacity. Giving generated code a
+raw host nREPL, shell, filesystem, or dependency loader would expose PPP itself
+and every project. SCI capabilities and atomic staging make this proof safe to
+share.
+
+**Current limits.** The shared-process POC cannot provide the unrestricted
+filesystem, processes, dependencies, and framework choice of a normal
+development workspace. Its typed resources prove the live product workflow,
+but are not the intended ceiling.
+
+**Wannabe architecture.** Each project receives a disposable container or
+stronger sandbox with real source, shell, dependencies, database, server
+nREPL, and browser CLJS REPL. Codex works REPL-first inside it; the external
+Control Plane protects credentials, the host, and other workspaces. Accepted
+checkpoints reconcile live definitions back to source, tests, data, and history.
+
 ## Inspiration
 
 AI coding has become remarkably capable, but the people who shape products are often blocked before they can use it. A product manager or designer may never reach the first useful prompt because Git, folders, language runtimes, local servers, OAuth, and build errors are unfamiliar operational work.

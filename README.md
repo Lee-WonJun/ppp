@@ -28,6 +28,53 @@ as final-video generation.
 
 In the conversation composer, Enter sends and Shift+Enter inserts a newline.
 
+## Vision, proof, and intended architecture
+
+### Vision
+
+PPP is a browser workspace where a product manager or designer discusses a
+running product while Codex programs that product through its live language
+environment. Installation, repositories, build commands, and agent tooling are
+not prerequisites for product thinking. The result still remains real source,
+data, tests, and history for engineering handoff.
+
+### Current implementation
+
+The public hackathon build uses fresh SCI contexts on the JVM and in an
+opaque-origin browser frame. SCI reads and evaluates generated CLJ/CLJS source;
+the resulting functions remain in the active version's context; product
+rendering and action results provide the observable output; the next
+conversation repeats the loop. This is a **staged REPL runtime**, even though it
+is not a terminal REPL and Codex does not currently connect through nREPL.
+
+### Why it is implemented this way
+
+The judge deployment is one public application using the owner's Codex OAuth
+capacity. Its Kernel, credentials, and many projects share one JVM process. A
+raw nREPL, shell, filesystem, or dependency loader in that process would let one
+generated product affect the host and every other project. The POC therefore
+puts the boundary around each evaluated program with SCI capabilities,
+server/browser staging, SQL policy, quotas, and last-known-good recovery.
+
+### Current limits
+
+The in-process boundary means Codex cannot freely install JVM/npm dependencies,
+run arbitrary processes, choose another server stack, or use a normal project
+filesystem and nREPL as a developer could. PPP currently recreates common
+product effects as typed session resources. That is appropriate for this
+shared public proof, but it is narrower than the intended creative workspace.
+
+### Wannabe architecture
+
+The intended self-hosted and hosted architecture gives every workspace a
+disposable container, gVisor sandbox, or microVM containing its real source
+tree, shell, dependencies, database, Clojure server, nREPL, shadow-cljs, and
+browser CLJS REPL. Codex can explore REPL-first and repair freely inside that
+capsule. The Control Plane limits the whole environment—not individual
+application functions—and owns identity, credentials, routing, quotas,
+snapshots, and cross-workspace isolation. An accepted checkpoint reconciles the
+successful live definitions back to source, tests, data, and history.
+
 ## Why it exists
 
 The largest barrier for many product managers and designers is not learning how to write a better prompt. It is everything before the prompt: installing tools, finding a repository, authenticating providers, running a build, and recovering when generated code breaks.

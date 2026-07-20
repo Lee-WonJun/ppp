@@ -45,6 +45,37 @@ There is one deployment unit and two generated code-evaluation realms:
 
 Using the same language family does not make these the same runtime. The fixed kernel coordinates them through explicit versioned messages.
 
+### 2.1 Runtime profile and terminology
+
+This specification describes the **Shared Public POC Profile** currently
+implemented and released. Its evaluator is REPL-derived rather than a direct
+nREPL integration:
+
+```text
+read    SCI parses complete generated source
+eval    fresh server and browser SCI contexts evaluate that source
+print   rendered UI, action results, tests, and bounded failure evidence
+loop    the next conversation stages another complete runtime version
+```
+
+The context and evaluated functions remain alive for the active runtime
+version. Calling this a staged SCI REPL runtime is accurate. Saying that the
+current Codex process connects to nREPL is not.
+
+The target **Workspace Capsule Profile** is intentionally not implemented by
+this specification. It moves the trust boundary from individual forms to a
+disposable per-workspace container, gVisor sandbox, or microVM. Inside that
+boundary Codex may use the project filesystem, shell, dependencies, server
+nREPL, shadow-cljs, browser CLJS REPL, and normal application processes. The
+external Control Plane retains credentials, identity, workspace lifecycle,
+routing, quotas, snapshots, and cross-workspace isolation. `TODOS.md` owns its
+trigger and prerequisites.
+
+REPL-first experiments in the target profile are provisional. A shareable
+checkpoint must reconcile the successful runtime definitions to source, tests,
+data, and history so restart and developer handoff do not depend on ephemeral
+REPL state.
+
 ## 3. Technology baseline
 
 | Concern | Choice |
@@ -336,13 +367,14 @@ already fit an existing resource.
 | background and scheduled work | named generated handlers plus Kernel scheduler and durable job rows | bounded delay/retry/count/time; no generated threads/processes |
 | inbound public APIs and webhooks | named generated ingress handlers plus optional configured HMAC verifier | bounded methods/body/rate/status; no PPP cookie or raw socket/server control |
 | full-text and vector search | reserved SQLite document/FTS resource and bounded vector scan | one session index; deterministic limit/dimension/ranking |
-| shell, arbitrary filesystem, JVM/process control, dependency loading | none | permanently outside generated authority |
+| shell, arbitrary filesystem, JVM/process control, dependency loading | none in the Shared Public POC Profile | outside generated authority in this profile; workspace-local equivalents belong inside the future Workspace Capsule |
 | PPP Kernel data, OAuth, access cookie, other sessions | none | permanently outside generated authority |
 
-The last two rows are security denials. The table contains no remaining known
-ordinary session-owned resource gap. Provider copy must compose product
-behavior from these resources rather than present a missing app-specific
-template as an inherent limitation.
+The penultimate row is a profile-specific denial and the final row is a
+permanent cross-boundary denial. The current table contains no remaining known
+ordinary session-owned resource gap for the Shared Public POC Profile. Current
+provider copy must compose product behavior from these resources rather than
+present a missing app-specific template as an inherent limitation.
 
 ### 7.2 Product identity boundary
 
@@ -1195,8 +1227,10 @@ release evidence.
   UI template and not an expansion of PPP workspace authority.
 - Blob, event, job, ingress, and search are one typed session resource plane;
   they are not generated filesystem, thread, listener, or database authority.
-- In-process SCI remains the server language sandbox. Typed resources broaden
-  what products can do without turning generated code into a host process.
+- In-process SCI remains the server language sandbox for the Shared Public POC
+  Profile. Typed resources broaden this release without turning generated code
+  into a host process; they are not the intended maximum authority of a future
+  per-workspace execution capsule.
 - The hackathon deployment has one shared password and one shared Projects
   list, not judge accounts or per-judge authorization.
 - The real provider uses a persistent global rolling start budget; project use

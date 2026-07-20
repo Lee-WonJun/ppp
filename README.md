@@ -40,6 +40,70 @@ open workspace -> describe outcome -> use running product -> restore when needed
 
 The result is not a document or mockup. It has persistent data and server-side business rules.
 
+## A lineage of live systems
+
+PPP did not begin with “put a chat box next to a web page.” It comes from a
+line of systems where the running program remains open to extension:
+
+- **Emacs made a document tool programmable from within.** GNU Emacs places an
+  Emacs Lisp interpreter at its core. Richard Stallman's original paper
+  describes a display editor whose users can add or replace functions while it
+  is running—not after a compile-link-restart cycle.
+- **Lisp made programs unusually available to themselves.** John Foderaro's
+  phrase, preserved by GNU CLISP, calls Common Lisp a “programmable programming
+  language.” Clojure carries that interactive tradition into persistent data,
+  namespaces, Vars, and a modern hosted runtime.
+- **nREPL connected live runtimes to tools.** It gives editors and other clients
+  a message-oriented way to evaluate and inspect a running environment. That
+  separation—stable runtime on one side, adaptable interface on the other—is
+  part of PPP's inspiration.
+- **Deep Space 1 showed why this matters beyond local development.** JPL records
+  that a bug interrupted the first Remote Agent experiment. Engineer Ron
+  Garret's first-hand account describes the team reaching the spacecraft's Lisp
+  REPL through the Deep Space Network, diagnosing the wedged scenario, and
+  injecting an event so it could continue.
+
+The last story is often shortened to “NASA patched a spacecraft with Lisp.”
+The evidence supports something more precise and just as important: engineers
+used a live REPL to understand and recover a running system. JPL says the flight
+source did not need to be permanently fixed for the follow-up experiment.
+
+PPP brings that capability to product work: discuss the running system, change
+it in place, observe the result, and recover. But it deliberately does **not**
+publish an nREPL or arbitrary evaluator. A fixed kernel validates generated
+source, stages browser/server/SQLite changes, and preserves the last successful
+version before anything becomes live.
+
+Sources: [GNU Emacs](https://www.gnu.org/software/emacs/),
+[Stallman's Emacs paper](https://www.gnu.org/software/emacs/emacs-paper.html),
+[GNU CLISP](https://www.gnu.org/software/clisp/clisp.html),
+[nREPL](https://nrepl.org/nrepl/index.html),
+[nREPL server security guidance](https://nrepl.org/nrepl/usage/server.html),
+[JPL's Deep Space 1 Remote Agent record](https://www.jpl.nasa.gov/nmp/ds1/tech/autora.html),
+and [Ron Garret's account](https://corecursive.com/lisp-in-space-with-ron-garret/).
+
+### This is not ordinary hot reload
+
+Hot reload is an excellent developer tool, but it starts after a developer,
+repository, source edit, build watcher, and runtime already exist. PPP changes
+the authoring model and the activation contract:
+
+| | Hot reload | PPP |
+|---|---|---|
+| Author | Developer editing source files | Product manager or designer describing an outcome |
+| Trigger | File watcher observes a saved edit | Conversation produces a schema-constrained source change |
+| Scope | Usually one client module or one server process | Client, server action, business rule, tests, and SQLite migration in one version |
+| Validation | Compiler/module replacement; application-specific checks vary | Path, syntax, capability, SQL, domain test, server stage, and hidden browser render |
+| Activation | Replace a module in the current development runtime | Commit only after browser and server acknowledge the same staged version |
+| Persistence | The edited repository remains the record | Source, rationale, validation, history, and SQLite checkpoint remain the record |
+| Failure | Build/runtime error may leave the developer to repair state | Candidate is rejected; the last successful product and data remain active |
+| Audience | Speeds up an existing coding workflow | Removes the coding workflow as a prerequisite for product collaboration |
+
+Hot reload shortens the loop from **developer edit to running code**. PPP
+creates a different loop: **product conversation to validated running software
+to recoverable engineering artifact**. It may use live replacement techniques
+internally, but replacing code quickly is not the product boundary.
+
 ## Why this is different
 
 PPP is not a chat wrapper around a template generator. It does not stop after

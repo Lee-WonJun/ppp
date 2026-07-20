@@ -1,6 +1,6 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-028 external judge-readiness review complete; publication pending
+Status: PPP-029 REPL-lineage review complete; publication pending
 Last updated: 2026-07-20
 
 ## 1. Scoring model
@@ -148,6 +148,7 @@ Scoring anchors:
 | E-18 | PPP-026 streamed Codex progress report | Incremental bounded JSONL parsing, metadata-only product-language details, requesting-tab delivery, real OAuth browser observation, and no reasoning/source leakage. |
 | E-19 | PPP-027 Coolify judge deployment report | Exact-origin HTTPS, shared access, isolated volumes, persistent ChatGPT OAuth, restart survival, real Codex browser change, checkpoint replay, and clean public-browser diagnostics. |
 | E-20 | PPP-028 judge-readiness and feedback-session report | Live criteria comparison, external risk-adjusted scoring, high-signal session reading guide, completed project copy, and remaining owner-only submission blockers. |
+| E-21 | PPP-029 REPL-lineage report | Direct Emacs, nREPL, JPL, and first-hand DS1 source review; accurate live-recovery wording; and explicit public-REPL distinction. |
 
 ## 7. Automated release gate
 

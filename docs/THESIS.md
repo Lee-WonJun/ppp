@@ -32,6 +32,27 @@ Lisp programs can represent program structure with the same data structures used
 
 Source: [GNU CLISP](https://www.gnu.org/software/clisp/clisp.html)
 
+### nREPL: connect tools to a running environment
+
+nREPL turns the REPL from a terminal convention into a message-oriented
+tooling protocol. Its official overview describes a Clojure network REPL for
+editors and other tools that evaluate, inspect, debug, experiment with, and
+even update running applications. The interface and the runtime do not need to
+be the same process or user experience.
+
+PPP borrows that separation. The generated product runtime stays alive while a
+different surface—the browser conversation—describes and observes changes. But
+PPP does not expose the nREPL protocol itself. Official nREPL server guidance
+warns that a default unauthenticated public endpoint lets a connection modify
+application behavior or run code on the host. PPP replaces that authority with
+a narrow change contract, capability catalog, staged evaluators, tests,
+version checks, history, and recovery.
+
+Sources:
+
+- [nREPL overview](https://nrepl.org/nrepl/index.html)
+- [nREPL server and security guidance](https://nrepl.org/nrepl/usage/server.html)
+
 ### Deep Space 1: diagnose and recover a running system
 
 NASA/JPL's official record establishes that the Remote Agent experiment ran an autonomous planning and execution system aboard Deep Space 1. Ron Garret, an engineer on the project, later described the operational detail: the team communicated with a Lisp REPL on the spacecraft through the Deep Space Network, diagnosed a wedged scenario, and injected an event that allowed the scenario to continue.
@@ -73,6 +94,26 @@ return to an earlier checkpoint when needed
 
 The resulting artifact is stronger than a document or mockup. It contains executable business rules, a persistent SQLite database, client behavior, server actions, domain tests, and a versioned source tree.
 
+## Why this is not hot reload
+
+Hot reload observes a developer's file changes, recompiles or reloads the
+affected module, and updates a development runtime. It is an implementation
+technique inside an already established coding workflow. It assumes someone
+has the repository, understands the source, runs the watcher, and owns any
+repair when the new module fails.
+
+PPP begins before that workflow. A nontechnical collaborator describes an
+outcome; Codex writes complete source; the fixed host validates paths, syntax,
+capabilities, SQL, and domain tests; the server stages code and a database copy;
+and the requesting browser renders the same candidate version in an isolated
+frame. Only then do source, server registry, client manifest, SQLite, history,
+and checkpoint advance together.
+
+Therefore live replacement is a mechanism PPP may use, not its defining
+contract. The contract is a validated, atomic, recoverable transition of a
+running full-stack product, authored through product conversation and retained
+as an engineering artifact.
+
 ## The handoff contract
 
 PPP does not remove developers. It changes the point at which they enter the process.
@@ -93,7 +134,10 @@ reach the authenticated parent.
 
 The AI writes real Clojure-family source, but a fixed kernel decides what that source may do. SCI evaluates it with an explicit namespace and symbol catalog. SQL migrations are validated and applied to a staging database. Client code must render in a fresh hidden opaque-origin sandbox frame before the live state commits. Every successful version can be restored together with its source and data.
 
-This boundary preserves the essential property of a REPL, changing a running system, while making it suitable for a product surface shared with non-programmers.
+This boundary preserves the essential property of a REPL—changing a running
+system—and nREPL's separation between tools and runtime, while removing the
+host-level authority that makes a raw public endpoint unsuitable for a product
+surface shared with non-programmers.
 
 ## The long-term view
 

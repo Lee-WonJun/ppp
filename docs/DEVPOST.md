@@ -33,7 +33,19 @@ AI coding has become remarkably capable, but the people who shape products are o
 
 They already know a better interaction model: open Figma to design, open Notion to write, and share the result. We wanted live product planning to work the same way.
 
-PPP also follows a longer technical lineage. Emacs put a Lisp interpreter at the center of an extensible document tool. Lisp has been called a programmable programming language. The Deep Space 1 Remote Agent team used a spacecraft Lisp REPL to diagnose and un-wedge a running scenario. PPP brings the power to change and recover a live system out of the terminal and into a bounded SaaS experience.
+PPP also follows a longer technical lineage. Emacs put a Lisp interpreter at
+the center of an extensible document tool. Lisp has been called a programmable
+programming language. nREPL showed how editors and other interfaces can connect
+to, inspect, and change a running environment. During the Deep Space 1 Remote
+Agent experiment, the team used a spacecraft Lisp REPL to diagnose a wedged
+scenario and inject an event that let it continue. The flight source was not
+permanently patched in space; the lesson is that a live system can be understood
+and recovered without waiting for a conventional rebuild-and-redeploy loop.
+
+PPP brings that power out of the terminal and into a bounded SaaS experience.
+It is inspired by nREPL, but it never publishes a raw nREPL endpoint: the host
+accepts a structured change, validates it, stages both runtimes and SQLite, and
+keeps the last successful product recoverable.
 
 ## What it does
 
@@ -53,6 +65,14 @@ versioned full-stack program, not just a generated preview. Browser behavior,
 server rules, tests, schema, and persistent data can evolve together. Failed
 candidates never replace the last successful source or database, and every
 accepted state remains recoverable.
+
+It is also more than hot reload. Hot reload watches a developer's saved file
+and replaces a module in an existing development environment. PPP starts with
+a product conversation, generates the source, validates client/server/SQL/test
+boundaries, renders the candidate in isolation, and advances browser code,
+server behavior, SQLite, history, and checkpoint as one version. Hot reload
+shortens a coding loop; PPP removes that loop as a prerequisite for product
+collaboration while leaving a real engineering artifact behind.
 
 The hosted judge flow begins with one shared password and one server-wide
 Projects list. Judges do not receive fabricated accounts or private copies;

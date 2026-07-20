@@ -92,19 +92,42 @@ workspace capsule remains separate long-term work.
 ## Release and evolution gates
 
 - `bb verify` passed after the direct JVM Var refinement: 196 JVM tests with
-  1,409 assertions, 31 CLJS tests with 145 assertions, 25 Chromium paths with
+  1,420 assertions, 31 CLJS tests with 145 assertions, 25 Chromium paths with
   one intentional skip, two production-style restart checks, amd64 non-root
   read-only Docker smoke, and a 218-file secret scan.
-- The dedicated real OAuth Workspace REPL evolution passed six consecutive
-  scenarios in one project and one provider thread: dark styling, floating
-  sidebar, timer/keyboard Tetris, SQLite ranking persistence, live server rule
-  replacement, and client-only Gomoku replacement with one repair.
+- The dedicated real OAuth Workspace REPL evolution passed all eight cumulative
+  scenarios in one project: dark styling, floating sidebar, timer/keyboard
+  Tetris, SQLite ranking persistence, live server rule replacement, Gomoku
+  replacement, product accounts, and the complete resource plane. Every record
+  passed browser, source, client-stage, runtime-impact, surface, server-stage,
+  migration, version, attempt, and provider-thread-lineage gates.
 - The gate exposed and fixed two harness/runtime defects: the evolution test
   still expected an auto-created session before its own create request, and
   repair-attempt nREPL observations were discarded instead of accumulating
   across the same user turn.
-- EVOLVE-07 remains a release blocker for this ticket. A generated account
-  change exhausted the original three host repair attempts on domain tests.
-  After increasing the bounded default to six, the resumed provider asked for
-  permission to continue a clear imperative request and produced no commit.
-  The active version and SQLite remained unchanged. No 8/8 claim is made.
+- Live dogfooding exposed a terminal provider-context defect: after exhausted
+  generated tests, the next explicit imperative request could inherit poisoned
+  instructions and return a clarification. Terminal failures now preserve the
+  failed thread ID only in history with a reset marker, rebuild the last durable
+  runtime, and start the next explicit turn from durable context. Same-turn
+  repairs still share one thread.
+- Live file upload exposed `blob/id-invalid` when generated client code reused a
+  Unicode filename as an object identifier. The Kernel now issues an opaque UUID
+  when `blob-put!` omits `:id`; the capability contract separates Unicode display
+  names from explicit ASCII IDs. When bounded active-frame evidence exists, the
+  provider is explicitly directed to the optional diagnostics Skill without
+  placing the diagnostic values in its normal prompt.
+
+## Real restore evidence
+
+- The successful evolution ended at runtime version 13.
+- Restoring the account checkpoint (8) produced new runtime version 14. The
+  resource UI and resource rows disappeared, while Gomoku, the ranking, and
+  Ada's 20-point result remained.
+- Restoring checkpoint 13 produced new runtime version 15. The resource UI and
+  checkpoint-owned stored objects returned, Gomoku and ranking remained, the
+  active client diagnostic ring was empty, and the stored provider thread was
+  `nil` so the restored branch could not inherit future context.
+- This was exercised in a real browser against the retained local SQLite
+  session. Raw session identifiers, provider output, and browser traces remain
+  ignored local evidence; only this bounded summary is committed.

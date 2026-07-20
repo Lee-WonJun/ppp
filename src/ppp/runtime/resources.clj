@@ -222,7 +222,7 @@
   [^Service service connectable current-user
    {:keys [id name content-type content-base64]}]
   (ensure-schema! service connectable)
-  (let [id (blob-id! id)
+  (let [id (blob-id! (or id (str ((:random-uuid-fn service)))))
         name (display-name! name)
         content-type (content-type! content-type)
         bytes (decode-content! service content-base64)

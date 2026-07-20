@@ -754,7 +754,7 @@
       (finally
         (close-context! context)))))
 
-(deftest exhausted-repairable-change-keeps-thread-for-the-next-explicit-repair
+(deftest exhausted-repairable-change-resets-poisoned-thread-before-explicit-retry
   (let [requests (atom [])
         thread-id "99999999-9999-4999-8999-999999999999"
         repair-provider
@@ -786,17 +786,18 @@
                 #(submit-and-await! context session-id tab-id 0
                                     "Use a dark theme"))))
         (is (= 2 (count @requests)))
-        (is (= thread-id
-               (:codex-thread-id (store/get-session (:store context)
-                                                    session-id))))
+        (is (nil? (:codex-thread-id (store/get-session (:store context)
+                                                       session-id))))
         (is (= thread-id
                (:provider-thread-id
                 (first (store/list-history (:store context) session-id)))))
+        (is (true? (:provider-thread-reset?
+                    (first (store/list-history (:store context) session-id)))))
 
         (is (= {:kind :change :runtime-version 1}
                (submit-and-await! context session-id tab-id 0
                                   "Fix the rejected theme")))
-        (is (= thread-id (:thread-id (nth @requests 2))))
+        (is (nil? (:thread-id (nth @requests 2))))
         (is (= [:rejected :change]
                (mapv :kind (store/list-history (:store context) session-id))))
         (is (= thread-id

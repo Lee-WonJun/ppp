@@ -1,6 +1,6 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-030 runtime-profile positioning complete; publication pending
+Status: PPP-031 Workspace REPL implementation and release gates complete; publication pending
 Last updated: 2026-07-20
 
 ## 1. Scoring model
@@ -345,7 +345,7 @@ blocked only on uploading the verified video and submission approval.
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` (186 JVM/1,336 assertions, 29 CLJS/132 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 205-file secret scan); real OAuth streamed-progress observation; exact final-video Codex story 6/6 in one resumed thread; eight-step live Codex evolution 8/8; public persistent-OAuth canary; E-15 through E-19; PPP-007 through PPP-027 evidence | pass |
+| Technical implementation | 25/25 | isolated `bb verify` (196 JVM/1,420 assertions, 31 CLJS/145 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 218-file secret scan); standard loopback nREPL with live Var redefinition; real OAuth Workspace REPL evolution 8/8; browser checkpoint rewind/return; exact final-video Codex story 6/6; public persistent-OAuth canary; E-15 through E-23; PPP-007 through PPP-031 evidence | pass |
 | Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests; manually reviewed 1440x900 final cut | pass |
 | Impact | 24/25 | `docs/PRD.md`; exact Snake-to-game-platform story with generated product accounts and persistent ranking; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |

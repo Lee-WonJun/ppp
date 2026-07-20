@@ -63,6 +63,15 @@
         (is (= "hello" (decode (:content-base64
                                 (resources/blob-get service database "poster")))))
         (is (= ["poster"] (mapv :id (resources/blob-list service database))))
+        (let [generated (resources/blob-put! service database nil
+                                             {:name "기획 문서.final.txt"
+                                              :content-type "text/plain"
+                                              :content-base64 (encode "안녕하세요")})]
+          (is (uuid? (parse-uuid (:id generated))))
+          (is (= "기획 문서.final.txt" (:name generated)))
+          (is (= "안녕하세요"
+                 (decode (:content-base64
+                          (resources/blob-get service database (:id generated)))))))
         (resources/blob-put! service database nil
                              {:id "poster"
                               :name "poster.txt"
@@ -78,7 +87,11 @@
                                       {:id "../escape"
                                        :name "x.txt"
                                        :content-type "text/plain"
-                                       :content-base64 (encode "x")})))))
+                                       :content-base64 (encode "x")}))))
+        (is (= :blob/id-invalid
+               (exception-code #(resources/blob-get service database nil))))
+        (is (= :blob/id-invalid
+               (exception-code #(resources/blob-delete! service database nil)))))
       (finally
         (fs/delete-tree! root)))))
 

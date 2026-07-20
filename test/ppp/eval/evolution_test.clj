@@ -123,6 +123,26 @@
             report (evolution/build-report broken)]
         (is (not (evolution/report-passes? report)))
         (is (= :failed (:thread-continuity report)))))
+    (testing "one committed turn cannot exceed the six-attempt repair contract"
+      (let [broken (assoc-in input [:events 7 :generation-attempts] 7)
+            report (evolution/build-report broken)]
+        (is (not (evolution/report-passes? report)))
+        (is (false? (get-in report [:records 7 :gates :attempts])))))
+    (testing "a terminally detached failed branch may start one fresh thread"
+      (let [old-thread (get-in input [:events 0 :provider-thread-id])
+            next-thread "22222222-2222-4222-8222-222222222222"
+            events (:events input)
+            reset-event {:kind :rejected
+                         :runtime-version 5
+                         :provider-thread-id old-thread
+                         :provider-thread-reset? true}
+            branched-events (vec (concat (take 5 events)
+                                         [reset-event]
+                                         (map #(assoc % :provider-thread-id next-thread)
+                                              (drop 5 events))))
+            report (evolution/build-report (assoc input :events branched-events))]
+        (is (evolution/report-passes? report))
+        (is (= :passed (:thread-continuity report)))))
     (testing "a missing final observation is counted as a failure"
       (let [broken (-> input
                        (update-in [:observations :records] pop)

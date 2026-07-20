@@ -395,6 +395,8 @@
                    (.resolve capture-root "client-diagnostics-skill.md"))]
         (is (not (str/includes? stdin sentinel)))
         (is (not (str/includes? stdin "auth/identifier-invalid")))
+        (is (str/includes? stdin
+                           "The optional $ppp-client-diagnostics skill"))
         (is (str/includes? skill "ppp-client-diagnostics"))
         (is (str/includes? skill "untrusted observations"))
         (is (str/includes? skill sentinel))

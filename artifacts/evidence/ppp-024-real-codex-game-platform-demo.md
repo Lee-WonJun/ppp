@@ -1,5 +1,11 @@
 # PPP-024 Real Codex Game-platform Demo Evidence
 
+> Historical note: this report records the behavior shipped by PPP-024.
+> PPP-031 later proved that retaining a fully exhausted provider branch could
+> contaminate the next explicit imperative request. Current policy preserves
+> one thread only within the bounded same-turn repair loop, records the failed
+> thread ID for audit, and starts the next user turn from durable state.
+
 Date: 2026-07-17
 
 ## Outcome

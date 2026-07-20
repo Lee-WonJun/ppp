@@ -217,10 +217,12 @@ parse as UUIDs, and the listener rejects non-loopback binds.
 When bounded active-frame diagnostics exist, the Kernel may also create a
 temporary `ppp-client-diagnostics` Skill in that same isolated job directory.
 The diagnostics do not enter the normal stdin prompt, source tree, transcript
-summary, history, or logs. The Skill labels every record as untrusted evidence,
-contains only allowlisted one-line fields, and disappears with the job
-directory. Codex choosing to read it grants no browser, network, filesystem, or
-runtime authority.
+summary, history, or logs. When the bounded ring is nonempty, the generic prompt
+names the optional Skill and requires it for that repair/debugging turn, but
+never interpolates a diagnostic record or its values. The Skill labels every
+record as untrusted evidence, contains only allowlisted one-line fields, and
+disappears with the job directory. Reading it grants no browser, network,
+filesystem, or runtime authority.
 
 Even if a provider ignores instructions, its result receives no authority until host validation and SCI staging succeed.
 

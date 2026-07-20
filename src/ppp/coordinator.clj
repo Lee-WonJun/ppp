@@ -821,20 +821,15 @@
       (catch Exception cause
         (let [code (or (exception-code cause) :turn/failed)
               message (user-safe-failure code (:details (ex-data cause)))]
-          ;; A fully exhausted but repairable change still contains the most
-          ;; useful context for the user's next explicit correction. Preserve
-          ;; that thread while keeping the rejected source out of current.
-          ;; Non-repairable failures continue to reset potentially poisoned or
-          ;; unusable provider context. Successful restore resets separately.
+          ;; Repair attempts inside this turn share the provider thread. Once
+          ;; the turn is terminal, however, that branch contains failed source
+          ;; and exhausted instructions. Keep its ID only in append-only
+          ;; history for audit, and make the next explicit user turn reconstruct
+          ;; context from durable source and transcript instead of resuming a
+          ;; poisoned provider branch. Successful restore also resets.
           (when @generated?
-            (if (and (= :change (:kind @generated-result))
-                     (string? @generated-thread-id)
-                     (repairable-change-error? code))
-              (store/set-codex-thread! (:store coordinator)
-                                       (:session-id request)
-                                       @generated-thread-id)
-              (store/reset-codex-thread! (:store coordinator)
-                                         (:session-id request))))
+            (store/reset-codex-thread! (:store coordinator)
+                                       (:session-id request)))
           (try
             (store/append-history!
              (:store coordinator) (:session-id request)
@@ -850,7 +845,8 @@
                (assoc :changes (:change @generated-result)
                       :generation-attempts (:generation-attempts @generated-result)
                       :repl-events (:repl-events @generated-result)
-                      :provider-thread-id @generated-thread-id)))
+                      :provider-thread-id @generated-thread-id
+                      :provider-thread-reset? true)))
             (catch Exception _history-failure nil))
           (send-turn! coordinator
                       (:session-id request) (:tab-id request) (:request-id request)

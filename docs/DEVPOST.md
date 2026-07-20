@@ -51,6 +51,12 @@ before reconciling the accepted behavior to complete source and a checkpoint.
 It is disabled in production because same-process nREPL is trusted developer
 authority, not tenant isolation.
 
+The repository's explicit Workspace REPL evaluation evolves one real product
+through eight cumulative client/server scenarios and passes the complete
+browser outcome gate, including SQLite persistence, product accounts, Unicode
+file storage/search, durable jobs, cross-tab events, public ingress, bounded
+repair, and checkpoint rewind/return.
+
 **Why this implementation.** The judge demo is a public application sharing
 one JVM and consuming the owner's Codex OAuth capacity. Giving generated code a
 raw host nREPL, shell, filesystem, or dependency loader would expose PPP itself

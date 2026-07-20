@@ -116,6 +116,36 @@
   [left right]
   (merge-with + left right))
 
+(defn- valid-thread-lineage?
+  "A successful evolution normally stays on one provider thread. A new thread
+  is valid only after append-only history records that the previous generated
+  branch was terminally detached. This proves continuity without treating a
+  deliberately discarded failed branch as reusable context."
+  [events]
+  (loop [[event & more] events
+         active-thread nil
+         reset-authorized? false]
+    (if-not event
+      true
+      (case (:kind event)
+        :rejected
+        (recur more active-thread
+               (or reset-authorized?
+                   (and (true? (:provider-thread-reset? event))
+                        (string? active-thread)
+                        (= active-thread (:provider-thread-id event)))))
+
+        :change
+        (let [thread-id (:provider-thread-id event)]
+          (cond
+            (not (string? thread-id)) false
+            (nil? active-thread) (recur more thread-id false)
+            (= active-thread thread-id) (recur more active-thread false)
+            reset-authorized? (recur more thread-id false)
+            :else false))
+
+        (recur more active-thread reset-authorized?)))))
+
 (defn evaluate-record
   [observation events]
   (let [scenario (:scenario observation)
@@ -169,8 +199,11 @@
                :surfaces surface-valid?
                :server-stage server-stage
                :migration-policy migration-valid?
+               ;; The coordinator contract allows one proposal plus five
+               ;; same-turn validation repairs. Semantic browser repairs are
+               ;; separate committed turns and are counted by version span.
                :attempts (and (seq attempts)
-                              (every? #(and (integer? %) (<= 1 % 3)) attempts))}
+                              (every? #(and (integer? %) (<= 1 % 6)) attempts))}
         passed? (every? true? (vals gates))]
     {:scenario scenario
      :runtime-before (:before-version observation)
@@ -213,13 +246,11 @@
         selected-events (vec (mapcat identity event-groups))
         missing-records (max 0 (- (count scenario-order) (count records)))
         failed-records (count (remove :passed? records))
-        thread-ids (mapv :provider-thread-id selected-events)
         event-coverage? (= (mapv :runtime-version runtime-events)
                            (mapv :runtime-version selected-events))
         thread-continuity? (and (= (count scenario-order) (count records))
                                 (every? seq event-groups)
-                                (every? string? thread-ids)
-                                (= 1 (count (distinct thread-ids))))
+                                (valid-thread-lineage? events))
         ordered? (= scenario-order (mapv :scenario records))
         passed? (and ordered?
                      thread-continuity?

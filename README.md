@@ -16,6 +16,12 @@ the six-of-six final-video story, and three consecutive packaged demo
 rehearsals are the release evidence; exact current counts are recorded in
 `docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
 
+The development-only Workspace REPL profile now also passes its own eight-step
+real OAuth evolution: Codex attaches through standard nREPL, redefines running
+JVM Vars, exercises browser and server behavior, repairs bounded failures, and
+round-trips source, SQLite data, and both runtime surfaces through checkpoint
+restore.
+
 While Codex works, the conversation now advances one calm progress line from
 actual provider lifecycle events. The Kernel exposes only fixed
 product-language summaries; raw reasoning, event text, source, paths, commands,

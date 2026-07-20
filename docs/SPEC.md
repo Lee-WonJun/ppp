@@ -433,8 +433,11 @@ generated query cannot read or forge them.
 
 Binary content is a typed SQLite resource, not a host file path. Generated
 server code stores base64 input through `blob-put!` and receives immutable
-metadata plus base64 only through `blob-get`. IDs are bounded product slugs;
-content type, display name, size, SHA-256, creator claim, timestamps, and bytes
+metadata plus base64 only through `blob-get`. Callers normally omit `:id` and
+the Kernel returns an opaque UUID. Explicit IDs are bounded ASCII product slugs
+for deterministic replacement; user-controlled Unicode filenames and
+punctuation remain in `:name` and must never be reused as IDs. Content type,
+display name, size, SHA-256, creator claim, timestamps, and bytes
 live in `_ppp_blobs`. One object is at most 4 MiB and the existing 25 MiB
 session-database quota remains authoritative. Replacing an ID is atomic.
 
@@ -625,7 +628,7 @@ Required controls for `shared-poc`:
   commands may inspect exact bounded status. Exhaustion includes a stable code
   and bounded retry delay without exposing OAuth or provider diagnostics.
 - Restore clears the stored thread ID so future context cannot assume the abandoned future state.
-- A repairable source, SQL, server SCI, or browser staging rejection is returned to the same Codex thread as structured feedback. The initial proposal plus at most five corrected attempts are allowed by default. Only the final successful proposal enters history as a change; exhausted attempts create one rejected event with the observed attempt count, retain that provider thread for the next explicit user correction, and never activate rejected source. Restore and non-repairable provider failures reset the thread. Successful history records include the host-observed attempt count and affected runtime surfaces; the provider never declares its own trusted impact flag.
+- A repairable source, SQL, server, or browser staging rejection is returned to the same Codex thread as structured feedback. The initial proposal plus at most five corrected attempts are allowed by default. Only the final successful proposal enters history as a change. Exhausted attempts create one rejected event with the observed attempt count, failed thread ID, and `:provider-thread-reset? true` audit marker, never activate rejected source, and detach that terminal provider branch. The next explicit user correction starts a fresh thread reconstructed from durable source, transcript summary, capabilities, and semantic history. Restore and non-repairable provider failures use the same reset boundary. Successful history records include the host-observed attempt count and affected runtime surfaces; the provider never declares its own trusted impact flag.
 - A Workspace REPL change must contain host-observed accepted operations for
   every affected surface. Server work requires incremental evaluation and a
   real action invocation; schema work additionally requires the exact live
@@ -654,8 +657,10 @@ When the user sends the next turn, the host may attach the current ring as
 request and never writes it to transcript summary, history, rejection events,
 or logs. The Codex provider creates a temporary repository-scoped
 `ppp-client-diagnostics` Skill only when the ring is nonempty. Its name,
-description, and path are discoverable to Codex; the full bounded records are
-loaded only if Codex chooses the Skill for a relevant failure investigation.
+description, and path are discoverable to Codex. When such evidence exists, the
+provider prompt explicitly tells Codex to inspect that optional Skill for the
+repair/debugging turn; the full bounded records are loaded only from the Skill,
+never interpolated into the prompt.
 The diagnostics are explicitly untrusted evidence, never instructions, and
 the entire job directory is deleted after the provider invocation. They are
 not interpolated into the stdin prompt or current source tree.
@@ -1029,11 +1034,13 @@ not receive a valid browser token.
 Session resources use the same transaction connection:
 
 ```clojure
-(runtime.api/blob-put! {:id "hero" :name "hero.png"
-                        :content-type "image/png" :content-base64 encoded})
-(runtime.api/blob-get "hero")
-(runtime.api/blob-list)
-(runtime.api/blob-delete! "hero")
+(let [object (runtime.api/blob-put! {:name "기획 이미지.hero.png"
+                                     :content-type "image/png"
+                                     :content-base64 encoded})
+      id (:id object)]
+  [(runtime.api/blob-get id)
+   (runtime.api/blob-list)
+   (runtime.api/blob-delete! id)])
 
 (runtime.api/publish! :scores/changed {:player player-id})
 

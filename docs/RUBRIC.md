@@ -1,7 +1,7 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-026 streamed real-Codex progress verified; publication pending
-Last updated: 2026-07-17
+Status: PPP-028 external judge-readiness review complete; publication pending
+Last updated: 2026-07-20
 
 ## 1. Scoring model
 
@@ -16,6 +16,43 @@ Total                    100
 ```
 
 A plausible explanation without executable evidence receives no more than half credit for the affected item.
+
+### External judging assessment
+
+The 97/100 score in section 13 is an internal evidence and release score. It
+answers “did we build and verify what we promised?” It is not a prediction of
+how judges will rank an unknown field of entrants.
+
+For an external judge seeing the submission for the first time, the current
+conservative assessment is:
+
+| Category | External score | Why it is not the internal score |
+|---|---:|---|
+| Technical implementation | 25/25 | The repository, live host, real-Codex flows, atomic activation, recovery, PBTs, and packaged image provide unusually deep evidence. |
+| Design | 22/25 | The nontechnical workspace and final cut are coherent, but a three-minute game-platform story cannot visibly demonstrate every recovery and handoff surface. |
+| Potential impact | 20/25 | The setup/Git barrier and workflow replacement are specific, but no independent planner/designer study or adoption metric exists yet. |
+| Quality of idea | 24/25 | The live full-stack/source-history synthesis is distinctive; judges may still mistake it for another AI app builder unless differentiation is stated early. |
+| **Total** | **91/100** | Award-competitive evidence if the submission is completed, not a numeric probability of winning. |
+
+Current submission-state multiplier: **blocked** until a public video URL,
+private judge access instructions, required custom answers, and explicit final
+submission exist. A technically excellent unsubmitted draft has no award
+eligibility.
+
+Highest remaining risks and mitigations:
+
+1. **Incomplete hackathon submission.** The public project copy is populated,
+   but the required video URL, private access instructions, custom answers, and
+   final submission remain owner-controlled.
+2. **“Another app builder” misclassification.** Lead with atomic full-stack
+   activation, persistent SQLite, recoverable source-plus-data history, and the
+   developer-continuable source tree.
+3. **A long, noisy `/feedback` session.** Give judges a short reading guide
+   that identifies owner decisions, Codex engineering work, real failures, and
+   the resulting regression gates.
+4. **No external user validation.** Do not fabricate evidence. Present the
+   hosted judge test and the exact audience hypothesis honestly, and treat
+   independent product-manager/designer sessions as post-hackathon validation.
 
 ## 2. Technical implementation: 25 points
 
@@ -110,6 +147,7 @@ Scoring anchors:
 | E-17 | PPP-025 local final-video record | Real-Codex 6/6 capture, 168.74-second H.264/AAC media, English narration, synchronized English subtitles, explicit Codex/GPT-5.6 use, honest wait compression, and visual safety review. |
 | E-18 | PPP-026 streamed Codex progress report | Incremental bounded JSONL parsing, metadata-only product-language details, requesting-tab delivery, real OAuth browser observation, and no reasoning/source leakage. |
 | E-19 | PPP-027 Coolify judge deployment report | Exact-origin HTTPS, shared access, isolated volumes, persistent ChatGPT OAuth, restart survival, real Codex browser change, checkpoint replay, and clean public-browser diagnostics. |
+| E-20 | PPP-028 judge-readiness and feedback-session report | Live criteria comparison, external risk-adjusted scoring, high-signal session reading guide, completed project copy, and remaining owner-only submission blockers. |
 
 ## 7. Automated release gate
 

@@ -51,6 +51,9 @@ Local completeness does not authorize remote or public state changes.
   one real Codex change, persisted checkpoint replay, and a clean post-login
   browser canary. The bounded record is
   `artifacts/evidence/ppp-027-coolify-judge-deployment.md`.
+- Judge-readiness review: the internal release score is separated from the
+  conservative external judging assessment; the majority-build Codex task has
+  a high-signal reading guide in `docs/CODEX_SESSION.md`.
 - Enter-based packaged demo: `artifacts/demo/20260716-004803/report.edn`, three
   of three fresh-volume runs passed.
 - Aggregated bounded record: `artifacts/release/20260716-local/report.edn`.
@@ -65,9 +68,14 @@ Local completeness does not authorize remote or public state changes.
 These actions remain deliberately unperformed until the owner approves them:
 
 1. Upload the verified narrated sub-three-minute video.
-2. Add the public video URL to `docs/DEVPOST.md` (the hosted demo URL is
+2. Add the public video URL to the live Devpost project and
+   `docs/DEVPOST.md` (the hosted demo URL is
    `https://ppp.openai.slopbook.org`).
-3. Deliver the shared password through the event-approved private channel.
-4. Select Work & Productivity and submit the Devpost entry.
+3. Deliver the shared password through Devpost's private judge-instructions
+   field.
+4. Confirm submitter type, country, Work & Productivity, repository URL,
+   feedback session ID, and developer-tool test instructions.
+5. Explicitly approve and submit the Devpost entry before
+   2026-07-22 09:00 KST.
 
 The public Devpost body must never contain the shared password.

@@ -15,7 +15,7 @@ Last updated: 2026-07-20
 
 | Requirement | Ticket | Verification target | Release evidence |
 |---|---|---|---|
-| PRD-F01 | PPP-002, PPP-022 | shared-password/fragment-policy integration and production Playwright login | E-01, E-03, E-14 |
+| PRD-F01 | PPP-002, PPP-022, PPP-028 | shared-password/fragment-policy integration, production Playwright login, and judge quick-test guidance | E-01, E-03, E-14, E-20 |
 | PRD-F02 | PPP-002 | `ppp.access-test/csrf-required` | E-01 |
 | PRD-F03 | PPP-002, PPP-006, PPP-017, PPP-022, PPP-024, PPP-025 | Playwright Projects entry, named blank project, literal blank canvas, hidden-frame animation suppression, and final-video Projects opening | E-01, E-04, E-14, E-16, E-17 |
 | PRD-F04 | PPP-006 | Playwright shortcut and handle-hold Safe Mode | E-01, E-04 |
@@ -41,7 +41,7 @@ Last updated: 2026-07-20
 | PRD-F24 | PPP-008 | snapshot integrity and checkpoint test | E-01 |
 | PRD-F25 | PPP-008 | PBT-04 crash-point matrix | E-01 |
 | PRD-F26 | PPP-008 | PBT-03 and thread reset test | E-01, E-03 |
-| PRD-F27 | PPP-004 | `ppp.provider.codex-test`, `ppp.provider.fake-test` | E-01, E-02 |
+| PRD-F27 | PPP-004, PPP-028 | provider tests plus submitted majority-build session guide | E-01, E-02, E-20 |
 | PRD-F28 | PPP-001, PPP-004 | `ppp.shared.protocol-test/provider-kind-boundary-property` | E-01 |
 | PRD-F29 | PPP-009 | PBT-06 and redirect integration | E-01 |
 | PRD-F30 | PPP-009 | connector secret redaction/injection tests | E-01 |
@@ -63,7 +63,7 @@ Last updated: 2026-07-20
 | PRD-F46 | PPP-022 | provider rolling-window/restart/repair accounting PBT-16 | E-01, E-14 |
 | PRD-F47 | PPP-022 | exhausted-turn preservation integration and Playwright product-use continuity | E-01, E-14 |
 | PRD-F48 | PPP-023 | PBT-18, provider Skill/stdin separation, exact active-frame action failure and parent-noise exclusion browser regression | E-01, E-15 |
-| PRD-F49 | PPP-026 | streamed JSONL minimization/early-observation property plus compiled-browser semantic progress sequence | E-01, E-18 |
+| PRD-F49 | PPP-026, PPP-028 | streamed JSONL minimization/early-observation property, compiled-browser semantic progress, and judge-facing explanation | E-01, E-18, E-20 |
 
 ## Property mapping
 
@@ -127,6 +127,10 @@ PPP-001
                               +---------------------------> PPP-025
                               |
                               +---------------------------> PPP-026
+                              |
+                              +---------------------------> PPP-027
+                              |
+                              +---------------------------> PPP-028
 ```
 
 ## Completion ledger
@@ -160,3 +164,4 @@ PPP-001
 | PPP-025 | done | A real OAuth Codex browser run passes all six final-story scenarios in one project and one resumed thread. The locally verified 168.74-second 1440x900 H.264/AAC submission cut begins on Projects, uses honest generation-compression cards, includes English narration and synchronized English subtitles with explicit Codex/GPT-5.6 use, and contains no fake-provider output, credentials, terminal, source, identifiers, or private paths. Publication remains separately owner-controlled. |
 | PPP-026 | done | Codex stdout JSONL is parsed incrementally and only allowlisted lifecycle metadata selects volatile product-language progress for the requesting tab. The real OAuth browser advanced through multiple event-derived details before its final reply with no console/network failure. `bb verify` passes 186 JVM tests/1,336 assertions, 29 CLJS tests/132 assertions, 25 Chromium paths with one intentional skip, two production restart phases, Docker smoke, and a clean 201-file secret scan. |
 | PPP-027 | done | The public Coolify judge instance serves valid HTTPS from the recorded public commit without changing Slopbook. Shared access, separate data/Codex volumes, persistent ChatGPT OAuth through rolling restart, HTTP 200 readiness, a real Codex browser change, checkpoint replay, and clean post-login browser diagnostics pass. The English submission cut is 168.74 seconds with English narration/subtitles and explicit Codex/GPT-5.6 use. Final `bb verify` passes 186 JVM/1,336 assertions, 29 CLJS/132 assertions, 25 Chromium paths plus one intentional skip, production restart phases, Docker smoke, and a 205-file secret scan. |
+| PPP-028 | done | Live Devpost criteria were compared with the verified product; the public project copy now has problem-first description, technology, repository, and hosted-demo fields; the majority-build Codex task is titled and documented with a ninety-second reading guide; README and Devpost copy distinguish full-stack activation from preview generation. `bb lint`, formatting, reference existence, staged diff, and the 206-file secret scan pass. Video upload, private access delivery, and final submission remain owner-controlled. |

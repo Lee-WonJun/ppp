@@ -40,6 +40,44 @@ open workspace -> describe outcome -> use running product -> restore when needed
 
 The result is not a document or mockup. It has persistent data and server-side business rules.
 
+## Why this is different
+
+PPP is not a chat wrapper around a template generator. It does not stop after
+producing HTML, a preview, or a client-side prototype. One accepted change can
+replace browser interactions, server actions, business rules, domain tests,
+and SQLite schema together. The requesting browser renders the candidate in a
+fresh isolated frame while the server stages the candidate runtime and a copy
+of the database. Only the same validated version becomes live; failure leaves
+the previous product and data intact.
+
+The other difference is what survives the conversation. PPP keeps complete
+Clojure-family source, migrations, tests, append-only history, and
+source-plus-data checkpoints. Nontechnical users never have to operate those
+artifacts, but developers inherit a real program rather than a screenshot or
+an opaque builder format.
+
+For OpenAI Build Week, the primary Codex task and its build/repair arc are
+summarized in [the Codex feedback session guide](docs/CODEX_SESSION.md).
+
+## Judge quick test
+
+After entering the privately supplied shared password at the
+[hosted workspace](https://ppp.openai.slopbook.org):
+
+1. Create a blank project and ask for a timer-driven game; play it with the
+   keyboard without refreshing.
+2. Ask for signup/sign-in and a persistent ranking for the same game.
+3. Create a product user, save a score, reload, and confirm the user and score
+   remain.
+4. Ask to change the ranking rule or add a second game. The existing product
+   should continue instead of being replaced by a new isolated mockup.
+5. Restore an earlier checkpoint, or press `Ctrl+Alt+Shift+P` to verify the
+   immutable recovery surface.
+
+The first request may take up to two minutes because it runs real Codex and
+validates both runtimes. Saved product actions and navigation do not consume
+the Codex queue.
+
 ## Three-minute Docker quickstart
 
 Requirements:
@@ -178,6 +216,7 @@ not collected.
 - [Design system](DESIGN.md)
 - [Evaluation rubric](docs/RUBRIC.md)
 - [Requirements traceability](docs/TRACEABILITY.md)
+- [Codex feedback session guide](docs/CODEX_SESSION.md)
 - [Demo script](docs/DEMO.md)
 - [Devpost draft](docs/DEVPOST.md)
 - [Deployment guide](docs/DEPLOYMENT.md)

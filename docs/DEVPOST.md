@@ -1,7 +1,11 @@
 # Devpost Submission Draft
 
-Status: hosted demo and local video complete; upload and submission remain owner-controlled
+Status: public project copy prepared; video upload, private access delivery, and hackathon submission remain owner-controlled
 Last updated: 2026-07-20
+
+The Devpost project page is public, but its OpenAI Build Week entry has not been
+submitted (`submitted_at` is empty). Never interpret this document, a
+repository push, or a working hosted URL as a completed hackathon submission.
 
 ## Submission fields
 
@@ -44,6 +48,12 @@ want. The assistant can:
 
 A change can replace the canvas, the sidebar itself, client interactions, server actions, business rules, CSS, SQLite migrations, and domain tests. The requesting browser stages the new client in a hidden opaque-origin sandbox frame while the server stages generated Clojure and a copy of SQLite. Only when both sides succeed does PPP commit and activate the new version.
 
+This is the central difference from a prompt-to-page builder: PPP activates a
+versioned full-stack program, not just a generated preview. Browser behavior,
+server rules, tests, schema, and persistent data can evolve together. Failed
+candidates never replace the last successful source or database, and every
+accepted state remains recoverable.
+
 The hosted judge flow begins with one shared password and one server-wide
 Projects list. Judges do not receive fabricated accounts or private copies;
 they can open the same saved products or create a named blank project. Inside a
@@ -70,6 +80,19 @@ adds timer/keyboard Tetris as the second game without losing the user or score.
 The final capture uses real OAuth Codex in one resumed thread. The deterministic
 fake provider remains CI and packaged-regression infrastructure; its Gallery
 fixture does not appear in the video.
+
+### Two-minute judge test
+
+1. Enter the private shared password and create a blank project.
+2. Ask for a timer-driven keyboard game and use it without refreshing.
+3. Add product signup/sign-in plus a persistent ranking to the same game.
+4. Create a player, save a score, reload, and confirm both survive.
+5. Change the server-owned scoring rule or add a second game and verify the
+   existing product remains.
+6. Restore a checkpoint or use Safe Mode (`Ctrl+Alt+Shift+P`).
+
+Real Codex generation can take up to two minutes; playing the generated
+product, navigating Projects, and using saved actions do not consume a turn.
 
 ## How we built it
 
@@ -117,6 +140,13 @@ with a metered service-account/API provider.
 Model target: GPT-5.6 Terra with medium reasoning.
 Codex CLI target: 0.144 series.
 Live evaluation: eight scenarios, three runs each, recorded separately from CI.
+
+The submitted `/feedback` task is the majority-build session, not a curated
+one-turn example. Its owner decisions, browser failures, architectural repairs,
+and evidence map are summarized in
+[`docs/CODEX_SESSION.md`](docs/CODEX_SESSION.md). The session's rough edges are
+part of the evidence: owner reproduction repeatedly overruled narrower
+synthetic passes and produced stronger runtime contracts.
 
 ## Challenges
 
@@ -197,6 +227,7 @@ Docker
 - Demo video: `TBD_PUBLIC_YOUTUBE_URL`
 - Hosted demo: [ppp.openai.slopbook.org](https://ppp.openai.slopbook.org)
 - Codex feedback session ID: `019f644a-b625-7a33-88f4-1ea260c3fdaa`
+- Feedback-session reading guide: [`docs/CODEX_SESSION.md`](docs/CODEX_SESSION.md)
 
 Do not place the shared password in the public Devpost body or URL. Share it
 through the event's approved private field or judge instruction channel.
@@ -219,6 +250,8 @@ Hero image should show the running generated product and sidebar together, not a
 
 - [x] Reproducible local Git baseline and MIT license.
 - [x] Repository pushed and publicly accessible.
+- [x] Public Devpost project has tagline, description, technology list,
+  repository link, and hosted-demo link.
 - [x] English README works from clean Linux amd64.
 - [ ] Work & Productivity selected.
 - [x] `bb verify` evidence complete.

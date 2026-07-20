@@ -73,6 +73,22 @@
                (assoc :code (or code :runtime/client-rejected)
                       :details (vec (take 4 details)))))))
 
+(defn send-repl-result!
+  [{:keys [session-id request-id runtime-version evaluation-id status result
+           code details]}]
+  (send!
+   (envelope session-id request-id runtime-version
+             (if (= :accepted status)
+               :runtime/repl-result
+               :runtime/repl-rejected)
+             (cond-> {:tab-id tab-id
+                      :evaluation-id evaluation-id
+                      :base-version runtime-version}
+               (= :accepted status) (assoc :result result)
+               (not= :accepted status)
+               (assoc :code (or code :repl/client-eval-failed)
+                      :details (vec (take 4 details)))))))
+
 (defn- schedule-reconnect!
   []
   (when (and (not @stopped?) (nil? @reconnect-timer))

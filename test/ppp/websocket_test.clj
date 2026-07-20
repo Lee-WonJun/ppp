@@ -112,6 +112,41 @@
       (finally
         (websocket/stop! hub)))))
 
+(deftest project-repl-evaluation-round-trips-through-the-exact-request-tab
+  (let [{:keys [hub sent]} (test-hub)
+        session-id (random-uuid)
+        request-id (random-uuid)
+        tab-id (random-uuid)]
+    (try
+      (subscribe! hub :requester session-id tab-id 0)
+      (reset! sent [])
+      (let [submission
+            (websocket/request-repl-eval!
+             hub {:session-id session-id
+                  :request-id request-id
+                  :tab-id tab-id
+                  :base-version 0
+                  :code "(defn page [] [:main \"live\"])"})
+            request (second (first @sent))
+            evaluation-id (get-in request [:payload :evaluation-id])]
+        (is (= :runtime/repl-eval (:type request)))
+        (is (= "(defn page [] [:main \"live\"])"
+               (get-in request [:payload :code])))
+        (websocket/receive!
+         hub :requester
+         (websocket/encode-message
+          (client-envelope
+           session-id request-id 0 :runtime/repl-result
+           {:tab-id tab-id
+            :evaluation-id evaluation-id
+            :base-version 0
+            :result {:value ":home" :page? true :state {:draft "kept"}}})))
+        (is (= {:status :accepted
+                :result {:value ":home" :page? true :state {:draft "kept"}}}
+               (websocket/await-repl-eval! hub submission))))
+      (finally
+        (websocket/stop! hub)))))
+
 (deftest browser-rejection-preserves-bounded-failure-details
   (let [{:keys [hub]} (test-hub)
         session-id (random-uuid)

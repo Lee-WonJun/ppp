@@ -18,7 +18,8 @@
 (defn load-config
   []
   (let [environment (keyword (env "PPP_ENV" "development"))
-        development? (contains? #{:development :test} environment)]
+        development? (contains? #{:development :test} environment)
+        runtime-profile (keyword (env "PPP_RUNTIME_PROFILE" "shared-poc"))]
     {:environment environment
      :development? development?
      :host (env "PPP_HOST" "0.0.0.0")
@@ -39,17 +40,20 @@
      :product-auth-session-seconds
      (parse-int (env "PPP_PRODUCT_AUTH_SESSION_SECONDS" "604800"))
      :provider (keyword (env "PPP_AI_PROVIDER" "codex"))
+     :runtime-profile runtime-profile
      :codex-bin (env "PPP_CODEX_BIN" "codex")
      :codex-home (env "CODEX_HOME" (str (System/getProperty "user.home") "/.codex"))
      :codex-model (env "PPP_CODEX_MODEL" "gpt-5.6-terra")
      :codex-reasoning (env "PPP_CODEX_REASONING" "medium")
-     :provider-timeout-ms (parse-int (env "PPP_PROVIDER_TIMEOUT_MS" "120000"))
+     :provider-timeout-ms
+     (parse-int (env "PPP_PROVIDER_TIMEOUT_MS"
+                     (if (= :workspace-repl runtime-profile) "240000" "120000")))
      :provider-calls-per-hour
      (parse-int (env "PPP_PROVIDER_CALLS_PER_HOUR" "100"))
      :provider-window-seconds
      (parse-int (env "PPP_PROVIDER_WINDOW_SECONDS" "3600"))
      :change-generation-attempts
-     (parse-int (env "PPP_CHANGE_GENERATION_ATTEMPTS" "3"))
+     (parse-int (env "PPP_CHANGE_GENERATION_ATTEMPTS" "6"))
      :queue-capacity (parse-int (env "PPP_QUEUE_CAPACITY" "8"))
      :require-client-ack? (parse-bool (env "PPP_REQUIRE_CLIENT_ACK" "true"))
      :client-ack-timeout-ms (parse-int (env "PPP_CLIENT_ACK_TIMEOUT_MS" "45000"))
@@ -79,7 +83,7 @@
   [{:keys [access-code cookie-secret environment development?
            product-auth-session-seconds login-failure-limit
            login-failure-window-seconds provider-calls-per-hour
-           provider-window-seconds]
+           provider-window-seconds runtime-profile]
     :as config}]
   (when (str/blank? access-code)
     (throw (ex-info "PPP_ACCESS_CODE is required" {:environment environment})))
@@ -108,4 +112,12 @@
   (when-not (<= 60 (long (or provider-window-seconds 3600)) 86400)
     (throw (ex-info "PPP_PROVIDER_WINDOW_SECONDS must be between 60 and 86400"
                     {:environment environment})))
-  config)
+  (let [runtime-profile (or runtime-profile :shared-poc)]
+    (when-not (contains? #{:shared-poc :workspace-repl} runtime-profile)
+      (throw (ex-info "PPP_RUNTIME_PROFILE must be shared-poc or workspace-repl"
+                      {:environment environment :runtime-profile runtime-profile})))
+    (when (and (= :workspace-repl runtime-profile) (not development?))
+      (throw (ex-info
+              "Workspace REPL requires an external workspace isolation boundary and is disabled in this shared production process"
+              {:environment environment :runtime-profile runtime-profile})))
+    (assoc config :runtime-profile runtime-profile)))

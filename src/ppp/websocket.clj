@@ -142,6 +142,14 @@
          :type :runtime/resync
          :payload bundle})))))
 
+(defn request-resync!
+  "Rebuild the exact requesting tab from the last durable runtime bundle. Used
+  when a Workspace REPL turn exhausts repair and its provisional live forms
+  must be discarded."
+  [^Hub hub {:keys [session-id tab-id request-id]}]
+  (when-let [channel (get-in @(:subscriptions hub) [session-id tab-id])]
+    (send-resync! hub channel session-id request-id)))
+
 (defn- subscribe!
   [^Hub hub channel {:keys [session-id request-id payload]}]
   (let [{:keys [tab-id current-version]} payload
@@ -204,6 +212,40 @@
                       :code (or (:code payload) :runtime/client-rejected)
                       :details (:details payload)}))))
 
+(defn- exact-repl-response?
+  [pending channel envelope]
+  (let [{:keys [session-id request-id runtime-version payload]} envelope]
+    (and (= :repl (:kind pending))
+         (= channel (:channel pending))
+         (= session-id (:session-id pending))
+         (= request-id (:request-id pending))
+         (= runtime-version (:base-version pending))
+         (= (:tab-id payload) (:tab-id pending))
+         (= (:evaluation-id payload) (:evaluation-id pending))
+         (= (:base-version payload) (:base-version pending)))))
+
+(defn- receive-repl-response!
+  [^Hub hub channel {:keys [type payload session-id request-id] :as envelope}]
+  (let [evaluation-id (:evaluation-id payload)
+        pending (get @(:pending hub) evaluation-id)]
+    (cond
+      (nil? pending)
+      (send-resync! hub channel session-id request-id)
+
+      (not (exact-repl-response? pending channel envelope))
+      (settle-stage! hub evaluation-id
+                     {:status :rejected :code :runtime/stale-browser-version})
+
+      (= :runtime/repl-result type)
+      (settle-stage! hub evaluation-id
+                     {:status :accepted :result (:result payload)})
+
+      :else
+      (settle-stage! hub evaluation-id
+                     {:status :rejected
+                      :code (or (:code payload) :repl/client-eval-failed)
+                      :details (:details payload)}))))
+
 (defn receive!
   [^Hub hub channel frame]
   (try
@@ -214,7 +256,9 @@
       (case (:type message)
         :session/subscribe (subscribe! hub channel message)
         :runtime/staged (receive-stage-response! hub channel message)
-        :runtime/rejected (receive-stage-response! hub channel message)))
+        :runtime/rejected (receive-stage-response! hub channel message)
+        :runtime/repl-result (receive-repl-response! hub channel message)
+        :runtime/repl-rejected (receive-repl-response! hub channel message)))
     (catch Exception _cause
       ((:close-fn hub) channel)))
   nil)
@@ -281,6 +325,60 @@
     (if (= ::timeout outcome)
       (throw (ex-info "Browser stage completion was not delivered"
                       {:code :runtime/client-timeout}))
+      outcome)))
+
+(defn request-repl-eval!
+  [^Hub hub {:keys [session-id request-id tab-id base-version code]}]
+  (when-not (and (string? code) (<= 1 (count code) (* 64 1024)))
+    (throw (ex-info "Browser REPL code must be a bounded non-empty string"
+                    {:code :repl/client-code-invalid})))
+  (let [channel (get-in @(:subscriptions hub) [session-id tab-id])]
+    (when-not channel
+      (throw (ex-info "The requesting browser tab is not connected"
+                      {:code :runtime/requester-not-connected})))
+    (let [evaluation-id (random-uuid)
+          completion (promise)
+          pending {:kind :repl
+                   :channel channel
+                   :session-id session-id
+                   :request-id request-id
+                   :tab-id tab-id
+                   :evaluation-id evaluation-id
+                   :base-version base-version
+                   :completion completion}
+          timeout-ms 10000]
+      (swap! (:pending hub) assoc evaluation-id pending)
+      (let [timeout (.schedule
+                     (:scheduler hub)
+                     ^Runnable
+                     #(settle-stage! hub evaluation-id
+                                     {:status :rejected
+                                      :code :repl/client-eval-timeout})
+                     timeout-ms TimeUnit/MILLISECONDS)]
+        (swap! (:pending hub) update evaluation-id assoc :timeout timeout)
+        (when-not
+         (send-envelope!
+          hub channel
+          (protocol/envelope
+           {:session-id session-id
+            :request-id request-id
+            :runtime-version base-version
+            :type :runtime/repl-eval
+            :payload {:tab-id tab-id
+                      :evaluation-id evaluation-id
+                      :base-version base-version
+                      :code code}}))
+          (settle-stage! hub evaluation-id
+                         {:status :rejected
+                          :code :runtime/requester-disconnected})))
+      {:completion completion :evaluation-id evaluation-id})))
+
+(defn await-repl-eval!
+  [^Hub _hub {:keys [completion]}]
+  (let [outcome (deref completion 11000 ::timeout)]
+    (if (= ::timeout outcome)
+      (throw (ex-info "Browser REPL result was not delivered"
+                      {:code :repl/client-eval-timeout}))
       outcome)))
 
 (defn send-to-tab!

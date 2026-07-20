@@ -4,7 +4,10 @@
             [ppp.provider.budget :as provider-budget]
             [ppp.provider.queue :as provider-queue]
             [ppp.outbound.service :as outbound]
+            [ppp.repl.bridge :as repl-bridge]
+            [ppp.repl.service :as repl]
             [ppp.runtime.server :as server]
+            [ppp.runtime.sqlite :as sqlite]
             [ppp.session.store :as store]
             [ppp.shared.protocol :as protocol]
             [ppp.util.fs :as fs]
@@ -17,8 +20,8 @@
 ;; Every edge before activation either leaves current untouched or restores the
 ;; before-current backup. The request tab's exact ACK is the only browser vote.
 
-(defrecord Coordinator [config store provider provider-budget provider-queue registry product-auth
-                        resource-service outbound hub jobs])
+(defrecord Coordinator [config store provider provider-budget provider-queue registry repl-service
+                        product-auth resource-service outbound hub jobs])
 
 (defn- parse-protocol-uuid
   [value code]
@@ -47,8 +50,9 @@
    (let [detail (last (filter string? details))
          base
          (cond
-           (contains? #{:provider/timeout :provider/wait-timeout} code)
-           "The product assistant took too long. Your current product is unchanged."
+           (contains? #{:provider/timeout :provider/wait-timeout
+                        :provider/interrupted} code)
+           "The product assistant stopped before it could finish reconciling the live change. The last saved product has been restored."
 
            (= :provider/queue-full code)
            "The product assistant is busy. Try again after the queued change finishes."
@@ -58,8 +62,15 @@
 
            (contains? #{:runtime/requester-not-connected
                         :runtime/requester-disconnected
-                        :runtime/client-timeout} code)
+                        :runtime/client-timeout
+                        :repl/client-eval-timeout} code)
            "The browser could not verify the new version. Reconnect and try again; your current product is unchanged."
+
+           (= :repl/client-eval-failed code)
+           "The live interface change failed while drawing or interacting in this browser. The last saved product has been restored."
+
+           (= :repl/evaluation-required code)
+           "The assistant returned a change before proving it in the running product. I asked it to retry, but no verified version completed; the last saved product has been restored."
 
            (= :runtime/stale-browser-version code)
            "This tab was behind the saved product. It is being refreshed to the current version."
@@ -155,20 +166,56 @@
                                 :runtime-response-limit (* 7 1024 1024))}))]
     (server/activate! (:registry coordinator) session-id runtime)))
 
+(defn- initialize-workspace-repl!
+  [^Coordinator coordinator session-id]
+  (when-let [service (:repl-service coordinator)]
+    (repl-bridge/register-project! session-id (:registry coordinator))
+    (repl/open-workspace! service session-id)
+    (repl/eval!
+     service session-id
+     (str "(do"
+          " (require '[ppp.repl.bridge :as ppp-bridge])"
+          " (defn ppp-inspect-server []"
+          "   (ppp-bridge/describe-server \"" session-id "\"))"
+          " (defn ppp-eval-server! [code]"
+          "   (ppp-bridge/eval-server! \"" session-id "\" code))"
+          " (defn ppp-register-action! [action-id handler]"
+          "   (ppp-bridge/call-runtime! \"" session-id
+          "\" 'register-action! action-id handler))"
+          " (defn ppp-runtime! [capability & args]"
+          "   (apply ppp-bridge/call-runtime! \"" session-id
+          "\" capability args))"
+          " (defn ppp-invoke-server! [action-id payload]"
+          "   (ppp-bridge/invoke-server! \"" session-id "\" action-id payload))"
+          " (defn ppp-migrate-server! [name sql]"
+          "   (ppp-bridge/migrate-server! \"" session-id "\" name sql))"
+          " (defn ppp-eval-client! [code]"
+          "   (ppp-bridge/eval-client! \"" session-id "\" code))"
+          " :workspace/repl-ready)")))
+  nil)
+
+(defn- reset-workspace-repl!
+  [^Coordinator coordinator session-id]
+  (when-let [service (:repl-service coordinator)]
+    (repl/close-workspace! service session-id)
+    (initialize-workspace-repl! coordinator session-id))
+  nil)
+
 (defn initialize!
   [^Coordinator coordinator]
   (store/recover-all! (:store coordinator))
   (doseq [session (store/list-sessions (:store coordinator))]
-    (stage-active-runtime! coordinator (:id session)))
+    (stage-active-runtime! coordinator (:id session))
+    (initialize-workspace-repl! coordinator (:id session)))
   coordinator)
 
 (defn create-coordinator
-  [{:keys [config store provider provider-budget provider-queue registry product-auth
-           resource-service outbound hub]}]
+  [{:keys [config store provider provider-budget provider-queue registry repl-service
+           product-auth resource-service outbound hub]}]
   (let [provider-budget (or provider-budget
                             (provider-budget/create-budget config))]
-    (->Coordinator config store provider provider-budget provider-queue registry product-auth
-                   resource-service outbound hub (atom {}))))
+    (->Coordinator config store provider provider-budget provider-queue registry repl-service
+                   product-auth resource-service outbound hub (atom {}))))
 
 (defn create-session!
   ([coordinator]
@@ -176,6 +223,7 @@
   ([^Coordinator coordinator options]
    (let [session (store/create-session! (:store coordinator) options)]
      (stage-active-runtime! coordinator (:id session))
+     (initialize-workspace-repl! coordinator (:id session))
      session)))
 
 (defn- send-turn!
@@ -336,6 +384,7 @@
                        :after (:after stage)
                        :provider-thread-id thread-id
                        :generation-attempts (or (:generation-attempts result) 1)
+                       :repl-events (:repl-events result)
                        :runtime-impact impact
                        :validation {:source :passed
                                     :impact impact
@@ -399,6 +448,10 @@
 
 (defn- apply-change!
   [^Coordinator coordinator request {:keys [result thread-id]}]
+  (when (seq (:repl-missing result))
+    (throw (ex-info "The live REPL observations are incomplete"
+                    {:code :repl/evaluation-required
+                     :details (mapv name (:repl-missing result))})))
   (let [transaction-id (random-uuid)
         staged (atom nil)]
     (try
@@ -555,6 +608,7 @@
       (progress! coordinator request :applying)
       (let [bundle (commit-restore! coordinator request result transaction-id @staged)
             target-version (:runtime-version bundle)]
+        (reset-workspace-repl! coordinator (:session-id request))
         (send-turn! coordinator
                     (:session-id request) (:tab-id request) (:request-id request)
                     target-version :turn/progress {:phase :applied})
@@ -584,6 +638,9 @@
     :runtime/client-render-failed
     :runtime/client-registration-contract
     :runtime/client-rejected
+    :repl/evaluation-required
+    :repl/client-eval-failed
+    :repl/client-eval-timeout
     :runtime/source-read-failed})
 
 (defn- repairable-change-error?
@@ -618,19 +675,110 @@
            :on-progress #(progress! coordinator request :generating %)
            :source (store/current-source-map (:store coordinator)
                                              (:session-id request))}
+    (:repl-service coordinator)
+    (assoc :repl-endpoint (repl/endpoint (:repl-service coordinator)))
     (seq (:client-diagnostics request))
     (assoc :client-diagnostics (:client-diagnostics request))
     feedback (assoc :repair-feedback feedback)))
+
+(defn- browser-repl-evaluator
+  [^Coordinator coordinator request]
+  (fn [code]
+    (let [submission
+          (websocket/request-repl-eval!
+           (:hub coordinator)
+           {:session-id (:session-id request)
+            :request-id (:request-id request)
+            :tab-id (:tab-id request)
+            :base-version (:base-version request)
+            :code code})
+          outcome (websocket/await-repl-eval! (:hub coordinator) submission)]
+      (if (= :accepted (:status outcome))
+        (:result outcome)
+        (throw (ex-info "Browser REPL evaluation was rejected"
+                        {:code (or (:code outcome) :repl/client-eval-failed)
+                         :details (:details outcome)}))))))
+
+(defn- snapshot-repl-turn!
+  [^Coordinator coordinator request]
+  (when (:repl-service coordinator)
+    (let [root (.resolve ^java.nio.file.Path (get (:config coordinator) :data-dir)
+                         (str "kernel/repl-turns/" (:session-id request) "/"
+                              (:request-id request)))
+          database (.resolve root "before.sqlite")]
+      (fs/delete-tree! root)
+      (sqlite/clone-database!
+       (store/current-db-path (:store coordinator) (:session-id request))
+       database)
+      {:root root :database database})))
+
+(defn- generate-with-live-repl!
+  [^Coordinator coordinator request generation-request turn-events]
+  (if-not (:repl-service coordinator)
+    (provider/generate! (:provider coordinator) generation-request)
+    (let [finished? (atom false)]
+      (repl-bridge/begin-turn! (:session-id request) (:request-id request))
+      (repl-bridge/bind-client-evaluator!
+       (:session-id request) (:request-id request)
+       (browser-repl-evaluator coordinator request))
+      (try
+        (let [generation (provider/generate! (:provider coordinator)
+                                             generation-request)
+              attempt-events (repl-bridge/finish-turn! (:session-id request)
+                                                       (:request-id request))
+              events (swap! turn-events into attempt-events)
+              _ (reset! finished? true)
+              change (get-in generation [:result :change])
+              paths (concat (map :path (:writes change)) (:deletes change))
+              needs-server? (or (seq (:migrations change))
+                                (some #(or (str/starts-with? % "src/server/")
+                                           (str/starts-with? % "src/shared/")
+                                           (str/starts-with? % "test/"))
+                                      paths))
+              needs-client? (some #(or (str/starts-with? % "src/client/")
+                                       (str/starts-with? % "styles/"))
+                                  paths)
+              operations (into #{}
+                               (keep (fn [{:keys [operation status]}]
+                                       (when (= :accepted status) operation)))
+                               events)
+              missing (cond-> []
+                        (and needs-server?
+                             (not (contains? operations :server/eval)))
+                        (conj :server/eval)
+                        (and needs-server?
+                             (not (contains? operations :server/invoke)))
+                        (conj :server/invoke)
+                        (and (seq (:migrations change))
+                             (not (contains? operations :server/migrate)))
+                        (conj :server/migrate)
+                        (and needs-client?
+                             (not (contains? operations :client/eval)))
+                        (conj :client/eval))]
+          (update generation :result assoc
+                  :repl-events events
+                  :repl-missing (when (= :change (get-in generation [:result :kind]))
+                                  missing)))
+        (finally
+          (when-not @finished?
+            (try
+              (repl-bridge/finish-turn! (:session-id request)
+                                        (:request-id request))
+              (catch Exception _ nil)))
+          (repl-bridge/clear-client-evaluator!
+           (:session-id request) (:request-id request)))))))
 
 (defn process-turn!
   [^Coordinator coordinator request]
   (let [generated? (atom false)
         generated-result (atom nil)
-        generated-thread-id (atom nil)]
+        generated-thread-id (atom nil)
+        turn-repl-events (atom [])
+        repl-snapshot (snapshot-repl-turn! coordinator request)]
     (try
       (let [session (store/get-session (:store coordinator) (:session-id request))
             max-attempts (max 1 (long (get (:config coordinator)
-                                           :change-generation-attempts 3)))]
+                                           :change-generation-attempts 6)))]
         (loop [attempt 1
                thread-id (:codex-thread-id session)
                feedback nil]
@@ -638,10 +786,13 @@
           (let [generation
                 (do
                   (provider-budget/acquire! (:provider-budget coordinator))
-                  (provider/generate!
-                   (:provider coordinator)
-                   (generation-request coordinator request session thread-id feedback)))
-                result (:result generation)]
+                  (generate-with-live-repl!
+                   coordinator request
+                   (generation-request coordinator request session thread-id feedback)
+                   turn-repl-events))
+                result (cond-> (:result generation)
+                         (= :change (get-in generation [:result :kind]))
+                         (assoc :generation-attempts attempt))]
             (reset! generated? true)
             (reset! generated-result result)
             (reset! generated-thread-id (:thread-id generation))
@@ -656,8 +807,7 @@
               :change
               (let [outcome (try
                               {:value (apply-change! coordinator request
-                                                     (update generation :result assoc
-                                                             :generation-attempts attempt))}
+                                                     (assoc generation :result result))}
                               (catch Exception cause {:cause cause}))]
                 (if-let [cause (:cause outcome)]
                   (let [code (or (exception-code cause) :turn/failed)]
@@ -698,13 +848,37 @@
                                    :error-code code}}
                (= :change (:kind @generated-result))
                (assoc :changes (:change @generated-result)
+                      :generation-attempts (:generation-attempts @generated-result)
+                      :repl-events (:repl-events @generated-result)
                       :provider-thread-id @generated-thread-id)))
             (catch Exception _history-failure nil))
           (send-turn! coordinator
                       (:session-id request) (:tab-id request) (:request-id request)
                       (:base-version request) :turn/failed
                       {:code code :message message})
-          (throw (ex-info message {:code code} cause)))))))
+          ;; Workspace REPL forms change the running definitions immediately.
+          ;; If the turn cannot be reconciled, reconstruct the last durable
+          ;; source checkpoint so partially evaluated forms cannot survive the
+          ;; terminal failure.
+          (when (:repl-service coordinator)
+            (try
+              (when repl-snapshot
+                (sqlite/clone-database!
+                 (:database repl-snapshot)
+                 (store/current-db-path (:store coordinator)
+                                        (:session-id request))))
+              (stage-active-runtime! coordinator (:session-id request))
+              (reset-workspace-repl! coordinator (:session-id request))
+              (websocket/request-resync!
+               (:hub coordinator)
+               {:session-id (:session-id request)
+                :tab-id (:tab-id request)
+                :request-id (:request-id request)})
+              (catch Exception _rollback-failure nil)))
+          (throw (ex-info message {:code code} cause))))
+      (finally
+        (when repl-snapshot
+          (fs/delete-tree! (:root repl-snapshot)))))))
 
 (defn submit-turn!
   [^Coordinator coordinator session-id

@@ -619,6 +619,35 @@
                   "The current product view could not be synchronized.")
            (transport/subscribe!))))))
 
+(defn- repl-eval-from-message!
+  [{:keys [session-id request-id runtime-version payload]}]
+  (let [{:keys [tab-id evaluation-id base-version code]} payload
+        response {:session-id session-id
+                  :request-id request-id
+                  :runtime-version runtime-version
+                  :evaluation-id evaluation-id}]
+    (if-not (and (= (str session-id) (:session-id @app-state))
+                 (= tab-id transport/tab-id)
+                 (= base-version runtime-version)
+                 (= runtime-version (frame/active-version)))
+      (transport/send-repl-result!
+       (assoc response :status :rejected :code :runtime/stale-browser-version))
+      ;; Workspace REPL is intentionally live: the requesting product frame
+      ;; changes immediately, then the accepted state is reconciled to durable
+      ;; source. A terminal turn failure receives runtime/resync and rebuilds
+      ;; this frame from the last checkpoint.
+      (-> (frame/eval-live! code)
+          (.then #(transport/send-repl-result!
+                   (assoc response :status :accepted :result %)))
+          (.catch
+           (fn [error]
+             (transport/send-repl-result!
+              (assoc response
+                     :status :rejected
+                     :code (or (runtime-error-code error)
+                               :repl/client-eval-failed)
+                     :details (runtime-error-details error)))))))))
+
 (defn handle-server-message!
   [{:keys [type payload runtime-version] :as message}]
   (case type
@@ -639,12 +668,16 @@
     :runtime/resync
     (resync-from-message! message)
 
+    :runtime/repl-eval
+    (repl-eval-from-message! message)
+
     :product/event
     (when (= runtime-version (frame/active-version))
       (frame/deliver-product-event! (:topic payload) (:value payload)))
 
     :turn/completed
     (do
+      (frame/discard-stage! (inc runtime-version))
       (set-progress! nil)
       (append-message!
        :assistant
@@ -657,6 +690,7 @@
 
     :turn/failed
     (do
+      (frame/discard-stage! (inc runtime-version))
       (set-progress! nil)
       (append-message! :assistant (:message payload) "Not applied")
       (when (= :runtime/stale-browser-version (:code payload))

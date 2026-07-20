@@ -6,7 +6,8 @@
 
 (defrecord ClientRuntime
            [version context page sidebar css state state-key initial-state
-            phase pending ensured timers event-handlers budget runtime-error-fn])
+            phase pending ensured timers event-handlers registrations budget
+            runtime-error-fn])
 
 (defonce state-root (r/atom {:base {}}))
 (defonce base-state (r/cursor state-root [:base]))
@@ -223,11 +224,15 @@
 
 (defn- ensure-phase!
   [phase expected capability]
-  (when-not (= expected @phase)
-    (throw (ex-info "Client capability is unavailable in this phase"
-                    {:code :runtime/client-capability-phase
-                     :capability capability
-                     :expected expected}))))
+  (let [actual @phase
+        allowed? (if (set? expected)
+                   (contains? expected actual)
+                   (= expected actual))]
+    (when-not allowed?
+      (throw (ex-info "Client capability is unavailable in this phase"
+                      {:code :runtime/client-capability-phase
+                       :capability capability
+                       :expected expected})))))
 
 (defn- stop-interval-entry!
   [timers timer-id]
@@ -277,11 +282,12 @@
     :as options}]
   {'register-page!
    (fn [page-id component]
-     (ensure-phase! phase :evaluating :register-page!)
+     (ensure-phase! phase #{:evaluating :repl} :register-page!)
      (when-not (and (keyword? page-id) (ifn? component))
        (throw (ex-info "Invalid generated page registration"
                        {:code :runtime/client-invalid-page})))
-     (when (contains? (:pages @registrations) page-id)
+     (when (and (= :evaluating @phase)
+                (contains? (:pages @registrations) page-id))
        (throw (ex-info "Generated page is registered more than once"
                        {:code :runtime/client-duplicate-page :page-id page-id})))
      (swap! registrations assoc-in [:pages page-id] (safe-component budget component))
@@ -289,11 +295,11 @@
 
    'register-sidebar!
    (fn [component]
-     (ensure-phase! phase :evaluating :register-sidebar!)
+     (ensure-phase! phase #{:evaluating :repl} :register-sidebar!)
      (when-not (ifn? component)
        (throw (ex-info "Invalid generated sidebar registration"
                        {:code :runtime/client-invalid-sidebar})))
-     (when (:sidebar @registrations)
+     (when (and (= :evaluating @phase) (:sidebar @registrations))
        (throw (ex-info "Generated sidebar is registered more than once"
                        {:code :runtime/client-duplicate-sidebar})))
      (swap! registrations assoc :sidebar (safe-component budget component))
@@ -307,7 +313,7 @@
 
    'initialize-state!
    (fn [defaults]
-     (ensure-phase! phase :evaluating :initialize-state!)
+     (ensure-phase! phase #{:evaluating :repl} :initialize-state!)
      (when-not (and (map? defaults)
                     (<= (count defaults) 256)
                     (<= (count (pr-str defaults)) 65536))
@@ -319,11 +325,12 @@
 
    'register-event-handler!
    (fn [topic handler]
-     (ensure-phase! phase :evaluating :register-event-handler!)
+     (ensure-phase! phase #{:evaluating :repl} :register-event-handler!)
      (when-not (and (keyword? topic) (<= (count (str topic)) 96) (ifn? handler))
        (throw (ex-info "Invalid generated product event registration"
                        {:code :runtime/client-invalid-event-handler})))
-     (when (contains? (:events @registrations) topic)
+     (when (and (= :evaluating @phase)
+                (contains? (:events @registrations) topic))
        (throw (ex-info "Generated product event is registered more than once"
                        {:code :runtime/client-duplicate-event-handler
                         :topic topic})))
@@ -511,7 +518,7 @@
           (reset! phase :staging)
           (->ClientRuntime version context (:home pages) sidebar
                            (css-text source-map) state state-key initial-state
-                           phase pending ensured timers events budget
+                           phase pending ensured timers events registrations budget
                            runtime-error-fn)))
       (catch :default cause
         (clear-intervals! timers)
@@ -520,6 +527,56 @@
                         {:code :runtime/client-stage-failed
                          :cause-code (exception-code cause)}
                         cause))))))
+
+(defn eval-runtime!
+  "Evaluate incremental CLJS forms in one already-created browser SCI runtime.
+  The caller decides whether that runtime is the public active product or a
+  hidden REPL branch."
+  [runtime code]
+  (when-not (and (string? code) (<= 1 (count code) (* 64 1024)))
+    (throw (ex-info "Browser REPL evaluation requires bounded source"
+                    {:code :repl/client-code-invalid})))
+  (when-not runtime
+    (throw (ex-info "Browser runtime is unavailable"
+                    {:code :runtime/client-not-active})))
+  (let [previous-phase @(:phase runtime)]
+    (reset! (:phase runtime) :repl)
+    (try
+      (reset-execution-budget! (:budget runtime))
+      (let [evaluation (sci/eval-string+ (:context runtime) code
+                                         {:file "workspace-browser-repl"})
+            {:keys [pages sidebar events]} @(:registrations runtime)
+            updated (assoc runtime
+                           :page (:home pages)
+                           :sidebar sidebar
+                           :event-handlers events)]
+        {:runtime updated
+         :result {:value (pr-str (:val evaluation))
+                  :runtime-version (:version runtime)
+                  :page? (ifn? (:home pages))
+                  :sidebar? (ifn? sidebar)
+                  :state @(:state runtime)}})
+      (catch :default cause
+        (throw (ex-info "Incremental browser REPL evaluation failed"
+                        {:code :repl/client-eval-failed}
+                        cause)))
+      (finally
+        (reset! (:phase runtime) previous-phase)))))
+
+(defn retain-evaluated!
+  [runtime]
+  (if (= (:version runtime) (active-version))
+    (reset! active-runtime runtime)
+    (swap! staged-runtimes assoc (:version runtime) runtime))
+  runtime)
+
+(defn eval-live!
+  "Evaluate forms in the public active runtime. Workspace browser REPL turns
+  normally use eval-runtime! on a hidden candidate frame instead."
+  [code]
+  (let [{:keys [runtime result]} (eval-runtime! @active-runtime code)]
+    (retain-evaluated! runtime)
+    result))
 
 (defn retain-stage!
   [runtime]

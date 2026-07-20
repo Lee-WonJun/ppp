@@ -103,7 +103,17 @@
           (config/validate! (assoc test-config
                                    :environment :production
                                    :development? false
-                                   :cookie-secure? true))))))
+                                   :cookie-secure? true)))))
+  (is (= :shared-poc (:runtime-profile (config/validate! test-config))))
+  (is (= :workspace-repl
+         (:runtime-profile
+          (config/validate! (assoc test-config
+                                   :runtime-profile :workspace-repl)))))
+  (is (thrown? clojure.lang.ExceptionInfo
+               (config/validate! (assoc test-config
+                                        :environment :production
+                                        :development? false
+                                        :runtime-profile :workspace-repl)))))
 
 (deftest access-csrf-and-session-flow
   (let [data-root (Files/createTempDirectory "ppp-access-test"

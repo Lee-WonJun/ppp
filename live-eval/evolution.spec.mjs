@@ -63,9 +63,9 @@ async function createFreshSession(page) {
     waitUntil: "domcontentloaded",
     timeout: 30_000
   });
-  await expect.poll(async () => Boolean((await snapshot(page))?.["session-id"]), {
+  await expect(page.getByRole("region", { name: "Projects" })).toBeVisible({
     timeout: 30_000
-  }).toBe(true);
+  });
   const session = await page.evaluate(async () => {
     const bootstrapResponse = await fetch("/api/bootstrap", { credentials: "same-origin" });
     const bootstrap = await bootstrapResponse.json();

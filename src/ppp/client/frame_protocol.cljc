@@ -10,6 +10,7 @@
 (def host-message-types
   #{:host/stage
     :host/activate
+    :host/repl-eval
     :host/sidebar-model
     :host/sidebar-open
     :host/action-result
@@ -23,6 +24,8 @@
     :frame/staged
     :frame/activated
     :frame/rejected
+    :frame/repl-result
+    :frame/repl-rejected
     :frame/state
     :frame/action
     :frame/sidebar-event

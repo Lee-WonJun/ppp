@@ -73,6 +73,64 @@
       (finally
         (fs/delete-tree! root)))))
 
+(deftest live-repl-redefines-the-running-action-and-retains-state
+  (let [root (test-root)]
+    (try
+      (let [runtime (server/stage! {:source-map store/initial-source
+                                    :database-path (.resolve root "repl.sqlite")
+                                    :version 0
+                                    :timeout-ms 500})
+            registry (server/create-registry)
+            session-id (random-uuid)]
+        (server/activate! registry session-id runtime)
+        (is (= {:runtime-version 0
+                :result {:ok true :message "The runtime is ready."}}
+               (server/invoke! registry session-id :ping {})))
+
+        (is (= "1"
+               (:value
+                (server/eval-live!
+                 registry session-id
+                 (str "(ns runtime.server (:require [runtime.api :as api]))\n"
+                      "(defonce repl-count (atom 0))\n"
+                      "(swap! repl-count inc)\n"
+                      "(api/register-action! :ping"
+                      " (fn [_] {:ok true :count @repl-count}))\n"
+                      "@repl-count")))))
+        (is (= {:runtime-version 0 :result {:ok true :count 1}}
+               (server/invoke! registry session-id :ping {})))
+
+        (is (= "2"
+               (:value (server/eval-live! registry session-id
+                                          "(swap! runtime.server/repl-count inc)"))))
+        (is (= {:runtime-version 0 :result {:ok true :count 2}}
+               (server/invoke! registry session-id :ping {})))
+
+        (is (= {:file-name "000001-counter.sql"
+                :name "counter"
+                :status :applied}
+               (server/migrate-live!
+                registry session-id "counter"
+                (str "CREATE TABLE counter (id INTEGER PRIMARY KEY, value INTEGER NOT NULL);"
+                     "INSERT INTO counter (id, value) VALUES (1, 0);"))))
+        (server/eval-live!
+         registry session-id
+         (str "(ns runtime.server (:require [runtime.api :as api]))\n"
+              "(api/register-action! :counter/add "
+              "(fn [_] (api/execute! \"UPDATE counter SET value = value + 1 WHERE id = 1\" []) "
+              "{:total (:value (first (api/query! \"SELECT value FROM counter WHERE id = 1\" []))) }))"))
+        (is (= {:runtime-version 0 :result {:total 1}}
+               (server/invoke! registry session-id :counter/add {})))
+
+        (is (= :repl/eval-failed
+               (:code (ex-data
+                       (exception #(server/eval-live! registry session-id
+                                                      "(defn broken ["))))))
+        (is (= {:runtime-version 0 :result {:ok true :count 2}}
+               (server/invoke! registry session-id :ping {}))))
+      (finally
+        (fs/delete-tree! root)))))
+
 (deftest client-only-stage-reuses-actions-and-context-against-an-atomic-database-copy
   (let [root (test-root)]
     (try

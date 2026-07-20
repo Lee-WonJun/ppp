@@ -209,11 +209,13 @@
   (m/validate ws-envelope-schema value))
 
 (def client-message-types
-  #{:session/subscribe :runtime/staged :runtime/rejected})
+  #{:session/subscribe :runtime/staged :runtime/rejected
+    :runtime/repl-result :runtime/repl-rejected})
 
 (def server-message-types
   #{:turn/queued :turn/progress :turn/completed :turn/failed
-    :runtime/stage :runtime/activate :runtime/resync :product/event})
+    :runtime/stage :runtime/activate :runtime/resync :runtime/repl-eval
+    :product/event})
 
 (def generating-progress-details
   #{"Understanding the outcome you described"
@@ -264,6 +266,20 @@
          (keyword? (:code payload))
          (rejection-details-valid? (:details payload)))
 
+    :runtime/repl-result
+    (and (uuid? (:tab-id payload))
+         (uuid? (:evaluation-id payload))
+         (nat-int? (:base-version payload))
+         (map? (:result payload))
+         (<= (count (pr-str (:result payload))) (* 64 1024)))
+
+    :runtime/repl-rejected
+    (and (uuid? (:tab-id payload))
+         (uuid? (:evaluation-id payload))
+         (nat-int? (:base-version payload))
+         (keyword? (:code payload))
+         (rejection-details-valid? (:details payload)))
+
     false))
 
 (defn valid-client-envelope?
@@ -275,6 +291,8 @@
          :session/subscribe (= runtime-version (:current-version payload))
          :runtime/staged (= runtime-version (:target-version payload))
          :runtime/rejected (= runtime-version (:target-version payload))
+         :runtime/repl-result (= runtime-version (:base-version payload))
+         :runtime/repl-rejected (= runtime-version (:base-version payload))
          false)))
 
 (defn client-runtime-files

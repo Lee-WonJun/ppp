@@ -393,6 +393,23 @@
     (catch :default error
       (runtime-failed! error))))
 
+(defn- repl-eval!
+  [{:keys [request-id code]}]
+  (try
+    (let [{:keys [runtime result]}
+          (runtime/eval-runtime! @displayed-runtime code)]
+      (runtime/retain-evaluated! runtime)
+      (reset! displayed-runtime runtime)
+      (swap! render-epoch inc)
+      (r/flush)
+      (publish-state! @(:state runtime))
+      (post! :frame/repl-result {:request-id request-id :result result}))
+    (catch :default error
+      (post! :frame/repl-rejected
+             {:request-id request-id
+              :code (or (runtime-error-code error) :repl/client-eval-failed)
+              :details (runtime-error-details error)}))))
+
 (defn- action-result!
   [{:keys [request-id value message code status]} success?]
   (when-let [{:keys [resolve reject action-id]} (get @pending-actions request-id)]
@@ -419,6 +436,7 @@
             (case type
               :host/stage (stage! payload)
               :host/activate (activate! payload)
+              :host/repl-eval (repl-eval! payload)
               :host/sidebar-model
               (do
                 (sync-sidebar-model! (:model payload))

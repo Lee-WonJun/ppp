@@ -53,7 +53,7 @@
           "PPP_CODEX_MODEL" model
           "PPP_PROVIDER_TIMEOUT_MS" "600000"
           "PPP_CLIENT_ACK_TIMEOUT_MS" "45000"
-          "PPP_CHANGE_GENERATION_ATTEMPTS" "3"}))
+          "PPP_CHANGE_GENERATION_ATTEMPTS" "6"}))
 
 (defn- curl-json
   [path]

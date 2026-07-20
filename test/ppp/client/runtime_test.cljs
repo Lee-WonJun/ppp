@@ -72,6 +72,62 @@
         (is (= {:draft "kept" :filter :judges}
                @(runtime/active-page-state)))))))
 
+(deftest browser-repl-redefines-the-active-page-without-resetting-state
+  (reset! runtime/base-state {:draft "kept" :ticks 3})
+  (let [staged (runtime/stage-source!
+                {:version 1
+                 :source-map (source-map (page-source "Before REPL"))})]
+    (runtime/retain-stage! staged)
+    (runtime/activate! 1)
+    (is (= "Before REPL"
+           (get-in ((:page @runtime/active-runtime) {}) [1 :aria-label])))
+
+    (let [result
+          (runtime/eval-live!
+           (str "(ns runtime.client (:require [runtime.api :as api]))\n"
+                "(defn repl-page [_]"
+                " [:main {:aria-label \"After REPL\"}"
+                "  (str (:draft @api/page-state) \"/\" (:ticks @api/page-state))])\n"
+                "(api/register-page! :home repl-page)"))]
+      (is (= 1 (:runtime-version result)))
+      (is (:page? result)))
+    (is (= {:draft "kept" :ticks 3} @(runtime/active-page-state)))
+    (is (= "After REPL"
+           (get-in ((:page @runtime/active-runtime) {}) [1 :aria-label])))
+    (is (= "kept/3" (get-in ((:page @runtime/active-runtime) {}) [2])))
+
+    (is (= :repl/client-eval-failed
+           (code #(runtime/eval-live! "(defn broken ["))))
+    (is (= "After REPL"
+           (get-in ((:page @runtime/active-runtime) {}) [1 :aria-label])))))
+
+(deftest browser-repl-branch-remains-hidden-until-durable-activation
+  (reset! runtime/base-state {:draft "kept"})
+  (let [active (runtime/stage-source!
+                {:version 1
+                 :source-map (source-map (page-source "Visible"))})]
+    (runtime/retain-stage! active)
+    (runtime/activate! 1)
+    (let [branch (runtime/stage-source!
+                  {:version 2
+                   :source-map (source-map (page-source "Candidate"))})
+          {:keys [runtime result]}
+          (runtime/eval-runtime!
+           branch
+           (str "(ns runtime.client (:require [runtime.api :as api]))\n"
+                "(defn repaired [_] [:main {:aria-label \"Repaired candidate\"}"
+                " (:draft @api/page-state)])\n"
+                "(api/register-page! :home repaired)"))]
+      (runtime/retain-evaluated! runtime)
+      (is (= 2 (:runtime-version result)))
+      (is (= "Visible"
+             (get-in ((:page @runtime/active-runtime) {}) [1 :aria-label])))
+      (is (= {:draft "kept"} @(runtime/active-page-state)))
+      (runtime/activate! 2)
+      (is (= "Repaired candidate"
+             (get-in ((:page @runtime/active-runtime) {}) [1 :aria-label])))
+      (is (= "kept" (get-in ((:page @runtime/active-runtime) {}) [2]))))))
+
 (deftest declared-state-defaults-apply-only-after-activation-and-never-overwrite-users
   (reset! runtime/base-state {:account/mode :login :existing true})
   (let [staged

@@ -43,6 +43,10 @@
    "if [ -f \"$PWD/.agents/skills/ppp-client-diagnostics/SKILL.md\" ]; then\n"
    "  /bin/cat \"$PWD/.agents/skills/ppp-client-diagnostics/SKILL.md\" > \"$capture/client-diagnostics-skill.md\"\n"
    "fi\n"
+   "if [ -f \"$PWD/ppp-repl\" ]; then\n"
+   "  /bin/cat \"$PWD/ppp-repl\" > \"$capture/repl-tool.sh\"\n"
+   "  /bin/cat \"$PWD/.ppp-repl.edn\" > \"$capture/repl-connection.edn\"\n"
+   "fi\n"
    "/usr/bin/env | /usr/bin/sort > \"$capture/env.txt\"\n"
    "if [ \"$1\" = \"login\" ]; then\n"
    "  if [ -f \"$capture/login-fail\" ]; then exit 1; fi\n"
@@ -241,6 +245,43 @@
                      #{"OPENAI_API_KEY" "PPP_ACCESS_CODE" "PPP_COOKIE_SECRET"
                        "AWS_SECRET_ACCESS_KEY"}
                      (set (keys environment))))))
+      (finally
+        (fs/delete-tree! root)))))
+
+(deftest workspace-repl-profile-attaches-codex-to-the-running-project
+  (let [{:keys [root capture-root provider]}
+        (test-context {:runtime-profile :workspace-repl})
+        workspace-id #uuid "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"]
+    (try
+      (provider/generate!
+       provider
+       (assoc (request "Change the running rule")
+              :session-id workspace-id
+              :repl-endpoint {:host "127.0.0.1" :port 45678}))
+      (let [argv (read-lines (.resolve capture-root "argv.txt"))
+            stdin (fs/read-text (.resolve capture-root "stdin.txt"))
+            tool (fs/read-text (.resolve capture-root "repl-tool.sh"))
+            connection (fs/read-edn (.resolve capture-root "repl-connection.edn"))
+            runtime-skill (fs/read-text (.resolve capture-root "runtime-skill.md"))]
+        (is (some #(= ["--sandbox" "danger-full-access"] %)
+                  (partition 2 1 argv)))
+        (is (not (some #(= ["--disable" "shell_tool"] %)
+                       (partition 2 1 argv))))
+        (is (= {:host "127.0.0.1"
+                :port 45678
+                :workspace-id (str workspace-id)}
+               connection))
+        (is (str/includes? tool "ppp.repl.client"))
+        (is (str/includes? tool (str (Paths/get (System/getProperty "user.dir")
+                                                (into-array String ["src"])))))
+        (is (not (str/includes? tool " -cp 'src:")))
+        (is (str/includes? stdin "already-running server"))
+        (is (str/includes? stdin "only ./ppp-repl"))
+        (is (str/includes? runtime-skill "ppp-inspect-server"))
+        (is (str/includes? runtime-skill "ppp-eval-server!"))
+        (is (str/includes? runtime-skill "ppp-invoke-server!"))
+        (is (str/includes? runtime-skill "ppp-migrate-server!"))
+        (is (str/includes? runtime-skill "ppp-eval-client!")))
       (finally
         (fs/delete-tree! root)))))
 

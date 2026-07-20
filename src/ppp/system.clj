@@ -7,6 +7,7 @@
             [ppp.provider.budget :as provider-budget]
             [ppp.provider.fake :as fake]
             [ppp.provider.queue :as provider-queue]
+            [ppp.repl.service :as repl]
             [ppp.runtime.auth :as product-auth]
             [ppp.runtime.resources :as resources]
             [ppp.runtime.server :as server]
@@ -41,6 +42,16 @@
 (defmethod ig/init-key :ppp/runtime-registry
   [_ _]
   (server/create-registry))
+
+(defmethod ig/init-key :ppp/repl-service
+  [_ config]
+  (when (= :workspace-repl (:runtime-profile config))
+    (repl/start!)))
+
+(defmethod ig/halt-key! :ppp/repl-service
+  [_ service]
+  (when service
+    (repl/stop! service)))
 
 (defmethod ig/init-key :ppp/product-auth
   [_ config]
@@ -106,6 +117,7 @@
    :ppp/provider-budget application-config
    :ppp/provider-queue application-config
    :ppp/runtime-registry {}
+   :ppp/repl-service application-config
    :ppp/product-auth application-config
    :ppp/resource-service application-config
    :ppp/outbound application-config
@@ -117,6 +129,7 @@
                      :provider-budget (ig/ref :ppp/provider-budget)
                      :provider-queue (ig/ref :ppp/provider-queue)
                      :registry (ig/ref :ppp/runtime-registry)
+                     :repl-service (ig/ref :ppp/repl-service)
                      :product-auth (ig/ref :ppp/product-auth)
                      :resource-service (ig/ref :ppp/resource-service)
                      :outbound (ig/ref :ppp/outbound)

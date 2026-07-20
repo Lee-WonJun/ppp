@@ -9,6 +9,7 @@
 (defonce staged-runtimes (atom {}))
 (defonce frames (atom {}))
 (defonce pending-stages (atom {}))
+(defonce pending-repl-evals (atom {}))
 (defonce active-state (r/atom {}))
 (defonce listener-installed? (atom false))
 (defonce callbacks
@@ -25,6 +26,7 @@
 
 (def ^:private frame-load-timeout-ms 30000)
 (def ^:private frame-render-timeout-ms 10000)
+(def ^:private repl-eval-timeout-ms 10000)
 
 (defn- clear-timeout!
   [timeout]
@@ -105,6 +107,19 @@
                                        (.-message cause)
                                        "The product action failed.")}))))))
 
+(defn- settle-repl-eval!
+  [runtime {:keys [request-id result code details]} success?]
+  (when-let [{:keys [resolve reject timeout expected-runtime]}
+             (get @pending-repl-evals request-id)]
+    (when (identical? runtime expected-runtime)
+      (clear-timeout! timeout)
+      (swap! pending-repl-evals dissoc request-id)
+      (if success?
+        (resolve result)
+        (reject (ex-info "Browser REPL evaluation failed"
+                         {:code (or code :repl/client-eval-failed)
+                          :details details}))))))
+
 (defn- receive!
   [event]
   (try
@@ -153,6 +168,12 @@
                         {:code (or (:code payload) :runtime/client-frame-rejected)
                          :phase (:phase payload)
                          :details (:details payload)}))
+
+              :frame/repl-result
+              (settle-repl-eval! runtime payload true)
+
+              :frame/repl-rejected
+              (settle-repl-eval! runtime payload false)
 
               :frame/state
               (do
@@ -218,6 +239,11 @@
   ([version source-map {:keys [sidebar-enabled?]
                         :or {sidebar-enabled? true}}]
    (install-listener!)
+   ;; A durable source stage replaces the exploratory REPL branch for the same
+   ;; target version. Never activate the hidden exploratory frame itself.
+   (when-let [previous (get @staged-runtimes version)]
+     (swap! staged-runtimes dissoc version)
+     (dispose-frame! previous))
    (let [runtime (new-frame! version source-map sidebar-enabled?)]
      (js/Promise.
       (fn [resolve reject]
@@ -300,6 +326,49 @@
     (post! runtime :host/product-event {:topic topic :value value}))
   nil)
 
+(defn- eval-in-frame!
+  [runtime code]
+  (if runtime
+    (let [request-id (str (random-uuid))]
+      (js/Promise.
+       (fn [resolve reject]
+         (let [timeout
+               (js/setTimeout
+                (fn []
+                  (swap! pending-repl-evals dissoc request-id)
+                  (reject (ex-info "Browser REPL evaluation timed out"
+                                   {:code :repl/client-eval-timeout})))
+                repl-eval-timeout-ms)]
+           (swap! pending-repl-evals assoc request-id
+                  {:resolve resolve
+                   :reject reject
+                   :timeout timeout
+                   :expected-runtime runtime})
+           (post! runtime :host/repl-eval {:request-id request-id :code code})))))
+    (js/Promise.reject
+     (ex-info "Browser runtime is unavailable"
+              {:code :runtime/client-not-active}))))
+
+(defn eval-live!
+  "Evaluate CLJS forms in the public active opaque frame."
+  [code]
+  (eval-in-frame! @active-runtime code))
+
+(defn eval-branch!
+  "Evaluate forms in a hidden frame cloned from the active product. Successive
+  calls for target-version retain the same SCI context and serializable state.
+  A later durable source stage for that version replaces this frame."
+  [target-version code]
+  (if-let [runtime (get @staged-runtimes target-version)]
+    (eval-in-frame! runtime code)
+    (if-let [active @active-runtime]
+      (-> (stage! target-version (:source-map active)
+                  {:sidebar-enabled? (:sidebar-enabled? active)})
+          (.then #(eval-in-frame! % code)))
+      (js/Promise.reject
+       (ex-info "Browser runtime is not active"
+                {:code :runtime/client-not-active})))))
+
 (defn reset-runtime!
   []
   (doseq [[_ pending] @pending-stages]
@@ -309,6 +378,11 @@
      (ex-info "Generated frame was reset"
               {:code :runtime/client-frame-reset})))
   (reset! pending-stages {})
+  (doseq [[_ {:keys [reject timeout]}] @pending-repl-evals]
+    (clear-timeout! timeout)
+    (reject (ex-info "Browser REPL evaluation was reset"
+                     {:code :repl/client-eval-reset})))
+  (reset! pending-repl-evals {})
   (doseq [runtime (vals @frames)]
     (dispose-frame! runtime))
   (reset! frames {})

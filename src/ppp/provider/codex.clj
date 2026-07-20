@@ -18,6 +18,10 @@
   ["shell_tool" "multi_agent" "hooks" "apps" "browser_use" "computer_use"
    "image_generation" "memories" "remote_plugin"])
 
+(defn- workspace-repl-profile?
+  [provider]
+  (= :workspace-repl (get-in provider [:config :runtime-profile])))
+
 (def ^:private runtime-skill-name "ppp-validate-and-apply")
 (def ^:private diagnostics-skill-name "ppp-client-diagnostics")
 
@@ -191,17 +195,22 @@
   [^CodexProvider codex-provider ^Path job-dir ^Path output-file thread-id]
   (let [{:keys [codex-model codex-reasoning]} (:config codex-provider)
         thread-id (parse-thread-id thread-id)
+        workspace-repl? (workspace-repl-profile? codex-provider)
         base (into (:command-prefix codex-provider)
                    ["exec"
                     "--json"
                     "--output-schema" (str (:schema-path codex-provider))
                     "--output-last-message" (str output-file)
                     "--model" codex-model
-                    "--sandbox" "read-only"
+                    "--sandbox" (if workspace-repl?
+                                  "danger-full-access"
+                                  "read-only")
                     "--ignore-user-config"
                     "--ignore-rules"
                     "--skip-git-repo-check"
                     "--strict-config"])
+        disabled-features (cond-> disabled-features
+                            workspace-repl? (->> (remove #{"shell_tool"}) vec))
         disabled (mapcat (fn [feature] ["--disable" feature]) disabled-features)
         controls ["-c" (str "model_reasoning_effort=\"" codex-reasoning "\"")
                   "-c" "web_search=\"disabled\""
@@ -212,19 +221,73 @@
             ["resume" thread-id "-"]
             ["-"]))))
 
+(defn- shell-quote
+  [value]
+  (str "'" (str/replace (str value) "'" "'\\''") "'"))
+
+(defn- absolute-classpath
+  []
+  (let [working-directory (Paths/get (System/getProperty "user.dir")
+                                     (make-array String 0))]
+    (->> (str/split (System/getProperty "java.class.path")
+                    (re-pattern (Pattern/quote File/pathSeparator)))
+         (map (fn [entry]
+                (let [path (Paths/get entry (make-array String 0))]
+                  (str (.normalize
+                        (if (.isAbsolute path)
+                          path
+                          (.resolve working-directory path)))))))
+         (str/join File/pathSeparator))))
+
+(defn- install-repl-tool!
+  [^Path job-dir {:keys [host port workspace-id]}]
+  (when-not (and (= "127.0.0.1" host)
+                 (int? port)
+                 (<= 1 port 65535)
+                 (some? workspace-id))
+    (throw (provider/error :provider/repl-config-invalid
+                           "Workspace REPL connection metadata is invalid")))
+  (let [config-path (.resolve job-dir ".ppp-repl.edn")
+        tool-path (.resolve job-dir "ppp-repl")
+        java-path (.resolve (.resolve (Paths/get (System/getProperty "java.home")
+                                                 (make-array String 0))
+                                      "bin")
+                            "java")
+        classpath (absolute-classpath)]
+    (fs/atomic-write-string!
+     config-path
+     (pr-str {:host host :port port :workspace-id (str workspace-id)}))
+    (fs/atomic-write-string!
+     tool-path
+     (str "#!/bin/sh\n"
+          "exec " (shell-quote java-path)
+          " -cp " (shell-quote classpath)
+          " clojure.main -m ppp.repl.client "
+          (shell-quote config-path) "\n"))
+    (when-not (.setExecutable (.toFile tool-path) true true)
+      (throw (provider/error :provider/repl-tool-install-failed
+                             "Workspace REPL tool could not be made executable")))
+    tool-path))
+
 (defn request-prompt
   [{:keys [prompt source transcript-summary runtime-version connector-catalog
-           ingress-verifier-catalog repair-feedback]}]
+           ingress-verifier-catalog repair-feedback repl-endpoint]}]
   (str
    "You are the code-generation engine inside Programmable Programming Page.\n"
    "Use $ppp-validate-and-apply for every change and repair attempt.\n"
    "The end user never sees code, files, Git, models, skills, or MCP.\n"
    "Classify the turn as reply, clarify, change, or restore. Ask exactly one question for clarify.\n"
-   "For change, return complete file contents, never textual patches. Keep all writes inside the allowed tree.\n"
+   (if repl-endpoint
+     (str "A project-scoped nREPL client is attached to the already-running server. "
+          "For every change, use only ./ppp-repl to inspect the live project, evaluate incremental forms, observe the result, and repair failures in the same session before answering. "
+          "After the live behavior works, return complete file contents as the durable reconciliation of that accepted runtime state; never return textual patches.\n")
+     "For change, return complete file contents, never textual patches. Keep all writes inside the allowed tree.\n")
    "Write direct Clojure, ClojureScript, CLJC, CSS, and raw SQLite migrations.\n"
    "Choose the smallest affected runtime surface from the user's outcome. A visual, layout, local-state, timer, keyboard, Canvas, or browser-game change writes only src/client and styles; do not rewrite src/server, src/shared, tests, or migrations for it. Persistence, shared domain rules, or server business behavior must update the relevant server/shared/test source and migrations.\n"
    "Every later turn evolves the current source tree. Preserve unrelated working features and stored data unless the user explicitly asks to remove them; replacing one game must not erase a separate ranking feature.\n"
-   "Do not request or use shell, filesystem access, Java interop, secrets, tools, or new dependencies.\n"
+   (if repl-endpoint
+     "The only shell command you may use is the supplied ./ppp-repl client. Do not use any other shell command, filesystem access, Java interop, secrets, tools, or new dependencies.\n"
+     "Do not request or use shell, filesystem access, Java interop, secrets, tools, or new dependencies.\n")
    "PPP workspace access is not the same as an account inside the generated product. Ordinary signup, login, logout, member profiles, roles, ownership, and authenticated product behavior are supported outcomes, not security refusals. Use the typed product-auth capabilities from runtime.api; never store passwords or session tokens yourself. Keep public profile and role data in generated tables keyed by the public auth user id.\n"
    "Generated client source runs in an opaque-origin sandbox frame and may use normal JavaScript/DOM/browser interop. It cannot access the authenticated parent; host operations use runtime.api only.\n"
    "For every interactive server mutation, trace the UI handler through the three-argument runtime.api/action!, server response shape, target page-state key, visible rerender, and SQLite reload before returning it.\n"
@@ -480,6 +543,9 @@
       (fs/ensure-dir! job-dir)
       (install-runtime-skill! job-dir)
       (install-diagnostics-skill! job-dir (:client-diagnostics request))
+      (when-let [repl-endpoint (:repl-endpoint request)]
+        (install-repl-tool! job-dir (assoc repl-endpoint
+                                           :workspace-id (:session-id request))))
       (try
         (let [command (command-vector this job-dir output-file requested-thread-id)
               execution (run-process! this command (request-prompt request) job-dir

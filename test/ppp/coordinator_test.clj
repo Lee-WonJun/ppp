@@ -7,6 +7,8 @@
             [ppp.provider.budget :as provider-budget]
             [ppp.provider.fake :as fake]
             [ppp.provider.queue :as provider-queue]
+            [ppp.repl.bridge :as repl-bridge]
+            [ppp.repl.service :as repl]
             [ppp.runtime.auth :as auth]
             [ppp.runtime.resources :as resources]
             [ppp.runtime.server :as server]
@@ -36,7 +38,8 @@
                         :session-db-limit (* 25 1024 1024)
                         :checkpoint-limit (* 256 1024 1024)
                         :instance-limit (* 2 1024 1024 1024)}
-                       (dissoc overrides :test/provider :test/provider-budget))
+                       (dissoc overrides :test/provider :test/provider-budget
+                               :test/repl-service))
          session-store (store/create-store config)
          provider (or (:test/provider overrides) (fake/create-provider))
          queue (provider-queue/create-queue config)
@@ -53,6 +56,7 @@
                         :allow-weak-test-parameters? true})
          outbound-service (outbound/create-service {})
          resource-service (resources/create-service config)
+         repl-service (:test/repl-service overrides)
          sent (atom [])
          bundle-fn (atom nil)
          hub (websocket/create-hub
@@ -70,6 +74,7 @@
                        :provider-budget (:test/provider-budget overrides)
                        :provider-queue queue
                        :registry registry
+                       :repl-service repl-service
                        :product-auth auth-service
                        :resource-service resource-service
                        :outbound outbound-service
@@ -82,14 +87,17 @@
       :registry registry
       :product-auth auth-service
       :resource-service resource-service
+      :repl-service repl-service
       :hub hub
       :sent sent
       :coordinator coordinator})))
 
 (defn- close-context!
-  [{:keys [root queue hub]}]
+  [{:keys [root queue hub repl-service]}]
   (provider-queue/stop! queue)
   (websocket/stop! hub)
+  (when repl-service
+    (repl/stop! repl-service))
   (fs/delete-tree! root))
 
 (defn- exception-code
@@ -101,6 +109,143 @@
       (:code (ex-data cause)))))
 
 (declare submit-and-await!)
+
+(deftest exhausted-workspace-repl-turn-reconstructs-durable-server-and-sqlite
+  (let [service (repl/start!)
+        attempts (atom 0)
+        live-provider
+        (reify provider/Provider
+          (ready? [_] {:ready? true :provider :workspace-repl-fixture})
+          (generate! [_ {:keys [session-id]}]
+            (let [attempt (swap! attempts inc)
+                  server-form
+                  (str "(ns runtime.server (:require [runtime.api :as api]))\n"
+                       "(api/register-action! :ping"
+                       " (fn [_]"
+                       "  (api/execute! \"INSERT INTO scratch (attempt) VALUES (?)\" ["
+                       attempt "])"
+                       "  {:live " attempt "}))")]
+              (when (= 1 attempt)
+                (repl/eval!
+                 service session-id
+                 (str "(ppp-migrate-server! \"scratch\" "
+                      (pr-str "CREATE TABLE scratch (attempt INTEGER NOT NULL);")
+                      ")")))
+              (repl/eval! service session-id
+                          (str "(ppp-eval-server! " (pr-str server-form) ")"))
+              (repl/eval! service session-id "(ppp-invoke-server! :ping {})")
+              (provider/generation
+               (provider/change-result
+                "This proposal is intentionally unreconcilable."
+                "Invalid durable source"
+                [{:path "src/server/runtime/server.clj"
+                  :content "(ns runtime.server) (System/exit 0)"}]
+                [])
+               "31313131-3131-4313-8313-313131313131"))))
+        context (test-context {:runtime-profile :workspace-repl
+                               :change-generation-attempts 2
+                               :test/provider live-provider
+                               :test/repl-service service})
+        created-session (atom nil)]
+    (try
+      (let [session-id (:id (coordinator/create-session! (:coordinator context)))
+            source-before (store/current-source-map (:store context) session-id)
+            database-path (store/current-db-path (:store context) session-id)
+            database-before (sqlite/logical-hash (sqlite/datasource database-path))]
+        (reset! created-session session-id)
+        (is (= :source/validation-failed
+               (exception-code
+                #(submit-and-await! context session-id (random-uuid) 0
+                                    "Temporarily replace the running action"))))
+        (is (= 2 @attempts))
+        (is (= source-before
+               (store/current-source-map (:store context) session-id)))
+        (is (= database-before
+               (sqlite/logical-hash (sqlite/datasource database-path))))
+        (is (= [0]
+               (mapv :runtime-version
+                     (store/list-checkpoints (:store context) session-id))))
+        (is (= {:runtime-version 0
+                :result {:ok true :message "The runtime is ready."}}
+               (server/invoke! (:registry context) session-id :ping {})))
+        (let [rejection (last (store/list-history (:store context) session-id))]
+          (is (= :rejected (:kind rejection)))
+          (is (= 2 (:generation-attempts rejection)))
+          (is (= [:server/migrate
+                  :server/eval :server/invoke
+                  :server/eval :server/invoke]
+                 (->> (:repl-events rejection)
+                      (filter #(= :accepted (:status %)))
+                      (mapv :operation))))))
+      (finally
+        (when-let [session-id @created-session]
+          (repl-bridge/unregister-project! session-id))
+        (close-context! context)))))
+
+(deftest workspace-repl-observations-accumulate-across-repair-attempts
+  (let [service (repl/start!)
+        attempts (atom 0)
+        live-server-source
+        (str "(ns runtime.server\n"
+             "  (:require [runtime.api :as api]))\n\n"
+             "(api/register-action!\n"
+             " :ping\n"
+             " (fn [_request] {:ok true :attempt 2}))\n")
+        live-server-form
+        (str "(do\n"
+             "  (defn live-ping [_request] {:ok true :attempt 2})\n"
+             "  (ppp-register-action! :ping #'live-ping))")
+        repair-provider
+        (reify provider/Provider
+          (ready? [_] {:ready? true :provider :workspace-repl-repair-fixture})
+          (generate! [_ {:keys [session-id]}]
+            (let [attempt (swap! attempts inc)]
+              (when (= 1 attempt)
+                (repl/eval!
+                 service session-id
+                 (str "(ppp-eval-server! '" live-server-form ")"))
+                (repl/eval! service session-id "(ppp-invoke-server! :ping {})"))
+              (provider/generation
+               (provider/change-result
+                (if (= 1 attempt)
+                  "The live action worked, but the first source is invalid."
+                  "The exercised live action is reconciled now.")
+                "Repair a live action"
+                [{:path "src/server/runtime/server.clj"
+                  :content (if (= 1 attempt)
+                             "(ns runtime.server) (System/exit 0)"
+                             live-server-source)}]
+                [])
+               "32323232-3232-4323-8323-323232323232"))))
+        context (test-context {:runtime-profile :workspace-repl
+                               :change-generation-attempts 2
+                               :test/provider repair-provider
+                               :test/repl-service service})
+        created-session (atom nil)]
+    (try
+      (let [session-id (:id (coordinator/create-session! (:coordinator context)))]
+        (reset! created-session session-id)
+        (is (= {:kind :change :runtime-version 1}
+               (submit-and-await! context session-id (random-uuid) 0
+                                  "Replace the running ping action")))
+        (is (= 2 @attempts))
+        (is (= {:runtime-version 1 :result {:ok true :attempt 2}}
+               (server/invoke! (:registry context) session-id :ping {})))
+        (let [event (last (store/list-history (:store context) session-id))]
+          (is (= :change (:kind event)))
+          (is (= 2 (:generation-attempts event)))
+          (is (= [:server/eval :server/invoke]
+                 (->> (:repl-events event)
+                      (filter #(= :accepted (:status %)))
+                      (mapv :operation))))
+          (is (= [:jvm-var]
+                 (->> (:repl-events event)
+                      (filter #(= :server/eval (:operation %)))
+                      (mapv :evaluation-realm))))))
+      (finally
+        (when-let [session-id @created-session]
+          (repl-bridge/unregister-project! session-id))
+        (close-context! context)))))
 
 (deftest provider-repair-attempts-consume-the-global-start-budget
   (let [clock (atom 100000)
@@ -444,12 +589,17 @@
 (deftest failure-messages-explain-the-stage-without-exposing-internals
   (let [message-for (ns-resolve 'ppp.coordinator 'user-safe-failure)
         render-message (message-for :runtime/client-render-failed)
-        source-message (message-for :source/validation-failed)]
+        source-message (message-for :source/validation-failed)
+        live-proof-message (message-for :repl/evaluation-required)
+        interrupted-message (message-for :provider/interrupted)]
     (is (re-find #"could not be drawn in this browser preview" render-message))
     (is (re-find #"does not allow" source-message))
+    (is (re-find #"before proving it in the running product" live-proof-message))
+    (is (re-find #"stopped before it could finish" interrupted-message))
     (is (not= render-message source-message))
-    (is (not (re-find #"SCI|REPL|WebSocket|source/validation" render-message)))
-    (is (not (re-find #"SCI|REPL|WebSocket|source/validation" source-message)))))
+    (doseq [message [render-message source-message live-proof-message
+                     interrupted-message]]
+      (is (not (re-find #"SCI|REPL|WebSocket|source/validation" message))))))
 
 (deftest generated-domain-tests-run-only-for-relevant-runtime-changes
   (is (= :client-only

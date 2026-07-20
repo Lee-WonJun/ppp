@@ -40,11 +40,13 @@
    'sci.lang.Type {:class sci.lang.Type :closed true}
    'sci.lang.Var {:class sci.lang.Var :closed true}})
 
-(defrecord ServerRuntime [version context actions jobs ingresses database database-path
+(defrecord ServerRuntime [version context actions jobs ingresses api database database-path
                           deadline phase connection request-context effects
                           session-id auth-service resource-service timeout-ms
-                          response-limit database-size-limit])
+                          response-limit database-size-limit allowed-sql])
 (defrecord Registry [active])
+
+(declare action-ids job-ids ingress-routes)
 
 (defn create-registry
   []
@@ -122,10 +124,14 @@
 
 (defn- assert-declared-sql!
   [allowed-sql kind sql]
-  (when-not (and (string? sql) (contains? (get allowed-sql kind) (str/trim sql)))
-    (throw (ex-info "Generated actions may execute only SQL declared in their source"
-                    {:code :action/sql-not-declared
-                     :operation kind})))
+  (let [allowed-sql (if (instance? clojure.lang.IDeref allowed-sql)
+                      @allowed-sql
+                      allowed-sql)]
+    (when-not (and (string? sql)
+                   (contains? (get allowed-sql kind) (str/trim sql)))
+      (throw (ex-info "Generated actions may execute only SQL declared in their source"
+                      {:code :action/sql-not-declared
+                       :operation kind}))))
   sql)
 
 (defn- assert-registered-job!
@@ -151,13 +157,14 @@
                               {:code :runtime/connector-unavailable}))))]
     {'register-action!
      (fn [action-id handler]
-       (ensure-phase! phase :staging :register-action!)
+       (ensure-phase! phase #{:staging :repl} :register-action!)
        (when-not (and (keyword? action-id)
                       (<= (count (str action-id)) 96)
                       (ifn? handler))
          (throw (ex-info "Invalid generated action registration"
                          {:code :runtime/invalid-action})))
-       (when (contains? @actions action-id)
+       (when (and (= :staging (.get ^ThreadLocal phase))
+                  (contains? @actions action-id))
          (throw (ex-info "Generated action is registered more than once"
                          {:code :runtime/duplicate-action :action-id action-id})))
        (when (>= (count @actions) 64)
@@ -168,13 +175,14 @@
 
      'register-job!
      (fn [handler-id handler]
-       (ensure-phase! phase :staging :register-job!)
+       (ensure-phase! phase #{:staging :repl} :register-job!)
        (when-not (and (keyword? handler-id)
                       (<= (count (str handler-id)) 96)
                       (ifn? handler))
          (throw (ex-info "Invalid generated background task registration"
                          {:code :runtime/invalid-job})))
-       (when (contains? @jobs handler-id)
+       (when (and (= :staging (.get ^ThreadLocal phase))
+                  (contains? @jobs handler-id))
          (throw (ex-info "Generated background task is registered more than once"
                          {:code :runtime/duplicate-job :handler-id handler-id})))
        (when (>= (count @jobs) 32)
@@ -185,7 +193,7 @@
 
      'register-ingress!
      (fn [route options handler]
-       (ensure-phase! phase :staging :register-ingress!)
+       (ensure-phase! phase #{:staging :repl} :register-ingress!)
        (when-not (and (keyword? route)
                       (<= (count (str route)) 96)
                       (map? options)
@@ -195,7 +203,8 @@
                       (ifn? handler))
          (throw (ex-info "Invalid generated public route registration"
                          {:code :runtime/invalid-ingress})))
-       (when (contains? @ingresses route)
+       (when (and (= :staging (.get ^ThreadLocal phase))
+                  (contains? @ingresses route))
          (throw (ex-info "Generated public route is registered more than once"
                          {:code :runtime/duplicate-ingress :route route})))
        (when (>= (count @ingresses) 16)
@@ -662,7 +671,7 @@
                           (sort-by key)
                           vec)
         test-reports (atom [])
-        allowed-sql (declared-action-sql selected)
+        allowed-sql (atom (declared-action-sql selected))
         api (runtime-api {:actions actions
                           :jobs jobs
                           :ingresses ingresses
@@ -734,10 +743,10 @@
                                :effects effects
                                :test-reports test-reports
                                :timeout-ms timeout-ms}))
-      (->ServerRuntime version context @actions @jobs @ingresses database database-path
+      (->ServerRuntime version context actions jobs ingresses api database database-path
                        deadline phase connection request-context effects
                        session-id auth-service resource-service timeout-ms
-                       response-limit database-size-limit)
+                       response-limit database-size-limit allowed-sql)
       (finally
         (leave-scope! phase deadline connection request-context effects)))))
 
@@ -752,6 +761,154 @@
 (defn runtime-for
   [^Registry registry session-id]
   (get @(:active registry) session-id))
+
+(defn describe-live
+  "Return bounded, non-secret information about the active generated server
+  runtime for a project-scoped nREPL client."
+  [^Registry registry session-id]
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))]
+    {:runtime-version (:version runtime)
+     :actions (action-ids runtime)
+     :jobs (job-ids runtime)
+     :ingresses (ingress-routes runtime)}))
+
+(defn eval-host-live!
+  "Run one trusted nREPL form directly in the already-running JVM while the
+  active product runtime exposes its registration capabilities. The caller
+  owns the project namespace and supplies the actual Clojure eval thunk.
+
+  This is development authority, not a generated-code sandbox. Production
+  refuses the Workspace REPL profile before this function can be reached."
+  [^Registry registry session-id source evaluate]
+  (when-not (and (string? source) (<= 1 (count source) (* 64 1024)))
+    (throw (ex-info "REPL evaluation requires bounded non-empty Clojure source"
+                    {:code :repl/code-invalid})))
+  (when-not (ifn? evaluate)
+    (throw (ex-info "REPL evaluation callback must be callable"
+                    {:code :repl/evaluator-invalid})))
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))
+        timeout-ms (long (:timeout-ms runtime))
+        repl-sql
+        (try
+          (declared-action-sql [["workspace-nrepl" source]])
+          (catch Exception cause
+            (throw (ex-info "Incremental server REPL evaluation failed"
+                            {:code :repl/eval-failed
+                             :cause-code (exception-code cause)}
+                            cause))))]
+    (swap! (:allowed-sql runtime) #(merge-with into % repl-sql))
+    (enter-scope! (:phase runtime) (:deadline runtime) (:connection runtime)
+                  (:request-context runtime) (:effects runtime)
+                  :repl (+ (System/nanoTime) (* timeout-ms 1000000)) nil nil nil)
+    (try
+      (let [value (evaluate)
+            printed (binding [*print-length* 100 *print-level* 12]
+                      (pr-str value))]
+        (when (> (count printed) (* 64 1024))
+          (throw (ex-info "REPL evaluation result exceeded its bound"
+                          {:code :repl/result-too-large})))
+        (assoc (describe-live registry session-id) :value printed))
+      (catch Exception cause
+        (throw (ex-info "Incremental server REPL evaluation failed"
+                        {:code :repl/eval-failed
+                         :cause-code (exception-code cause)}
+                        cause)))
+      (finally
+        (leave-scope! (:phase runtime) (:deadline runtime)
+                      (:connection runtime) (:request-context runtime)
+                      (:effects runtime))))))
+
+(defn call-live-capability!
+  "Call one capability belonging to the active runtime. Workspace nREPL Vars
+  use this while a registered action is executing, so database/auth/resource
+  access still follows the same transaction and observable HTTP path."
+  [^Registry registry session-id capability args]
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))
+        implementation (get (:api runtime) capability)]
+    (when-not implementation
+      (throw (ex-info "Workspace REPL capability is unavailable"
+                      {:code :repl/capability-unavailable
+                       :capability capability})))
+    (apply implementation args)))
+
+(defn eval-live!
+  "Evaluate incremental Clojure forms in the currently running generated SCI
+  context. This is called only through the project-scoped, loopback nREPL
+  bridge in the trusted Workspace REPL profile.
+
+  Definitions and registered handlers remain in the same context for the next
+  evaluation. Durable source reconciliation is a separate checkpoint step."
+  [^Registry registry session-id code]
+  (when-not (and (string? code) (<= 1 (count code) (* 64 1024)))
+    (throw (ex-info "REPL evaluation requires bounded non-empty Clojure source"
+                    {:code :repl/code-invalid})))
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))
+        timeout-ms (long (:timeout-ms runtime))
+        repl-sql
+        (try
+          (declared-action-sql [["workspace-nrepl" code]])
+          (catch Exception cause
+            (throw (ex-info "Incremental server REPL evaluation failed"
+                            {:code :repl/eval-failed
+                             :cause-code (exception-code cause)}
+                            cause))))]
+    (swap! (:allowed-sql runtime) #(merge-with into % repl-sql))
+    (enter-scope! (:phase runtime) (:deadline runtime) (:connection runtime)
+                  (:request-context runtime) (:effects runtime)
+                  :repl (+ (System/nanoTime) (* timeout-ms 1000000)) nil nil nil)
+    (try
+      (let [evaluation (sci/eval-string+ (:context runtime) code
+                                         {:file "workspace-nrepl"})
+            value (:val evaluation)
+            printed (binding [*print-length* 100 *print-level* 12]
+                      (pr-str value))]
+        (when (> (count printed) (* 64 1024))
+          (throw (ex-info "REPL evaluation result exceeded its bound"
+                          {:code :repl/result-too-large})))
+        {:value printed
+         :runtime-version (:version runtime)
+         :actions (action-ids runtime)
+         :jobs (job-ids runtime)
+         :ingresses (ingress-routes runtime)})
+      (catch Exception cause
+        (throw (ex-info "Incremental server REPL evaluation failed"
+                        {:code :repl/eval-failed
+                         :cause-code (exception-code cause)}
+                        cause)))
+      (finally
+        (leave-scope! (:phase runtime) (:deadline runtime)
+                      (:connection runtime) (:request-context runtime)
+                      (:effects runtime))))))
+
+(defn migrate-live!
+  "Apply one host-validated migration to the running workspace database using
+  the same deterministic filename the durable source commit will assign. The
+  coordinator snapshots SQLite before a Workspace REPL turn and restores that
+  snapshot if reconciliation ultimately fails."
+  [^Registry registry session-id name sql]
+  (when-let [error (policy/validate-migration {:name name :sql sql})]
+    (throw (ex-info "Workspace REPL migration is invalid" error)))
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))
+        name (policy/normalize-migration-name name)
+        count-row (sqlite/execute-one!
+                   (:database runtime)
+                   ["SELECT COUNT(*) AS migration_count FROM _ppp_migrations"])
+        file-name (format "%06d-%s.sql"
+                          (inc (long (:migration_count count-row))) name)
+        migration {:file-name file-name :name name :sql sql}]
+    (sqlite/apply-migrations! (:database runtime) [migration]
+                              {:timeout-ms (:timeout-ms runtime)})
+    {:file-name file-name :name name :status :applied}))
 
 (defn rebind-database
   [runtime ^Path database-path]
@@ -783,22 +940,22 @@
 
 (defn action-ids
   [runtime]
-  (vec (sort (keys (:actions runtime)))))
+  (vec (sort (keys @(:actions runtime)))))
 
 (defn job-ids
   [runtime]
-  (vec (sort (keys (:jobs runtime)))))
+  (vec (sort (keys @(:jobs runtime)))))
 
 (defn ingress-routes
   [runtime]
-  (vec (sort (keys (:ingresses runtime)))))
+  (vec (sort (keys @(:ingresses runtime)))))
 
 (defn ingress-options
   [^Registry registry session-id route]
   (let [runtime (or (runtime-for registry session-id)
                     (throw (ex-info "Session runtime is not active"
                                     {:code :runtime/not-active})))
-        registration (get (:ingresses runtime) route)]
+        registration (get @(:ingresses runtime) route)]
     (when-not registration
       (throw (ex-info "Generated public route not found"
                       {:code :runtime/ingress-not-found :route route})))
@@ -912,7 +1069,7 @@
    (invoke! registry session-id action-id request {}))
   ([^Registry registry session-id action-id request {:keys [auth-token]}]
    (let [runtime (active-runtime! registry session-id)
-         action (get (:actions runtime) action-id)]
+         action (get @(:actions runtime) action-id)]
      (when-not action
        (throw (ex-info "Generated action not found"
                        {:code :runtime/action-not-found :action-id action-id})))
@@ -921,7 +1078,7 @@
 (defn invoke-ingress!
   [^Registry registry session-id route request]
   (let [runtime (active-runtime! registry session-id)
-        {:keys [options handler]} (get (:ingresses runtime) route)]
+        {:keys [options handler]} (get @(:ingresses runtime) route)]
     (when-not handler
       (throw (ex-info "Generated public route not found"
                       {:code :runtime/ingress-not-found :route route})))
@@ -942,7 +1099,7 @@
 (defn run-job!
   [^Registry registry session-id {:keys [id handler payload] :as claimed-job}]
   (let [runtime (active-runtime! registry session-id)
-        job-handler (get (:jobs runtime) handler)]
+        job-handler (get @(:jobs runtime) handler)]
     (when-not job-handler
       (resources/fail-job! (:resource-service runtime) (:database runtime) id
                            :job/handler-not-found)

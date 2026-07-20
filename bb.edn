@@ -39,6 +39,14 @@
   {:doc "Run ClojureScript tests in Node"
    :task (shell "npx" "shadow-cljs" "compile" "test")}
 
+  repl-verify
+  {:doc "Prove standard nREPL attachment and incremental server/browser redefinition"
+   :task (do
+           (shell "clojure" "-M:test"
+                  "--focus" "ppp.repl.service-test"
+                  "--focus" "ppp.runtime.server-test/live-repl-redefines-the-running-action-and-retains-state")
+           (shell "npx" "shadow-cljs" "compile" "test"))}
+
   e2e
   {:doc "Run semantic browser tests"
    :task (shell "bb" "scripts/run_e2e.clj")}
@@ -101,4 +109,9 @@
 
   eval-evolution
   {:doc "Evolve one real product through eight OAuth Codex turns"
-   :task (shell "bb" "scripts/run_evolution_eval.clj")}}}
+   :task (shell "bb" "scripts/run_evolution_eval.clj")}
+
+  eval-repl-evolution
+  {:doc "Evolve one real product through the development Workspace nREPL profile"
+   :task (shell {:extra-env {"PPP_RUNTIME_PROFILE" "workspace-repl"}}
+                "bb" "scripts/run_evolution_eval.clj")}}}

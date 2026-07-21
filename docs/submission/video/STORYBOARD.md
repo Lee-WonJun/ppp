@@ -17,8 +17,9 @@ Editing rules:
 
 - Do not show PPP access, credentials, a terminal, source, diffs, local paths,
   session identifiers, provider traces, or private diagnostics.
-- Use straight cuts and explicit `Generation time compressed` cards. Never
-  imply real Codex generation was instantaneous.
+- Keep each real request screen visible, accelerate only its remaining wait
+  footage at 4x with a small disclosure, and continue directly into the real
+  outcome. Never imply real Codex generation was instantaneous.
 - Do not replace a difficult live result with fake-provider footage.
 - Say `nREPL` only in the explanatory deck and narration. The generated product
   UI remains nontechnical.

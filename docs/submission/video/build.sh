@@ -42,7 +42,7 @@ max_duration() {
   awk -v a="$1" -v b="$2" 'BEGIN { printf "%.3f", (a > b ? a : b) }'
 }
 
-for scene in 01 02 07 08 09; do
+for scene in 01 02 07 08; do
   profile="/tmp/ppp-video-render-$scene-$$"
   "$CHROME" --headless=new --disable-gpu --hide-scrollbars \
     --allow-file-access-from-files --window-size=1440,900 \
@@ -99,12 +99,20 @@ make_slow_verified_window() {
     -c:v libx264 -preset medium -crf 19 -movflags +faststart "$output"
 }
 
-make_compression_part() {
+make_accelerated_wait() {
   local output="$1"
-  "$FFMPEG" -y -loglevel error -loop 1 -framerate 30 \
-    -i "$GENERATED/slides/09.png" -t 1.750 -an \
-    -vf "fps=30,format=yuv420p" -c:v libx264 -preset medium -crf 19 \
-    -movflags +faststart "$output"
+  local source="$2"
+  local start="$3"
+  local factor="${4:-4}"
+  local font="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+  local source_duration
+  local output_duration
+  source_duration="$(duration "$source")"
+  output_duration="$(awk -v total="$source_duration" -v start="$start" -v factor="$factor" 'BEGIN { printf "%.3f", (total - start) / factor }')"
+  "$FFMPEG" -y -loglevel error -ss "$start" -i "$source" -an \
+    -vf "setpts=(PTS-STARTPTS)/${factor},scale=1440:900:flags=lanczos,fps=30,drawbox=x=30:y=30:w=116:h=42:color=0x101310@0.82:t=fill,drawtext=fontfile=$font:text='${factor}x wait':fontcolor=white:fontsize=18:x=48:y=41,format=yuv420p" \
+    -t "$output_duration" \
+    -c:v libx264 -preset medium -crf 19 -movflags +faststart "$output"
 }
 
 concat_visual() {
@@ -120,50 +128,56 @@ concat_visual() {
 }
 
 make_source_part "$GENERATED/parts/03-prompt.mp4" "$SOURCE_DIR/000.mp4" 11.000
-make_compression_part "$GENERATED/parts/03-compressed.mp4"
+make_accelerated_wait "$GENERATED/parts/03-wait-4x.mp4" \
+  "$SOURCE_DIR/000.mp4" 11.000
 make_source_part "$GENERATED/parts/03-outcome.mp4" "$SOURCE_DIR/002.mp4"
 concat_visual 03 \
   "$GENERATED/parts/03-prompt.mp4" \
-  "$GENERATED/parts/03-compressed.mp4" \
+  "$GENERATED/parts/03-wait-4x.mp4" \
   "$GENERATED/parts/03-outcome.mp4"
 
 make_source_part "$GENERATED/parts/04-account-prompt.mp4" "$SOURCE_DIR/003.mp4" 7.000
-make_compression_part "$GENERATED/parts/04-account-compressed.mp4"
+make_accelerated_wait "$GENERATED/parts/04-account-wait-4x.mp4" \
+  "$SOURCE_DIR/003.mp4" 7.000
 make_source_part "$GENERATED/parts/04-account-outcome.mp4" "$SOURCE_DIR/005.mp4"
 make_source_part "$GENERATED/parts/04-ux-prompt.mp4" "$SOURCE_DIR/006.mp4" 7.000
-make_compression_part "$GENERATED/parts/04-ux-compressed.mp4"
+make_accelerated_wait "$GENERATED/parts/04-ux-wait-4x.mp4" \
+  "$SOURCE_DIR/006.mp4" 7.000
 make_source_part "$GENERATED/parts/04-ux-outcome.mp4" "$SOURCE_DIR/008.mp4"
 concat_visual 04 \
   "$GENERATED/parts/04-account-prompt.mp4" \
-  "$GENERATED/parts/04-account-compressed.mp4" \
+  "$GENERATED/parts/04-account-wait-4x.mp4" \
   "$GENERATED/parts/04-account-outcome.mp4" \
   "$GENERATED/parts/04-ux-prompt.mp4" \
-  "$GENERATED/parts/04-ux-compressed.mp4" \
+  "$GENERATED/parts/04-ux-wait-4x.mp4" \
   "$GENERATED/parts/04-ux-outcome.mp4"
 
 make_source_part "$GENERATED/parts/05-prompt.mp4" "$SOURCE_DIR/009.mp4" 7.000
-make_compression_part "$GENERATED/parts/05-compressed.mp4"
+make_accelerated_wait "$GENERATED/parts/05-wait-4x.mp4" \
+  "$SOURCE_DIR/009.mp4" 7.000
 make_source_part "$GENERATED/parts/05-outcome.mp4" "$SOURCE_DIR/011.mp4"
 concat_visual 05 \
   "$GENERATED/parts/05-prompt.mp4" \
-  "$GENERATED/parts/05-compressed.mp4" \
+  "$GENERATED/parts/05-wait-4x.mp4" \
   "$GENERATED/parts/05-outcome.mp4"
 
 make_source_part "$GENERATED/parts/06-library-prompt.mp4" "$SOURCE_DIR/012.mp4" 7.000
-make_compression_part "$GENERATED/parts/06-library-compressed.mp4"
+make_accelerated_wait "$GENERATED/parts/06-library-wait-4x.mp4" \
+  "$SOURCE_DIR/012.mp4" 7.000
 make_source_part "$GENERATED/parts/06-library-outcome.mp4" "$SOURCE_DIR/014.mp4"
 make_source_part "$GENERATED/parts/06-tetris-prompt.mp4" "$SOURCE_DIR/015.mp4" 7.000
-make_compression_part "$GENERATED/parts/06-tetris-compressed.mp4"
+make_accelerated_wait "$GENERATED/parts/06-tetris-wait-4x.mp4" \
+  "$SOURCE_DIR/015.mp4" 7.000
 make_slow_verified_window "$GENERATED/parts/06-tetris-outcome.mp4" \
   "$SOURCE_DIR/017.mp4" 1.050 0.500 8
 make_source_window "$GENERATED/parts/06-preserved-snake.mp4" \
   "$SOURCE_DIR/017.mp4" 1.600 3.000
 concat_visual 06 \
   "$GENERATED/parts/06-library-prompt.mp4" \
-  "$GENERATED/parts/06-library-compressed.mp4" \
+  "$GENERATED/parts/06-library-wait-4x.mp4" \
   "$GENERATED/parts/06-library-outcome.mp4" \
   "$GENERATED/parts/06-tetris-prompt.mp4" \
-  "$GENERATED/parts/06-tetris-compressed.mp4" \
+  "$GENERATED/parts/06-tetris-wait-4x.mp4" \
   "$GENERATED/parts/06-tetris-outcome.mp4" \
   "$GENERATED/parts/06-preserved-snake.mp4"
 

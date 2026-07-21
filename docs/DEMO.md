@@ -2,7 +2,7 @@
 
 Status: polished real-Codex English narrative film built and verified locally;
 public upload pending
-Actual runtime: 168.751 seconds
+Actual runtime: 168.518 seconds
 Voice: English
 Required subtitles: English
 
@@ -27,8 +27,8 @@ ranking, and reload persistence visibly work, not because we show its code.
 - No product account or product data exists before the take.
 - Notifications, bookmarks bar, password managers, and unrelated tabs hidden.
 - Screen recording at 30fps or higher.
-- Honest time-compression cards for model waits; do not imply instant
-  generation.
+- Real provider waits remain visible on the product screen and play at 4x with
+  a small disclosure; do not imply instant generation.
 
 The final capture path is:
 
@@ -127,7 +127,7 @@ Expected visible outcome:
 | Time | Picture | English subtitle / narration |
 |---:|---|---|
 | 0:00-0:09 | Projects is already open. Create `Arcade evolution` and enter its blank canvas. | `The hard part for many product people is not prompting. It is getting past installs, Git, folders, builds, and authentication.` |
-| 0:09-0:24 | Send Prompt 1, briefly show real progress, then an honest time-compression card. | `PPP starts where familiar browser tools start: open a project and describe the outcome.` |
+| 0:09-0:24 | Send Prompt 1, show real progress, then accelerate the same wait footage at 4x into the result. | `PPP starts where familiar browser tools start: open a project and describe the outcome.` |
 | 0:24-0:39 | Play Snake. Show automatic movement, arrow input, and score. | `The first result is a real browser game. Its timer and keyboard behavior are already running, with no refresh.` |
 | 0:39-0:55 | Send Prompt 2. Show the first account form beside Snake. | `Now the same conversation crosses the server boundary and adds product accounts without replacing the game.` |
 | 0:55-1:10 | Point at the awkward form, send Prompt 3, show the redesigned account panel. | `Product work is iterative. The first form is not good enough, so I ask for a better interface and useful errors.` |
@@ -139,11 +139,13 @@ Expected visible outcome:
 | 2:40-2:54 | Open Tetris, show automatic falling and arrow input, return to Snake and its ranking. | `Tetris runs in the browser. Accounts and rankings stay on the server. Both evolve inside one live product workspace.` |
 | 2:54-2:59 | Final frame: library, sidebar, and tagline. | `Where product conversations become running software.` |
 
-The polished English narrative cut is 168.751 seconds. It opens with the
+The polished English narrative cut is 168.518 seconds. It opens with the
 installation and Git barrier, distinguishes the nREPL-driven product loop from
 source hot reload, then uses only the verified real-Codex footage for the
-generated product story. Long model waits use explicit compression cards, and
-the brief real Tetris timer/keyboard sequence is labeled as 8x slow playback.
+generated product story. Each request remains on screen while its real wait
+tail plays at 4x into the actual outcome; no standalone compression card
+interrupts the sequence. The brief real Tetris timer/keyboard sequence is
+labeled as 8x slow playback.
 The export remains below 180 seconds and explicitly explains Codex and GPT-5.6
 across product decisions, implementation, runtime repair, verification,
 deployment operations, and production of the film itself.
@@ -151,8 +153,8 @@ deployment operations, and production of the film itself.
 ## 5. Camera and editing rules
 
 - The first visible frame is Projects. Never show PPP login or access setup.
-- Keep at least one real progress transition per turn, then use an explicit
-  `Generation time compressed` card when shortening the wait.
+- Keep the real request and progress screen visible, accelerate only the
+  remaining wait footage at 4x, and continue directly into the real outcome.
 - Do not splice in fake-provider output or claim a deterministic fixture was
   generated live.
 - Never show a terminal, source tree, generated code, diff, SQL, test output,

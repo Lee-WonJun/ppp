@@ -32,7 +32,9 @@ artifacts/submission-video/final/ppp-build-week-demo.en.srt
 ## Truthfulness contract
 
 - Generated-product shots are cut only from the PPP-025 real Codex recording.
-- Every removed provider wait is replaced by a readable time-compression card.
+- Each request begins at normal speed, then its remaining real provider-wait
+  footage plays at 4x on the same screen and continues directly into the real
+  outcome. A small `4x wait` badge discloses the accelerated interval.
 - Deck scenes explain the product and architecture; they do not simulate a
   generated product result.
 - The public URL may be shown because the judge instance is live, but the film

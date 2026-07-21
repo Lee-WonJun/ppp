@@ -1,5 +1,9 @@
 # PPP-032 Final Submission Film Evidence
 
+Superseded on 2026-07-21 by PPP-033. This record describes the prior render;
+the current ignored MP4/SRT paths now contain the continuous-wait edit recorded
+in `artifacts/evidence/ppp-033-continuous-wait-edit.md`.
+
 Date: 2026-07-21
 Status: passed locally; public upload not performed
 

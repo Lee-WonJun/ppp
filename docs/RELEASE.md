@@ -33,13 +33,15 @@ Local completeness does not authorize remote or public state changes.
   in one project and one resumed provider thread through Snake, product auth,
   visible error repair, authenticated SQLite ranking, Game library, and
   preserved Tetris addition.
-- Local final film: PPP-032 turns the PPP-025 real-Codex capture into a polished
-  168.751-second 1440x900 narrative film with honest wait-compression cards,
-  disclosed 8x slow playback of the real Tetris timer/keyboard frames, English
-  narration, burned and embedded synchronized English subtitles, an accurate
-  nREPL-versus-hot-reload explanation, and explicit Codex/GPT-5.6 use. The
-  reproducible pipeline is in `docs/submission/video/`; the bounded record is
-  `artifacts/evidence/ppp-032-final-submission-film.md`.
+- Local final film: PPP-033 refines the PPP-032 narrative edit into a polished
+  168.518-second 1440x900 film. Every real request remains visually continuous
+  through a disclosed 4x provider-wait tail and into its outcome; standalone
+  compression cards are gone. The film retains disclosed 8x slow playback of
+  real Tetris timer/keyboard frames, English narration, burned and embedded
+  synchronized English subtitles, an accurate nREPL-versus-hot-reload
+  explanation, and explicit Codex/GPT-5.6 use. The reproducible pipeline is in
+  `docs/submission/video/`; the current bounded record is
+  `artifacts/evidence/ppp-033-continuous-wait-edit.md`.
 - Streamed real-Codex progress: PPP-026 incrementally parses bounded JSONL and
   delivers only metadata-derived product-language details to the requesting
   tab. Real OAuth browser observation and the complete gate are recorded in

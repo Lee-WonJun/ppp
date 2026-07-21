@@ -1,6 +1,6 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-032 final narrative film and release gates complete; publication pending
+Status: PPP-033 continuous-wait final film and release gates complete; publication pending
 Last updated: 2026-07-21
 
 ## 1. Scoring model
@@ -152,6 +152,7 @@ Scoring anchors:
 | E-22 | PPP-030 runtime-profile report | Precise staged-REPL terminology, current public POC rationale and limits, Workspace Capsule target, source reconciliation contract, and unchanged current security gates. |
 | E-23 | PPP-031 REPL-driven runtime report | Standard loopback nREPL attachment, persistent project namespace, live inspect/eval/action/migration/browser operations, same-turn repair, SQLite reload persistence, rollback, and precise shared-versus-workspace scope. |
 | E-24 | PPP-032 final narrative submission film | 168.751-second 1440x900 H.264/AAC film with burned and embedded English subtitles, real-Codex product footage, honest wait compression and Tetris slow-playback disclosure, nREPL-versus-hot-reload explanation, and Codex contribution story. |
+| E-25 | PPP-033 continuous-wait final edit | 168.518-second replacement cut with no standalone compression cards, six real provider-wait tails accelerated at 4x on the same product screen, direct request-to-outcome continuity, and revalidated media/subtitle/security contracts. |
 
 ## 7. Automated release gate
 
@@ -338,7 +339,7 @@ All conditions are required:
 - actual deployment has separate owner approval.
 
 The evaluator records the current complete baseline below. PPP-024 E-16,
-PPP-025 E-17, PPP-026 E-18, PPP-027 E-19, PPP-031 E-23, PPP-032 E-24, and the expanded automated,
+PPP-025 E-17, PPP-026 E-18, PPP-027 E-19, PPP-031 E-23, PPP-032 E-24, PPP-033 E-25, and the expanded automated,
 production-browser, public-deployment, and live gates pass. Publication remains
 blocked only on uploading the verified video and submission approval.
 
@@ -346,7 +347,7 @@ blocked only on uploading the verified video and submission approval.
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` (196 JVM/1,420 assertions, 31 CLJS/145 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 233-file secret scan); standard loopback nREPL with live Var redefinition; real OAuth Workspace REPL evolution 8/8; browser checkpoint rewind/return; exact final-video Codex story 6/6; public persistent-OAuth canary; E-15 through E-24; PPP-007 through PPP-032 evidence | pass |
+| Technical implementation | 25/25 | isolated `bb verify` (196 JVM/1,420 assertions, 31 CLJS/145 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 235-file secret scan); standard loopback nREPL with live Var redefinition; real OAuth Workspace REPL evolution 8/8; browser checkpoint rewind/return; exact final-video Codex story 6/6; public persistent-OAuth canary; E-15 through E-25; PPP-007 through PPP-033 evidence | pass |
 | Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests; manually reviewed 1440x900 final cut | pass |
 | Impact | 24/25 | `docs/PRD.md`; exact Snake-to-game-platform story with generated product accounts and persistent ranking; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |

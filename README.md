@@ -8,7 +8,7 @@ The user never needs to install a development environment, clone a repository, i
 
 Status: the complete session resource plane, shared judge workspace,
 on-demand generated-product diagnostics, exact final-video story gate, and
-the verified 168.751-second polished local real-Codex film are complete. External
+the verified 168.518-second polished local real-Codex film are complete. External
 publication remains owner-controlled. Automated
 verification, production-configured shared-access browser tests, the 24-case
 live Codex evaluation, the eight-step cumulative real-product evolution gate,
@@ -32,8 +32,10 @@ product-authenticated, SQLite-ranked game platform and then adds Tetris. Its
 opening explains why PPP is an nREPL-driven product workspace rather than
 source hot reload, and its closing records Codex's contribution from product
 decisions through verification, judge deployment operations, and production
-of the film. The deterministic fake provider remains test infrastructure and
-is never presented as final-video generation.
+of the film. Real provider waits stay on the same product screen and are played
+at 4x speed, so the request-to-result sequence remains continuous. The
+deterministic fake provider remains test infrastructure and is never presented
+as final-video generation.
 
 In the conversation composer, Enter sends and Shift+Enter inserts a newline.
 

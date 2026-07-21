@@ -17,7 +17,7 @@ Last updated: 2026-07-21
 |---|---|---|---|
 | PRD-F01 | PPP-002, PPP-022, PPP-028, PPP-029, PPP-030 | shared-password/fragment-policy integration, production Playwright login, judge quick-test guidance, product lineage, and vision-versus-POC positioning | E-01, E-03, E-14, E-20, E-21, E-22 |
 | PRD-F02 | PPP-002 | `ppp.access-test/csrf-required` | E-01 |
-| PRD-F03 | PPP-002, PPP-006, PPP-017, PPP-022, PPP-024, PPP-025, PPP-032 | Playwright Projects entry, named blank project, literal blank canvas, hidden-frame animation suppression, and final narrative film opening | E-01, E-04, E-14, E-16, E-17, E-24 |
+| PRD-F03 | PPP-002, PPP-006, PPP-017, PPP-022, PPP-024, PPP-025, PPP-032, PPP-033 | Playwright Projects entry, named blank project, literal blank canvas, hidden-frame animation suppression, and continuous-wait final narrative film opening | E-01, E-04, E-14, E-16, E-17, E-24, E-25 |
 | PRD-F04 | PPP-006 | Playwright shortcut and handle-hold Safe Mode | E-01, E-04 |
 | PRD-F05 | PPP-006, PPP-017 | Playwright broken-sidebar recovery and render-timeout preservation | E-01, E-04 |
 | PRD-F06 | PPP-003, PPP-022 | complete version-zero product plus bounded-title HTTP/browser creation | E-01, E-05, E-14 |
@@ -25,13 +25,13 @@ Last updated: 2026-07-21
 | PRD-F08 | PPP-007, PPP-015, PPP-018, PPP-019, PPP-031 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer, live status, and Workspace REPL turn contract | E-01, E-23 |
 | PRD-F09 | PPP-004, PPP-007 | `ppp.provider.queue-test/provider-queue-is-global-fifo-with-eight-waiting-slots` | E-01 |
 | PRD-F10 | PPP-007, PPP-015, PPP-018, PPP-019 | protocol schema plus WebSocket integration; guarded keyboard/composition submission and bounded phase presentation | E-01 |
-| PRD-F11 | PPP-006, PPP-007, PPP-017, PPP-024, PPP-025, PPP-031, PPP-032 | hidden render, animation-independent DOM commit, no-refresh Playwright, captured real-Codex game-platform story, active browser form evaluation, and visible timer/keyboard film evidence | E-01, E-03, E-16, E-17, E-23, E-24 |
-| PRD-F12 | PPP-005, PPP-024, PPP-025, PPP-031, PPP-032 | server action integration, captured authenticated ranking, live nREPL action redefinition/invocation against SQLite, and narrated server-owned persistence evidence | E-01, E-16, E-17, E-23, E-24 |
+| PRD-F11 | PPP-006, PPP-007, PPP-017, PPP-024, PPP-025, PPP-031, PPP-032, PPP-033 | hidden render, animation-independent DOM commit, no-refresh Playwright, captured real-Codex game-platform story, active browser form evaluation, and continuous visible timer/keyboard film evidence | E-01, E-03, E-16, E-17, E-23, E-24, E-25 |
+| PRD-F12 | PPP-005, PPP-024, PPP-025, PPP-031, PPP-032, PPP-033 | server action integration, captured authenticated ranking, live nREPL action redefinition/invocation against SQLite, and continuous narrated server-owned persistence evidence | E-01, E-16, E-17, E-23, E-24, E-25 |
 | PRD-F13 | PPP-005 | `ppp.property.gallery-domain-test/fake-gallery-seeds-once-persists-and-ranks-deterministically` | E-01, E-03 |
 | PRD-F14 | PPP-006, PPP-013, PPP-015, PPP-018 | sandbox state handoff; composer draft/focus tests; revision-ordered Korean IME regression | E-01 |
 | PRD-F15 | PPP-004, PPP-005, PPP-013, PPP-030, PPP-031 | JVM escape property, sandbox browser-API Playwright test, current-versus-target runtime boundary, and development-only loopback nREPL policy | E-01, E-02, E-22, E-23 |
 | PRD-F16 | PPP-001, PPP-005, PPP-007 | `ppp.runtime.policy-test/forbidden-sql-token-property` | E-01 |
-| PRD-F17 | PPP-005, PPP-007, PPP-024, PPP-025, PPP-031, PPP-032 | failed-stage isolation, captured real-Codex authenticated ranking reload persistence, live migration/action observation, pre-turn SQLite rollback, and final-film persistence evidence | E-01, E-16, E-17, E-23, E-24 |
+| PRD-F17 | PPP-005, PPP-007, PPP-024, PPP-025, PPP-031, PPP-032, PPP-033 | failed-stage isolation, captured real-Codex authenticated ranking reload persistence, live migration/action observation, pre-turn SQLite rollback, and continuous final-film persistence evidence | E-01, E-16, E-17, E-23, E-24, E-25 |
 | PRD-F18 | PPP-006, PPP-007, PPP-013, PPP-017 | hidden opaque-origin frame Playwright stage with animation scheduling disabled | E-01 |
 | PRD-F19 | PPP-007 | exact request-tab ACK integration | E-01 |
 | PRD-F20 | PPP-007 | PBT-08 and stale multi-tab Playwright | E-01 |
@@ -50,11 +50,11 @@ Last updated: 2026-07-21
 | PRD-F33 | PPP-020, PPP-030 | current capability matrix and negative suite plus adopted environment-level target boundary | E-01, E-12, E-22 |
 | PRD-F34 | PPP-020 | generated signup/login/current-user/protected-action/logout integration and Playwright | E-01, E-12 |
 | PRD-F35 | PPP-020 | credential/token redaction, reserved-table denial, HttpOnly cookie inspection | E-01, E-12 |
-| PRD-F36 | PPP-020, PPP-024, PPP-025, PPP-032 | PBT-09/PBT-10 plus captured final-story signup, logout, login, authenticated reload, and narrated account repair | E-01, E-12, E-16, E-17, E-24 |
+| PRD-F36 | PPP-020, PPP-024, PPP-025, PPP-032, PPP-033 | PBT-09/PBT-10 plus captured final-story signup, logout, login, authenticated reload, and continuous narrated account repair | E-01, E-12, E-16, E-17, E-24, E-25 |
 | PRD-F37 | PPP-020 | fake-provider regression plus live owner-prompt evolution scenario | E-07, E-12 |
 | PRD-F38 | PPP-020 | maintained resource/effect capability matrix and unsupported-effect ledger | E-12 |
 | PRD-F39 | PPP-021 | PBT-11, blob CRUD/restore/quota integration, compiled browser upload/reload | E-01, E-13 |
-| PRD-F40 | PPP-021, PPP-024, PPP-025, PPP-032 | PBT-12, action/job/ingress post-commit events, and captured preserved product state across final-story server/client evolution and the polished narrative film | E-01, E-13, E-16, E-17, E-24 |
+| PRD-F40 | PPP-021, PPP-024, PPP-025, PPP-032, PPP-033 | PBT-12, action/job/ingress post-commit events, and captured preserved product state across final-story server/client evolution and the continuous-wait narrative film | E-01, E-13, E-16, E-17, E-24, E-25 |
 | PRD-F41 | PPP-021 | PBT-13, clocked scheduler/lease/retry/idempotency/restore integration | E-01, E-13 |
 | PRD-F42 | PPP-021 | PBT-14, public ingress/HMAC/rate/body/session HTTP integration | E-01, E-13 |
 | PRD-F43 | PPP-021 | PBT-15, Unicode FTS/vector determinism/isolation and browser search outcome | E-01, E-13 |
@@ -137,7 +137,7 @@ PPP-001
                               |
                               +---------------------------> PPP-030
                               |
-                              +---------------------------> PPP-031 -> PPP-032
+                              +---------------------------> PPP-031 -> PPP-032 -> PPP-033
 ```
 
 ## Completion ledger
@@ -176,3 +176,4 @@ PPP-001
 | PPP-030 | done | Vision, current staged SCI REPL implementation, public-POC rationale, current limitations, and the intended Codex-operated Workspace Capsule architecture are separated across PRD, specification, security, thesis, README, TODO, and Devpost documents. Workspace-local shell/dependencies are profile-specific rather than permanent gaps; Control Plane and cross-workspace authority remain permanently denied. Devpost version 6 contains the same five-part positioning with video and `submitted_at` still empty. Lint, formatting, reference, conflict-search, diff, and staged secret checks pass. |
 | PPP-031 | done | Standard loopback nREPL, persistent project JVM namespaces and Var-backed action redefinition, live action/migration and exact-tab browser evaluation, turn-wide repair observations, runtime-to-source reconciliation, terminal reconstruction, audited provider-thread reset, Kernel-issued blob IDs, and 1,000-sequence PBT are complete. The real OAuth eight-step Workspace REPL evolution passes 8/8 with browser, source, server-stage, migration, version, surface, and thread-lineage gates. Browser restore rewinds checkpoint 13 to 8 and returns to 13 as new versions with expected source/data behavior and a fresh provider branch. Final `bb verify` passes 196 JVM/1,420 assertions, 31 CLJS/145 assertions, 25 Chromium paths plus one intentional skip, two production restart checks, Docker smoke, and a 218-file secret scan. |
 | PPP-032 | done | A reproducible HTML-deck, English neural narration, subtitle merge, and FFmpeg pipeline produces a 168.751-second 1440x900 H.264/AAC submission film with burned and embedded English subtitles. Generated-product footage comes only from the verified real-OAuth PPP-025 capture; long waits and the 8x Tetris slow playback are explicitly disclosed. The narrative distinguishes live nREPL Var redefinition from hot reload and the persistent browser runtime, shows Snake, accounts, visible validation, SQLite ranking, platformization, and Tetris, and states Codex's contribution through verification, judge deployment operations, and the film itself. Decoder, timeline, stream, volume, visual, and secret-safety gates pass; upload remains owner-controlled. |
+| PPP-033 | done | The final film now keeps every real request visually continuous through its real provider wait and into the outcome. Six wait tails from the same PPP-025 captures play at 4x with a small disclosure; the standalone compression slide and scene 09 are removed. The rebuilt 168.518-second 1440x900 H.264/AAC film passes full decode, 24-block subtitle monotonicity, audio-level, frame-tile continuity, source-removal, and secret-safety checks. Final `bb verify` passes 196 JVM/1,420 assertions, 31 CLJS/145 assertions, 25 Chromium paths plus one intentional skip, two production restart checks, Docker smoke, and a 235-file secret scan. |

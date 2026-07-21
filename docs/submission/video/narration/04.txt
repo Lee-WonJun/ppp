@@ -1,1 +1,1 @@
-The next request crosses the server boundary and adds product signup and sign-in without replacing Snake. The first interface is not good enough, so the conversation improves its design and visible errors. Player One corrects invalid input, signs up, signs out, signs back in, and the authenticated session survives a reload.
+The next request crosses the server boundary without replacing Snake. A real server action receives the live score and returns a one hundred point boost. The browser calls it, shows the response, reloads, and the server-powered feature is still there.

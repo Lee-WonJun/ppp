@@ -1,1 +1,1 @@
-Now Snake becomes a service. The signed-in player saves a score through a generated server action. Identity comes from the authenticated context, SQLite keeps the best score, and the ranking remains after reload.
+Then I change the business rule in conversation. The same running action stops adding one hundred and starts multiplying the score by three. The same button now proves the new server behavior, with no separate build or deploy step.

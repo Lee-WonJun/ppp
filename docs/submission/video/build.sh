@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 VIDEO_DIR="$ROOT/docs/submission/video"
-SOURCE_DIR="${PPP_VIDEO_SOURCE_DIR:-$ROOT/artifacts/demo-capture/20260720-english-final/edit-segments}"
+CAPTURE_ROOT="${PPP_PUBLIC_CAPTURE_ROOT:-$ROOT/artifacts/public-demo-capture/20260721-072904}"
 OUTPUT_ROOT="${PPP_VIDEO_OUTPUT_ROOT:-$ROOT/artifacts/submission-video}"
 GENERATED="$OUTPUT_ROOT/generated"
 FINAL="$OUTPUT_ROOT/final"
@@ -12,6 +12,10 @@ FFMPEG="${FFMPEG:-$TOOLS_ROOT/node_modules/@ffmpeg-installer/linux-x64/ffmpeg}"
 FFPROBE="${FFPROBE:-$TOOLS_ROOT/node_modules/ffprobe-static/bin/linux/x64/ffprobe}"
 EDGE_TTS="${EDGE_TTS:-$HOME/.local/bin/edge-tts}"
 CHROME="${CHROME:-$(command -v google-chrome)}"
+OBSERVATIONS="$CAPTURE_ROOT/observations.json"
+FIRST_SOURCE="$CAPTURE_ROOT/playwright/demo-story-real-Codex-evol-4795d--a-persistent-game-platform/video.webm"
+SUCCESS_SOURCE=""
+SHOWCASE_SOURCE="$CAPTURE_ROOT/showcase/public-demo-showcase-show--7d698-ic-product-outcomes-clearly/video.webm"
 
 for tool in "$FFMPEG" "$FFPROBE" "$EDGE_TTS" "$CHROME"; do
   if [[ ! -x "$tool" ]]; then
@@ -20,14 +24,31 @@ for tool in "$FFMPEG" "$FFPROBE" "$EDGE_TTS" "$CHROME"; do
   fi
 done
 
-required_segments=(000 002 003 005 006 008 009 011 012 014 015 017)
-for segment in "${required_segments[@]}"; do
-  source="$SOURCE_DIR/$segment.mp4"
-  if [[ ! -s "$source" ]]; then
-    echo "Missing verified PPP-025 source segment: $source" >&2
+while IFS= read -r candidate; do
+  candidate_dir="$(dirname "$candidate")"
+  if [[ ! -e "$candidate_dir/test-failed-1.png" ]]; then
+    SUCCESS_SOURCE="$candidate"
+    break
+  fi
+done < <(find "$CAPTURE_ROOT" -path '*/playwright-resume-*/demo-story-*/video.webm' \
+  -type f -print | sort -r)
+
+for source in "$OBSERVATIONS" "$FIRST_SOURCE" "$SUCCESS_SOURCE" "$SHOWCASE_SOURCE"; do
+  if [[ -z "$source" || ! -s "$source" ]]; then
+    echo "Missing verified public-server capture input: $source" >&2
     exit 1
   fi
 done
+
+if ! node -e '
+  const x=require(process.argv[1]);
+  const expected=["DEMO-01","PUBLIC-02","PUBLIC-03","PUBLIC-04","PUBLIC-05"];
+  if(JSON.stringify(x.records.map(r=>r.scenario))!==JSON.stringify(expected)) process.exit(1);
+  if(!x.records.every(r=>r["browser-outcome"]===true && r.outcomes["semantic-repair-count"]===0)) process.exit(1);
+' "$OBSERVATIONS"; then
+  echo "Public-server observations do not contain the verified five-step run" >&2
+  exit 1
+fi
 
 rm -rf "$GENERATED" "$FINAL"
 mkdir -p "$GENERATED/slides" "$GENERATED/audio" "$GENERATED/visual" \
@@ -40,6 +61,17 @@ duration() {
 
 max_duration() {
   awk -v a="$1" -v b="$2" 'BEGIN { printf "%.3f", (a > b ? a : b) }'
+}
+
+marker() {
+  node -e '
+    const x=require(process.argv[1]);
+    const record=x.records.find(r=>r.scenario===process.argv[2]);
+    if(!record) process.exit(1);
+    const value=record.capture[process.argv[3]];
+    if(typeof value!=="number") process.exit(1);
+    process.stdout.write((value/1000).toFixed(3));
+  ' "$OBSERVATIONS" "$1" "$2"
 }
 
 for scene in 01 02 07 08; do
@@ -103,16 +135,43 @@ make_accelerated_wait() {
   local output="$1"
   local source="$2"
   local start="$3"
-  local factor="${4:-4}"
+  local end="$4"
+  local factor="${5:-6}"
   local font="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
   local source_duration
   local output_duration
-  source_duration="$(duration "$source")"
-  output_duration="$(awk -v total="$source_duration" -v start="$start" -v factor="$factor" 'BEGIN { printf "%.3f", (total - start) / factor }')"
-  "$FFMPEG" -y -loglevel error -ss "$start" -i "$source" -an \
+  source_duration="$(awk -v start="$start" -v end="$end" 'BEGIN { printf "%.3f", end - start }')"
+  output_duration="$(awk -v source="$source_duration" -v factor="$factor" 'BEGIN { printf "%.3f", source / factor }')"
+  "$FFMPEG" -y -loglevel error -ss "$start" -i "$source" -t "$source_duration" -an \
     -vf "setpts=(PTS-STARTPTS)/${factor},scale=1440:900:flags=lanczos,fps=30,drawbox=x=30:y=30:w=116:h=42:color=0x101310@0.82:t=fill,drawtext=fontfile=$font:text='${factor}x wait':fontcolor=white:fontsize=18:x=48:y=41,format=yuv420p" \
     -t "$output_duration" \
     -c:v libx264 -preset medium -crf 19 -movflags +faststart "$output"
+}
+
+make_verified_outcome() {
+  local output="$1"
+  local source="$2"
+  local start="$3"
+  local end="$4"
+  local hold="${5:-3.5}"
+  local seconds
+  seconds="$(awk -v start="$start" -v end="$end" 'BEGIN { printf "%.3f", end - start }')"
+  "$FFMPEG" -y -loglevel error -ss "$start" -i "$source" -t "$seconds" -an \
+    -vf "scale=1440:900:flags=lanczos,fps=30,tpad=stop_mode=clone:stop_duration=$hold,format=yuv420p" \
+    -c:v libx264 -preset medium -crf 19 -movflags +faststart "$output"
+}
+
+make_held_source_frame() {
+  local output="$1"
+  local source="$2"
+  local at="$3"
+  local hold="$4"
+  local frame="$GENERATED/parts/$(basename "$output" .mp4).png"
+  "$FFMPEG" -y -loglevel error -ss "$at" -i "$source" -frames:v 1 \
+    -vf "scale=1440:900:flags=lanczos" "$frame"
+  "$FFMPEG" -y -loglevel error -loop 1 -framerate 30 -i "$frame" -t "$hold" \
+    -an -vf "fps=30,format=yuv420p" -c:v libx264 -preset medium -crf 19 \
+    -movflags +faststart "$output"
 }
 
 concat_visual() {
@@ -127,59 +186,85 @@ concat_visual() {
     -c copy -movflags +faststart "$GENERATED/visual/$scene.mp4"
 }
 
-make_source_part "$GENERATED/parts/03-prompt.mp4" "$SOURCE_DIR/000.mp4" 11.000
-make_accelerated_wait "$GENERATED/parts/03-wait-4x.mp4" \
-  "$SOURCE_DIR/000.mp4" 11.000
-make_source_part "$GENERATED/parts/03-outcome.mp4" "$SOURCE_DIR/002.mp4"
+snake_start="$(marker DEMO-01 scenario-start-ms)"
+snake_generated="$(marker DEMO-01 generation-complete-ms)"
+snake_verified="$(marker DEMO-01 verification-complete-ms)"
+server_start="$(marker PUBLIC-02 scenario-start-ms)"
+server_generated="$(marker PUBLIC-02 generation-complete-ms)"
+server_verified="$(marker PUBLIC-02 verification-complete-ms)"
+rule_start="$(marker PUBLIC-03 scenario-start-ms)"
+rule_generated="$(marker PUBLIC-03 generation-complete-ms)"
+rule_verified="$(marker PUBLIC-03 verification-complete-ms)"
+library_start="$(marker PUBLIC-04 scenario-start-ms)"
+library_generated="$(marker PUBLIC-04 generation-complete-ms)"
+library_verified="$(marker PUBLIC-04 verification-complete-ms)"
+tetris_start="$(marker PUBLIC-05 scenario-start-ms)"
+tetris_generated="$(marker PUBLIC-05 generation-complete-ms)"
+tetris_verified="$(marker PUBLIC-05 verification-complete-ms)"
+
+snake_prompt_end="$(awk -v start="$snake_start" 'BEGIN { printf "%.3f", start + 8.0 }')"
+make_source_window "$GENERATED/parts/03-prompt.mp4" "$FIRST_SOURCE" \
+  "$snake_start" 8.000
+make_accelerated_wait "$GENERATED/parts/03-wait-7x.mp4" "$FIRST_SOURCE" \
+  "$snake_prompt_end" "$snake_generated" 7
+make_verified_outcome "$GENERATED/parts/03-outcome.mp4" "$FIRST_SOURCE" \
+  "$(awk -v generated="$snake_generated" 'BEGIN { printf "%.3f", generated - 1.0 }')" \
+  "$snake_verified" 4.0
 concat_visual 03 \
   "$GENERATED/parts/03-prompt.mp4" \
-  "$GENERATED/parts/03-wait-4x.mp4" \
+  "$GENERATED/parts/03-wait-7x.mp4" \
   "$GENERATED/parts/03-outcome.mp4"
 
-make_source_part "$GENERATED/parts/04-account-prompt.mp4" "$SOURCE_DIR/003.mp4" 7.000
-make_accelerated_wait "$GENERATED/parts/04-account-wait-4x.mp4" \
-  "$SOURCE_DIR/003.mp4" 7.000
-make_source_part "$GENERATED/parts/04-account-outcome.mp4" "$SOURCE_DIR/005.mp4"
-make_source_part "$GENERATED/parts/04-ux-prompt.mp4" "$SOURCE_DIR/006.mp4" 7.000
-make_accelerated_wait "$GENERATED/parts/04-ux-wait-4x.mp4" \
-  "$SOURCE_DIR/006.mp4" 7.000
-make_source_part "$GENERATED/parts/04-ux-outcome.mp4" "$SOURCE_DIR/008.mp4"
+server_prompt_end="$(awk -v start="$server_start" 'BEGIN { printf "%.3f", start + 8.0 }')"
+make_source_window "$GENERATED/parts/04-prompt.mp4" "$SUCCESS_SOURCE" \
+  "$server_start" 8.000
+make_accelerated_wait "$GENERATED/parts/04-wait-7x.mp4" "$SUCCESS_SOURCE" \
+  "$server_prompt_end" "$server_generated" 7
+server_result_visible="$(awk -v generated="$server_generated" 'BEGIN { printf "%.3f", generated + 0.320 }')"
+make_verified_outcome "$GENERATED/parts/04-outcome.mp4" "$SUCCESS_SOURCE" \
+  "$(awk -v generated="$server_generated" 'BEGIN { printf "%.3f", generated - 1.0 }')" \
+  "$server_result_visible" 0
+make_held_source_frame "$GENERATED/parts/04-result-hold.mp4" "$SUCCESS_SOURCE" \
+  "$server_result_visible" 3.5
 concat_visual 04 \
-  "$GENERATED/parts/04-account-prompt.mp4" \
-  "$GENERATED/parts/04-account-wait-4x.mp4" \
-  "$GENERATED/parts/04-account-outcome.mp4" \
-  "$GENERATED/parts/04-ux-prompt.mp4" \
-  "$GENERATED/parts/04-ux-wait-4x.mp4" \
-  "$GENERATED/parts/04-ux-outcome.mp4"
+  "$GENERATED/parts/04-prompt.mp4" \
+  "$GENERATED/parts/04-wait-7x.mp4" \
+  "$GENERATED/parts/04-outcome.mp4" \
+  "$GENERATED/parts/04-result-hold.mp4"
 
-make_source_part "$GENERATED/parts/05-prompt.mp4" "$SOURCE_DIR/009.mp4" 7.000
-make_accelerated_wait "$GENERATED/parts/05-wait-4x.mp4" \
-  "$SOURCE_DIR/009.mp4" 7.000
-make_source_part "$GENERATED/parts/05-outcome.mp4" "$SOURCE_DIR/011.mp4"
+rule_prompt_end="$(awk -v start="$rule_start" 'BEGIN { printf "%.3f", start + 7.0 }')"
+make_source_window "$GENERATED/parts/05-prompt.mp4" "$SUCCESS_SOURCE" \
+  "$rule_start" 7.000
+make_accelerated_wait "$GENERATED/parts/05-wait-6x.mp4" "$SUCCESS_SOURCE" \
+  "$rule_prompt_end" "$rule_generated" 6
+make_source_window "$GENERATED/parts/05-outcome.mp4" "$SHOWCASE_SOURCE" \
+  13.500 5.200
 concat_visual 05 \
   "$GENERATED/parts/05-prompt.mp4" \
-  "$GENERATED/parts/05-wait-4x.mp4" \
+  "$GENERATED/parts/05-wait-6x.mp4" \
   "$GENERATED/parts/05-outcome.mp4"
 
-make_source_part "$GENERATED/parts/06-library-prompt.mp4" "$SOURCE_DIR/012.mp4" 7.000
-make_accelerated_wait "$GENERATED/parts/06-library-wait-4x.mp4" \
-  "$SOURCE_DIR/012.mp4" 7.000
-make_source_part "$GENERATED/parts/06-library-outcome.mp4" "$SOURCE_DIR/014.mp4"
-make_source_part "$GENERATED/parts/06-tetris-prompt.mp4" "$SOURCE_DIR/015.mp4" 7.000
-make_accelerated_wait "$GENERATED/parts/06-tetris-wait-4x.mp4" \
-  "$SOURCE_DIR/015.mp4" 7.000
-make_slow_verified_window "$GENERATED/parts/06-tetris-outcome.mp4" \
-  "$SOURCE_DIR/017.mp4" 1.050 0.500 8
-make_source_window "$GENERATED/parts/06-preserved-snake.mp4" \
-  "$SOURCE_DIR/017.mp4" 1.600 3.000
+library_prompt_end="$(awk -v start="$library_start" 'BEGIN { printf "%.3f", start + 7.0 }')"
+tetris_prompt_end="$(awk -v start="$tetris_start" 'BEGIN { printf "%.3f", start + 7.0 }')"
+make_source_window "$GENERATED/parts/06-library-prompt.mp4" "$SUCCESS_SOURCE" \
+  "$library_start" 7.000
+make_accelerated_wait "$GENERATED/parts/06-library-wait-7x.mp4" "$SUCCESS_SOURCE" \
+  "$library_prompt_end" "$library_generated" 7
+make_source_window "$GENERATED/parts/06-library-outcome.mp4" "$SHOWCASE_SOURCE" \
+  1.200 2.800
+make_source_window "$GENERATED/parts/06-tetris-prompt.mp4" "$SUCCESS_SOURCE" \
+  "$tetris_start" 7.000
+make_accelerated_wait "$GENERATED/parts/06-tetris-wait-8x.mp4" "$SUCCESS_SOURCE" \
+  "$tetris_prompt_end" "$tetris_generated" 8
+make_source_window "$GENERATED/parts/06-tetris-outcome.mp4" "$SHOWCASE_SOURCE" \
+  4.000 8.200
 concat_visual 06 \
   "$GENERATED/parts/06-library-prompt.mp4" \
-  "$GENERATED/parts/06-library-wait-4x.mp4" \
+  "$GENERATED/parts/06-library-wait-7x.mp4" \
   "$GENERATED/parts/06-library-outcome.mp4" \
   "$GENERATED/parts/06-tetris-prompt.mp4" \
-  "$GENERATED/parts/06-tetris-wait-4x.mp4" \
-  "$GENERATED/parts/06-tetris-outcome.mp4" \
-  "$GENERATED/parts/06-preserved-snake.mp4"
+  "$GENERATED/parts/06-tetris-wait-8x.mp4" \
+  "$GENERATED/parts/06-tetris-outcome.mp4"
 
 for scene in 01 02 07 08; do
   audio_duration="$(duration "$GENERATED/audio/$scene.mp3")"

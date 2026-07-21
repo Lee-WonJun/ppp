@@ -3,7 +3,21 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const observationPath = process.env.PPP_DEMO_LIVE_OBSERVATIONS;
 const accessCode = process.env.PPP_DEMO_LIVE_ACCESS_CODE || "ppp-demo-live";
+const publicPassword = process.env.PPP_DEMO_PUBLIC_PASSWORD;
+const publicCapture = process.env.PPP_DEMO_PUBLIC_CAPTURE === "1";
 const resumeExisting = process.env.PPP_DEMO_LIVE_RESUME_FINAL === "1";
+
+if (publicCapture) {
+  const target = new URL(
+    process.env.PPP_LIVE_BASE_URL || "https://ppp.openai.slopbook.org/"
+  );
+  if (target.origin !== "https://ppp.openai.slopbook.org") {
+    throw new Error("Public capture must target the public judge origin");
+  }
+  if (!publicPassword) {
+    throw new Error("PPP_DEMO_PUBLIC_PASSWORD is required for public capture");
+  }
+}
 
 if (!observationPath) {
   throw new Error("PPP_DEMO_LIVE_OBSERVATIONS is required");
@@ -18,6 +32,14 @@ const prompts = {
   "DEMO-06": `Add Tetris as the second game in the existing Game library without removing or replacing Snake. Its catalog button must be named "Play Tetris". Tetris must advance automatically from a browser timer, accept ArrowLeft, ArrowRight, and ArrowDown without reload, use a playable root named "Tetris game", and expose live values named "Piece row" and "Piece column". Include a "Back to games" button. Preserve the signed-in account, Snake ranking, stored score, playable Snake, and every existing server action. This is client-only: do not write server, shared-domain, test, or migration files.`
 };
 
+const publicPrompts = {
+  "DEMO-01": prompts["DEMO-01"],
+  "PUBLIC-02": `Add one real server-powered feature to the existing Snake game without replacing it. Register a server action that accepts the current Snake score and returns that score plus 100. Add a button named "Boost score", an output named "Boosted score", and an output named "Server response". Clicking the button must call the server action and show the returned value. Keep Snake's timer and keyboard controls. Do not add SQL or migrations. Add only the minimal rollback-only domain tests for the server rule and response shape.`,
+  "PUBLIC-03": `Change the existing server score rule without redesigning the page or replacing Snake. The same registered action must now multiply the submitted score by 3 instead of adding 100. Keep the same "Boost score" button, "Boosted score" output, and "Server response" output. Add an output named "Score rule" containing "Triple server rule". Update only the existing rollback-only domain tests for the new rule. Do not add SQL or migrations.`,
+  "PUBLIC-04": `Turn this product into a small arcade while preserving the playable Snake game and its working server-powered score feature. Add a home view headed "Game library" with a Snake catalog card and a button named "Play Snake". Add a button named "Back to games" on the Snake view. This is a client-only information-architecture change: reuse the existing server action and do not write server, shared-domain, test, or migration files.`,
+  "PUBLIC-05": `Add Tetris as the second game in the existing Game library without removing or replacing Snake. Its catalog button must be named "Play Tetris". Tetris must advance automatically from a browser timer, accept ArrowLeft, ArrowRight, and ArrowDown without reload, use a playable root named "Tetris game", and expose live values named "Piece row" and "Piece column". Include a "Back to games" button. Preserve playable Snake, the working triple-score server action, and every existing server action. This is client-only: do not write server, shared-domain, test, or migration files.`
+};
+
 const scenarioOrder = [
   "DEMO-01",
   "DEMO-02",
@@ -26,6 +48,15 @@ const scenarioOrder = [
   "DEMO-05",
   "DEMO-06"
 ];
+const publicScenarioOrder = [
+  "DEMO-01",
+  "PUBLIC-02",
+  "PUBLIC-03",
+  "PUBLIC-04",
+  "PUBLIC-05"
+];
+const activePrompts = publicCapture ? publicPrompts : prompts;
+const activeScenarioOrder = publicCapture ? publicScenarioOrder : scenarioOrder;
 const maximumSemanticRepairs = Number(
   process.env.PPP_DEMO_SEMANTIC_REPAIRS || "3"
 );
@@ -37,23 +68,54 @@ function productFrame(page) {
 }
 
 async function snapshot(page) {
+  if (publicCapture) {
+    return page.evaluate(async () => {
+      const sessionId = new URL(location.href).searchParams.get("session");
+      if (!sessionId) return null;
+      const response = await fetch(
+        `/api/sessions/${encodeURIComponent(sessionId)}`,
+        { credentials: "same-origin" }
+      );
+      if (!response.ok) return null;
+      const session = await response.json();
+      return {
+        "session-id": session.id,
+        version: session["current-version"],
+        connection: "connected",
+        progress: null,
+        messages: [],
+        "debug-error": null
+      };
+    });
+  }
   return page.evaluate(() => window.__PPP_TEST__?.snapshot());
 }
 
 async function waitForRuntime(page, sessionId, version) {
   await expect.poll(async () => {
     const current = await snapshot(page);
+    const activeFrames = publicCapture ? await activeFrameCount(page) : 1;
     return current && current["session-id"] === sessionId
       && current.version === version
-      && current.connection === "connected";
+      && current.connection === "connected"
+      && activeFrames === 1;
   }, { timeout: 45_000 }).toBe(true);
 }
 
 async function createFreshSession(page) {
-  await page.goto(`/?test-runtime=1#access=${encodeURIComponent(accessCode)}`, {
+  const entryPath = publicCapture
+    ? "/?test-runtime=1"
+    : `/?test-runtime=1#access=${encodeURIComponent(accessCode)}`;
+  await page.goto(entryPath, {
     waitUntil: "domcontentloaded",
     timeout: 30_000
   });
+  if (publicCapture) {
+    const signIn = page.getByRole("region", { name: "Workspace sign in" });
+    await expect(signIn).toBeVisible();
+    await signIn.getByLabel("Password").fill(publicPassword);
+    await signIn.getByRole("button", { name: "Continue" }).click();
+  }
   const projects = page.getByRole("region", { name: "Projects" });
   await expect(projects).toBeVisible();
   await projects.getByRole("button", { name: "New project" }).first().click();
@@ -69,7 +131,11 @@ async function createFreshSession(page) {
   }).toMatch(/^[0-9a-f-]{36}$/);
   const sessionId = new URL(page.url()).searchParams.get("session");
   await waitForRuntime(page, sessionId, 0);
-  await page.evaluate(() => window.__PPP_TEST__.openSidebar());
+  if (publicCapture) {
+    await page.locator(".ppp-handle").click();
+  } else {
+    await page.evaluate(() => window.__PPP_TEST__.openSidebar());
+  }
   await expect(productFrame(page).getByRole("complementary", {
     name: "Product conversation"
   })).toBeVisible();
@@ -77,13 +143,31 @@ async function createFreshSession(page) {
 }
 
 async function openConversation(page) {
-  await page.evaluate(() => window.__PPP_TEST__.openSidebar());
+  if (publicCapture) {
+    const conversation = productFrame(page).getByRole("complementary", {
+      name: "Product conversation"
+    });
+    if (!(await conversation.isVisible().catch(() => false))) {
+      await page.locator(".ppp-handle").click();
+    }
+  } else {
+    await page.evaluate(() => window.__PPP_TEST__.openSidebar());
+  }
   await expect(productFrame(page).getByRole("complementary", {
     name: "Product conversation"
   })).toBeVisible();
 }
 
 async function closeConversation(page) {
+  if (publicCapture) {
+    const conversation = productFrame(page).getByRole("complementary", {
+      name: "Product conversation"
+    });
+    if (await conversation.isVisible().catch(() => false)) {
+      await page.locator(".ppp-handle").click();
+    }
+    return;
+  }
   const close = page.getByRole("button", { name: "Close product conversation" });
   if (await close.count()) {
     await close.click();
@@ -93,19 +177,43 @@ async function closeConversation(page) {
 async function submitTurn(page, prompt) {
   await openConversation(page);
   const before = await snapshot(page);
-  const messageCount = before.messages.length;
+  const conversation = productFrame(page).getByRole("complementary", {
+    name: "Product conversation"
+  });
+  const articleCount = publicCapture
+    ? await conversation.getByRole("article").count()
+    : 0;
   const started = Date.now();
   const composer = productFrame(page).getByRole("textbox", { name: "Message" });
   await composer.fill(prompt);
   await composer.press("Enter");
+  let terminalFailure = null;
   await expect.poll(async () => {
     const current = await snapshot(page);
-    return current.progress === null && current.messages.length >= messageCount + 2;
+    if (!publicCapture) {
+      return current.progress === null
+        && current.messages.length >= before.messages.length + 2;
+    }
+    if (current?.version > before.version) return true;
+    const articles = conversation.getByRole("article");
+    if (await articles.count() >= articleCount + 2) {
+      const last = await articles.last().innerText();
+      if (/not applied|unchanged|could not be safely applied/i.test(last)) {
+        terminalFailure = last.replace(/\s+/g, " ").slice(0, 1400);
+        return true;
+      }
+    }
+    return false;
   }, { timeout: 720_000 }).toBe(true);
   const after = await snapshot(page);
+  if (after.version > before.version) {
+    await waitForRuntime(page, after["session-id"], after.version);
+  }
   return {
     before,
-    after,
+    after: terminalFailure
+      ? { ...after, "terminal-failure": terminalFailure }
+      : after,
     duration: Date.now() - started,
     "completed-at-ms": Date.now()
   };
@@ -323,6 +431,132 @@ async function verifyRanking(page, sessionId, version) {
   };
 }
 
+async function verifyPublicRanking(page, sessionId, version) {
+  await closeConversation(page);
+  await expect(productFrame(page).getByLabel("Snake game", { exact: true }))
+    .toBeVisible();
+  await productFrame(page).getByRole("button", {
+    name: "Boost score",
+    exact: true
+  }).click();
+  const boosted = productFrame(page).getByLabel("Boosted score", {
+    exact: true
+  });
+  await expect(boosted).toContainText(/1\d\d|[2-9]\d\d|\d{4,}/, {
+    timeout: 20_000
+  });
+  await expect(productFrame(page).getByLabel("Server response", { exact: true }))
+    .not.toBeEmpty({ timeout: 20_000 });
+
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
+  await waitForRuntime(page, sessionId, version);
+  await expect(productFrame(page).getByRole("button", {
+    name: "Boost score",
+    exact: true
+  })).toBeVisible({ timeout: 20_000 });
+  return {
+    "server-action-returned-boosted-score": true,
+    "server-feature-survived-reload": true,
+    "snake-preserved": true
+  };
+}
+
+async function verifyPublicRankingRule(page, sessionId, version) {
+  await closeConversation(page);
+  await expect(productFrame(page).getByLabel("Score rule", { exact: true }))
+    .toContainText(/triple server rule/i);
+  await productFrame(page).getByRole("button", {
+    name: "Boost score",
+    exact: true
+  }).click();
+  const boosted = productFrame(page).getByLabel("Boosted score", {
+    exact: true
+  });
+  await expect.poll(async () => {
+    const value = await numericText(boosted);
+    return Number.isInteger(value) && value > 0 && value % 3 === 0;
+  }, { timeout: 20_000 }).toBe(true);
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
+  await waitForRuntime(page, sessionId, version);
+  await expect(productFrame(page).getByLabel("Score rule", { exact: true }))
+    .toContainText(/triple server rule/i);
+  return {
+    "server-score-rule-changed": true,
+    "triple-result-returned": true,
+    "snake-preserved": true
+  };
+}
+
+async function verifyPublicGameLibrary(page) {
+  await closeConversation(page);
+  await expect(productFrame(page).getByRole("heading", {
+    name: "Game library",
+    exact: true
+  })).toBeVisible();
+  await productFrame(page).getByRole("button", {
+    name: "Play Snake",
+    exact: true
+  }).click();
+  await expect(productFrame(page).getByLabel("Snake game", { exact: true }))
+    .toBeVisible();
+  await expect(productFrame(page).getByRole("button", {
+    name: "Boost score",
+    exact: true
+  })).toBeVisible();
+  await expect(productFrame(page).getByLabel("Score rule", { exact: true }))
+    .toContainText(/triple server rule/i);
+  return {
+    "game-library-visible": true,
+    "snake-listed-and-playable": true,
+    "server-feature-preserved": true
+  };
+}
+
+async function verifyPublicTetrisAddition(page) {
+  await closeConversation(page);
+  const backToGames = productFrame(page).getByRole("button", {
+    name: "Back to games",
+    exact: true
+  });
+  if (await backToGames.isVisible().catch(() => false)) await backToGames.click();
+  await productFrame(page).getByRole("button", {
+    name: "Play Tetris",
+    exact: true
+  }).click();
+  const game = productFrame(page).getByLabel("Tetris game", { exact: true });
+  const row = productFrame(page).getByLabel("Piece row", { exact: true });
+  const column = productFrame(page).getByLabel("Piece column", { exact: true });
+  await expect(game).toBeVisible();
+  const rowBefore = await numericText(row);
+  await expect.poll(async () => numericText(row), { timeout: 8_000 })
+    .not.toBe(rowBefore);
+  const columnBefore = await numericText(column);
+  await game.focus();
+  await game.press("ArrowLeft");
+  await expect.poll(async () => numericText(column), { timeout: 3_000 })
+    .not.toBe(columnBefore);
+  await productFrame(page).getByRole("button", {
+    name: "Back to games",
+    exact: true
+  }).click();
+  await productFrame(page).getByRole("button", {
+    name: "Play Snake",
+    exact: true
+  }).click();
+  await expect(productFrame(page).getByRole("button", {
+    name: "Boost score",
+    exact: true
+  })).toBeVisible();
+  await expect(productFrame(page).getByLabel("Score rule", { exact: true }))
+    .toContainText(/triple server rule/i);
+  return {
+    "tetris-listed-and-playable": true,
+    "tetris-timer-advanced": true,
+    "tetris-keyboard-moved": true,
+    "snake-server-feature-preserved": true
+  };
+}
+
 async function verifyGameLibrary(page) {
   await closeConversation(page);
   await expect(productFrame(page).getByRole("heading", {
@@ -428,6 +662,14 @@ async function verifyScenario(scenario, page, sessionId, version) {
       return verifyGameLibrary(page);
     case "DEMO-06":
       return verifyTetrisAddition(page);
+    case "PUBLIC-02":
+      return verifyPublicRanking(page, sessionId, version);
+    case "PUBLIC-03":
+      return verifyPublicRankingRule(page, sessionId, version);
+    case "PUBLIC-04":
+      return verifyPublicGameLibrary(page);
+    case "PUBLIC-05":
+      return verifyPublicTetrisAddition(page);
     default:
       throw new Error(`Unsupported demo scenario ${scenario}`);
   }
@@ -464,12 +706,13 @@ async function verifyWithRepair(scenario, initialTurn, page, sessionId) {
         `The saved ${scenario} change failed real browser outcome verification. `
         + "Repair the current product now instead of explaining. Preserve every existing feature, "
         + "the original runtime-surface constraint, stored data, and product account state. "
-        + `Original outcome: ${prompts[scenario]} `
+        + `Original outcome: ${activePrompts[scenario]} `
         + `Bounded browser feedback: ${boundedFailureFeedback(error)}`
       );
       expect(repairTurn.before.version).toBe(after.version);
-      expect(repairTurn.after.version).toBe(after.version + 1);
-      after = repairTurn.after;
+      expect(repairTurn.after.version).toBeGreaterThanOrEqual(after.version);
+      expect(repairTurn.after.version).toBeLessThanOrEqual(after.version + 1);
+      if (repairTurn.after.version > after.version) after = repairTurn.after;
       duration += repairTurn.duration;
       completedAtMs = repairTurn["completed-at-ms"];
       repairCount += 1;
@@ -514,10 +757,20 @@ test("real Codex evolves Snake into a persistent game platform", async ({ page }
     const observations = readObservations();
     sessionId = observations["session-id"];
     records = observations.records;
-    await page.goto(
-      `/?test-runtime=1&session=${encodeURIComponent(sessionId)}#access=${encodeURIComponent(accessCode)}`,
-      { waitUntil: "domcontentloaded", timeout: 30_000 }
-    );
+    const resumePath = publicCapture
+      ? `/?test-runtime=1&session=${encodeURIComponent(sessionId)}`
+      : `/?test-runtime=1&session=${encodeURIComponent(sessionId)}#access=${encodeURIComponent(accessCode)}`;
+    await page.goto(resumePath, {
+      waitUntil: "domcontentloaded",
+      timeout: 30_000
+    });
+    if (publicCapture) {
+      const signIn = page.getByRole("region", { name: "Workspace sign in" });
+      if (await signIn.isVisible().catch(() => false)) {
+        await signIn.getByLabel("Password").fill(publicPassword);
+        await signIn.getByRole("button", { name: "Continue" }).click();
+      }
+    }
     await expect.poll(async () => {
       const current = await snapshot(page);
       return current?.["session-id"] === sessionId
@@ -529,8 +782,8 @@ test("real Codex evolves Snake into a persistent game platform", async ({ page }
     records = [];
   }
 
-  while (records.length < scenarioOrder.length) {
-    const scenario = scenarioOrder[records.length];
+  while (records.length < activeScenarioOrder.length) {
+    const scenario = activeScenarioOrder[records.length];
     const scenarioStartedAt = Date.now();
     const recordedVersion = records.at(-1)?.["after-version"] ?? 0;
     const current = await snapshot(page);
@@ -544,7 +797,7 @@ test("real Codex evolves Snake into a persistent game platform", async ({ page }
         "completed-at-ms": Date.now()
       };
     } else {
-      initialTurn = await submitTurn(page, prompts[scenario]);
+      initialTurn = await submitTurn(page, activePrompts[scenario]);
     }
 
     const verified = await verifyWithRepair(

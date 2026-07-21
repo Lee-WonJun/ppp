@@ -84,6 +84,14 @@
    :task (shell {:extra-env {"PPP_DEMO_LIVE_CAPTURE" "1"}}
                 "bb" "scripts/run_demo_live.clj")}
 
+  demo-public-capture
+  {:doc "Record the final story from the public judge server with real Codex"
+   :task (shell "bb" "scripts/run_public_demo_capture.clj")}
+
+  demo-public-showcase
+  {:doc "Record clear outcomes from a completed public demo session"
+   :task (shell "bb" "scripts/run_public_demo_showcase.clj")}
+
   reset-dev-sessions
   {:doc "Delete pre-release development sessions while preserving kernel state"
    :task (shell "bb" "scripts/reset_dev_sessions.clj")}

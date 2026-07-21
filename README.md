@@ -7,12 +7,12 @@ Programmable Programming Page (PPP) is a self-hostable live product workspace fo
 The user never needs to install a development environment, clone a repository, inspect files, understand Git, or operate an AI coding agent. Developers still receive a complete source tree, domain tests, and an append-only record of every accepted change.
 
 Status: the complete session resource plane, shared judge workspace,
-on-demand generated-product diagnostics, exact final-video story gate, and
-the verified 168.518-second polished local real-Codex film are complete. External
+on-demand generated-product diagnostics, exact public-server final-video gate,
+and the verified 173.417-second polished real-Codex film are complete. External
 publication remains owner-controlled. Automated
 verification, production-configured shared-access browser tests, the 24-case
 live Codex evaluation, the eight-step cumulative real-product evolution gate,
-the six-of-six final-video story, and three consecutive packaged demo
+the five-of-five public final-video story, and three consecutive packaged demo
 rehearsals are the release evidence; exact current counts are recorded in
 `docs/RUBRIC.md` and `docs/TRACEABILITY.md`.
 
@@ -27,13 +27,15 @@ actual provider lifecycle events. The Kernel exposes only fixed
 product-language summaries; raw reasoning, event text, source, paths, commands,
 models, and token details never reach the browser.
 
-The final film uses a separate real-Codex story gate that evolves Snake into a
-product-authenticated, SQLite-ranked game platform and then adds Tetris. Its
+The final film uses a separate real-Codex public-server story gate that creates
+Snake, adds a real server action, redefines that action's business rule, turns
+the product into a game library, and adds Tetris. Its
 opening explains why PPP is an nREPL-driven product workspace rather than
 source hot reload, and its closing records Codex's contribution from product
 decisions through verification, judge deployment operations, and production
 of the film. Real provider waits stay on the same product screen and are played
-at 4x speed, so the request-to-result sequence remains continuous. The
+at a visibly disclosed accelerated speed, so the request-to-result sequence
+remains continuous. The
 deterministic fake provider remains test infrastructure and is never presented
 as final-video generation.
 
@@ -204,10 +206,10 @@ After entering the privately supplied shared password at the
 
 1. Create a blank project and ask for a timer-driven game; play it with the
    keyboard without refreshing.
-2. Ask for signup/sign-in and a persistent ranking for the same game.
-3. Create a product user, save a score, reload, and confirm the user and score
-   remain.
-4. Ask to change the ranking rule or add a second game. The existing product
+2. Ask for a server-powered score action and invoke it from the game.
+3. Ask to change the existing server rule, then use the same button to verify
+   that its result changed.
+4. Ask for a game library and a second timer-driven game. The existing product
    should continue instead of being replaced by a new isolated mockup.
 5. Restore an earlier checkpoint, or press `Ctrl+Alt+Shift+P` to verify the
    immutable recovery surface.
@@ -292,24 +294,24 @@ Public runtime HTTP is HTTPS-only and rejects private/reserved DNS results, unsa
 
 ## Demo flow
 
-1. Begin the visible recording on Projects with workspace access already done.
+1. Create a fresh project on the public judge server with its real Codex OAuth
+   provider.
 2. Create Snake and show its browser timer and keyboard input.
-3. Add generated-product signup and sign-in without removing Snake.
-4. Improve the first account UI, submit invalid input, and show a useful
-   product-auth error.
-5. Create a player, sign out, sign in, and reload while remaining signed in.
-6. Add an authenticated SQLite-backed Snake ranking, save a score, and prove
-   it survives reload.
-7. Turn the single game into a Game library with Snake preserved.
-8. Add Tetris as the second playable game while account and ranking data stay
-   intact.
+3. Add a server action that returns the score plus 100; show `101` from score
+   `1` and reload to prove the feature remains.
+4. Change the same server action to multiply by three and show the changed
+   result without replacing Snake.
+5. Turn the single game into a Game library with Snake and its server action
+   preserved.
+6. Add timer/keyboard Tetris as the second playable game.
 
 No change activation uses a technical Apply control, build, restart, or page
 refresh. Reload is used only afterward to prove server-owned persistence.
 The edited film contains no login, terminal, source, diff, SQL, test, or
-history shot. Its reproducible local build pipeline is documented in
-`docs/submission/video/`; the MP4 and SRT stay ignored until public upload is
-separately authorized.
+history shot. Its reproducible public capture and local build pipeline are
+documented in `docs/DEMO.md` and `docs/submission/video/`; raw captures, MP4,
+SRT, traces, observations, credentials, and session data stay ignored until
+publication is separately authorized.
 
 ## Architecture
 
@@ -395,10 +397,11 @@ bb eval-live
 bb eval-evolution
 ```
 
-`bb demo-live` is the explicit final-video rehearsal. It uses the real OAuth
-Codex provider, one fresh project, one resumed thread, compiled browser
-outcomes, generated product auth, and SQLite. It never runs from CI or
-`bb verify`.
+`bb demo-public-capture` is the explicit final-video recording gate. It targets
+only the public judge origin, requires production login, verifies real OAuth
+Codex readiness, creates one fresh project, and records five semantic browser
+outcomes. `bb demo-public-showcase` records clear results from that same
+completed session. Neither runs from CI or `bb verify`.
 
 `bb eval-evolution` uses one fresh session and one resumed Codex thread to move
 from dark and floating visual changes to timer/keyboard Tetris, SQLite-backed

@@ -134,37 +134,35 @@ SQL, tests, prompts, before/after source, and source-plus-data checkpoints.
 
 ## Demo
 
-The video begins on Projects with workspace access already complete. A first
+The video uses a fresh project on the current public judge server. A first
 conversation creates a playable Snake game with a real browser timer and
-keyboard input. The next adds signup and sign-in without replacing the game.
-We then react to the first account UI as a product team would: ask for a better
-arcade account experience and useful visible errors, deliberately submit an
-invalid identifier, correct it, create Player One, sign out, sign back in, and
-reload while still authenticated.
+keyboard input. The next crosses the server boundary: it registers a server
+action that turns score `1` into `101`, and the browser visibly invokes it.
+Another conversation redefines the same business rule to multiply by three;
+the same UI then shows the changed server result without replacing Snake.
 
-Next, Snake becomes a service. One request adds an authenticated ranking whose
-server action derives the player from product auth and stores the best score in
-SQLite. The account and ranking survive reload. A product decision then turns
-the single game into a Game library with Snake preserved, and one final request
-adds timer/keyboard Tetris as the second game without losing the user or score.
+A product decision turns the single game into a Game library with Snake and its
+server feature preserved. One final request adds timer/keyboard Tetris as the
+second game. The outcome showcase proves both games remain usable and Snake
+still calls the changed server action.
 
-The final capture uses real OAuth Codex in one resumed thread. The polished
-168.518-second narrative film adds an English explanation of the nREPL-driven
-product loop and Codex's end-to-end contribution while keeping generated
-product footage exclusively from that verified capture. Real waits remain on
-the same screen and play at 4x into their outcomes instead of cutting to a
-compression card. The deterministic fake provider remains CI and
-packaged-regression infrastructure; its Gallery fixture does not appear in the
-video.
+The capture uses the public instance's real OAuth Codex provider. The polished
+173.417-second narrative film adds an English explanation of the REPL-driven
+product loop and Codex's end-to-end contribution while keeping every generated
+product frame exclusive to the new public-server recording. Real waits remain
+on the same screen and use visible acceleration badges. The deterministic fake
+provider remains CI and packaged-regression infrastructure; it does not appear
+in the video.
 
 ### Two-minute judge test
 
 1. Enter the private shared password and create a blank project.
 2. Ask for a timer-driven keyboard game and use it without refreshing.
-3. Add product signup/sign-in plus a persistent ranking to the same game.
-4. Create a player, save a score, reload, and confirm both survive.
-5. Change the server-owned scoring rule or add a second game and verify the
-   existing product remains.
+3. Add a server-powered score action and invoke it from the browser.
+4. Change the existing server-owned scoring rule and verify the same button
+   returns the new result.
+5. Add a game library and a second game while preserving Snake and its server
+   behavior.
 6. Restore a checkpoint or use Safe Mode (`Ctrl+Alt+Shift+P`).
 
 Real Codex generation can take up to two minutes; playing the generated
@@ -314,10 +312,10 @@ Required images:
 
 1. Blank canvas with handle.
 2. Playable Snake with conversation sidebar.
-3. Improved account UI with a useful validation error.
-4. Signed-in Snake ranking after reload.
+3. Snake showing the visible `101` server response.
+4. Snake showing the changed triple-score server response.
 5. Game library with Snake and Tetris.
-6. Playable Tetris with preserved player state.
+6. Playable Tetris with preserved Snake server behavior.
 7. Architecture diagram.
 
 Hero image should show the running generated product and sidebar together, not a terminal or code screenshot.
@@ -334,7 +332,7 @@ Hero image should show the running generated product and sidebar together, not a
 - [x] 24 live evaluations meet thresholds.
 - [x] Three packaged demo runs succeed consecutively.
 - [x] Secret scan covers repository and image.
-- [x] Polished 168.518-second local film is verified at 1440x900/30fps with
+- [x] Polished 173.417-second public-server film is verified at 1440x900/30fps with
   English narration, burned and embedded synchronized English subtitles, real
   Codex product footage only, and an explicit explanation of nREPL plus how
   Codex and GPT-5.6 are used.
@@ -349,4 +347,4 @@ Hero image should show the running generated product and sidebar together, not a
 - [ ] Owner explicitly approves the Devpost submission.
 
 Local release closure and the exact owner approval queue are tracked in
-`docs/RELEASE.md` and `tickets/PPP-025.md`.
+`docs/RELEASE.md` and `tickets/PPP-034.md`.

@@ -153,6 +153,7 @@ Scoring anchors:
 | E-23 | PPP-031 REPL-driven runtime report | Standard loopback nREPL attachment, persistent project namespace, live inspect/eval/action/migration/browser operations, same-turn repair, SQLite reload persistence, rollback, and precise shared-versus-workspace scope. |
 | E-24 | PPP-032 final narrative submission film | 168.751-second 1440x900 H.264/AAC film with burned and embedded English subtitles, real-Codex product footage, honest wait compression and Tetris slow-playback disclosure, nREPL-versus-hot-reload explanation, and Codex contribution story. |
 | E-25 | PPP-033 continuous-wait final edit | 168.518-second replacement cut with no standalone compression cards, six real provider-wait tails accelerated at 4x on the same product screen, direct request-to-outcome continuity, and revalidated media/subtitle/security contracts. |
+| E-26 | PPP-034 public-live final film | Fresh public-server project, real OAuth Codex 5/5 with zero semantic repairs, visible timer/keyboard Snake, `+100` server response, `×3` live rule replacement, Game library and timer/keyboard Tetris, plus a 173.417-second English-narrated and captioned media contract. |
 
 ## 7. Automated release gate
 
@@ -224,13 +225,15 @@ LIVE-03, LIVE-04, and LIVE-05 must each pass 3/3 before recording the video.
 
 ### 9.2 Exact final-video story
 
-`bb demo-live` is a separate explicit OAuth gate for the final capture. It must
-use one fresh project and one resumed real Codex thread for six accepted
-outcomes: timer/keyboard Snake, product accounts, client-only account UX/error
-repair, authenticated SQLite ranking, client-only Game library conversion, and
-client-only Tetris addition. The browser must create an invalid-signup error,
-create and reauthenticate Player One, reload authenticated, save and reload a
-ranking row, and return from Tetris to the preserved Snake account and score.
+`bb demo-public-capture` is the explicit final recording gate. It must target
+the exact public judge origin, pass production shared-password login, verify
+the real OAuth Codex readiness contract, create one fresh project, and accept
+five outcomes: timer/keyboard Snake, a visible `+100` server action, a visible
+`×3` replacement of that existing action, client-only Game library conversion,
+and client-only timer/keyboard Tetris addition. The browser must prove the
+server feature survives reload and remains available after both client-only
+product-shape changes. `bb demo-public-showcase` records legible outcomes from
+the same completed public session.
 
 This gate never runs from CI or `bb verify`. A bounded semantic repair is
 recorded rather than hidden, but the final recorded take must not depend on a
@@ -339,7 +342,8 @@ All conditions are required:
 - actual deployment has separate owner approval.
 
 The evaluator records the current complete baseline below. PPP-024 E-16,
-PPP-025 E-17, PPP-026 E-18, PPP-027 E-19, PPP-031 E-23, PPP-032 E-24, PPP-033 E-25, and the expanded automated,
+PPP-025 E-17, PPP-026 E-18, PPP-027 E-19, PPP-031 E-23, PPP-032 E-24,
+PPP-033 E-25, PPP-034 E-26, and the expanded automated,
 production-browser, public-deployment, and live gates pass. Publication remains
 blocked only on uploading the verified video and submission approval.
 
@@ -347,7 +351,7 @@ blocked only on uploading the verified video and submission approval.
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` (196 JVM/1,420 assertions, 31 CLJS/145 assertions, 25 normal Chromium tests plus one intentional skip, two production restart phases, Docker smoke, 235-file secret scan); standard loopback nREPL with live Var redefinition; real OAuth Workspace REPL evolution 8/8; browser checkpoint rewind/return; exact final-video Codex story 6/6; public persistent-OAuth canary; E-15 through E-25; PPP-007 through PPP-033 evidence | pass |
+| Technical implementation | 25/25 | isolated `bb verify` baseline; standard loopback nREPL with live Var redefinition; real OAuth Workspace REPL evolution 8/8; browser checkpoint rewind/return; fresh public-server final-video Codex story 5/5 with zero semantic repairs; public persistent-OAuth canary; E-15 through E-26; PPP-007 through PPP-034 evidence | pass |
 | Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests; manually reviewed 1440x900 final cut | pass |
 | Impact | 24/25 | `docs/PRD.md`; exact Snake-to-game-platform story with generated product accounts and persistent ranking; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |

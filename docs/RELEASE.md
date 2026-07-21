@@ -28,20 +28,20 @@ Local completeness does not authorize remote or public state changes.
   tests/132 assertions, 25 normal Chromium tests plus one intentional skip,
   two production restart phases, Docker smoke, and a clean 205-file secret
   scan.
-- Exact final-video real Codex story:
-  `artifacts/demo-live/20260717-060709/report.edn`, six of six scenarios passed
-  in one project and one resumed provider thread through Snake, product auth,
-  visible error repair, authenticated SQLite ranking, Game library, and
-  preserved Tetris addition.
-- Local final film: PPP-033 refines the PPP-032 narrative edit into a polished
-  168.518-second 1440x900 film. Every real request remains visually continuous
-  through a disclosed 4x provider-wait tail and into its outcome; standalone
-  compression cards are gone. The film retains disclosed 8x slow playback of
-  real Tetris timer/keyboard frames, English narration, burned and embedded
-  synchronized English subtitles, an accurate nREPL-versus-hot-reload
-  explanation, and explicit Codex/GPT-5.6 use. The reproducible pipeline is in
-  `docs/submission/video/`; the current bounded record is
-  `artifacts/evidence/ppp-033-continuous-wait-edit.md`.
+- Exact public-server final-video story: PPP-034 created a fresh project on
+  `https://ppp.openai.slopbook.org` and passed five of five real OAuth Codex
+  changes through timer/keyboard Snake, a visible `+100` server action, a
+  visible live replacement with a `×3` server rule, Game library conversion,
+  and preserved timer/keyboard Tetris. Every browser outcome passed without a
+  semantic repair.
+- Local final film: PPP-034 replaces the previous edit with a polished
+  173.417-second 1440x900 film whose generated-product frames come only from
+  the new public-server recording and its same-session outcome showcase. Real
+  waits remain continuous with visible acceleration labels. English narration,
+  burned and embedded synchronized English subtitles, the bounded-public-POC
+  versus self-hosted-nREPL distinction, and explicit Codex/GPT-5.6 use are
+  retained. The reproducible pipeline is in `docs/submission/video/`; the
+  bounded record is `artifacts/evidence/ppp-034-public-live-recording.md`.
 - Streamed real-Codex progress: PPP-026 incrementally parses bounded JSONL and
   delivers only metadata-derived product-language details to the requesting
   tab. Real OAuth browser observation and the complete gate are recorded in
@@ -56,8 +56,9 @@ Local completeness does not authorize remote or public state changes.
   browser canary. The bounded record is
   `artifacts/evidence/ppp-027-coolify-judge-deployment.md`.
 - Deployment separation check on 2026-07-21: the public host remains healthy
-  and Codex-ready, while local `master` is three nREPL commits ahead of
-  `origin/master`. Those unpublished commits are not claimed as deployed.
+  and Codex-ready. The new capture and film-source work remains local until the
+  owner separately authorizes a push; the film does not claim those local files
+  are deployed.
 - Judge-readiness review: the internal release score is separated from the
   conservative external judging assessment; the majority-build Codex task has
   a high-signal reading guide in `docs/CODEX_SESSION.md`.

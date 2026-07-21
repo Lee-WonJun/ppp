@@ -8,7 +8,7 @@ The user never needs to install a development environment, clone a repository, i
 
 Status: the complete session resource plane, shared judge workspace,
 on-demand generated-product diagnostics, exact final-video story gate, and
-the verified 168.74-second local real-Codex video are complete. External
+the verified 168.751-second polished local real-Codex film are complete. External
 publication remains owner-controlled. Automated
 verification, production-configured shared-access browser tests, the 24-case
 live Codex evaluation, the eight-step cumulative real-product evolution gate,
@@ -27,10 +27,13 @@ actual provider lifecycle events. The Kernel exposes only fixed
 product-language summaries; raw reasoning, event text, source, paths, commands,
 models, and token details never reach the browser.
 
-The final video uses a separate real-Codex story gate that evolves Snake into
-a product-authenticated, SQLite-ranked game platform and then adds Tetris. The
-deterministic fake provider remains test infrastructure and is never presented
-as final-video generation.
+The final film uses a separate real-Codex story gate that evolves Snake into a
+product-authenticated, SQLite-ranked game platform and then adds Tetris. Its
+opening explains why PPP is an nREPL-driven product workspace rather than
+source hot reload, and its closing records Codex's contribution from product
+decisions through verification, judge deployment operations, and production
+of the film. The deterministic fake provider remains test infrastructure and
+is never presented as final-video generation.
 
 In the conversation composer, Enter sends and Shift+Enter inserts a newline.
 
@@ -301,8 +304,10 @@ Public runtime HTTP is HTTPS-only and rejects private/reserved DNS results, unsa
 
 No change activation uses a technical Apply control, build, restart, or page
 refresh. Reload is used only afterward to prove server-owned persistence.
-The edited video contains no login, terminal, source, diff, SQL, test, or
-history shot.
+The edited film contains no login, terminal, source, diff, SQL, test, or
+history shot. Its reproducible local build pipeline is documented in
+`docs/submission/video/`; the MP4 and SRT stay ignored until public upload is
+separately authorized.
 
 ## Architecture
 

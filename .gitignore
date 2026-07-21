@@ -39,6 +39,7 @@ artifacts/demo-live/20260717-060709/*
 
 # Raw and edited video captures stay local until the owner authorizes upload.
 artifacts/demo-capture/
+artifacts/submission-video/
 
 artifacts/demo/*/
 !artifacts/demo/20260716-004803/

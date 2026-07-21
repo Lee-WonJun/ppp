@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Programmable Programming Page</title>
+  <style>
+    :root {
+      --paper:#f4f0e7;
+      --ink:#10120f;
+      --muted:#6b7068;
+      --line:#c9cbbf;
+      --green:#b6ff61;
+      --green-dark:#17391f;
+      --night:#101310;
+      --white:#fbfff6;
+      --orange:#ff6e4a;
+    }
+    * { box-sizing:border-box; }
+    html,body { margin:0; width:1440px; height:900px; overflow:hidden; background:var(--paper); color:var(--ink); }
+    body { font-family:Arial,Helvetica,sans-serif; }
+    h1,h2,h3,p { margin:0; }
+    h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; letter-spacing:-.045em; }
+    .slide { position:relative; width:1440px; height:900px; padding:64px 76px; overflow:hidden; }
+    .night { background:var(--night); color:var(--white); }
+    .eyebrow { color:var(--green-dark); font-size:16px; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }
+    .night .eyebrow { color:var(--green); }
+    .page { position:absolute; top:58px; right:76px; color:var(--muted); font-size:14px; font-weight:800; letter-spacing:.14em; }
+    .brand { position:absolute; left:76px; bottom:40px; font:19px Georgia,serif; }
+    .url { color:var(--green); font-size:28px; font-weight:900; }
+
+    .hook { display:grid; grid-template-columns:1.08fr .92fr; gap:70px; align-items:center; }
+    .hook h1 { margin-top:22px; font-size:78px; line-height:.96; }
+    .hook p { margin-top:28px; max-width:620px; color:#c7cdc3; font-size:24px; line-height:1.42; }
+    .barriers { display:grid; grid-template-columns:1fr 1fr; border-top:1px solid #343934; border-left:1px solid #343934; }
+    .barrier { min-height:128px; border-right:1px solid #343934; border-bottom:1px solid #343934; padding:24px; position:relative; }
+    .barrier b { display:block; font:33px Georgia,serif; letter-spacing:-.035em; }
+    .barrier span { display:block; margin-top:12px; color:#868d84; font-size:16px; line-height:1.35; }
+    .barrier::after { content:""; position:absolute; left:18px; right:18px; top:50%; height:3px; background:var(--orange); transform:rotate(-7deg); opacity:.9; }
+    .browser-pill { grid-column:1/-1; padding:25px 28px; background:var(--green); color:var(--ink); font-size:20px; font-weight:900; }
+
+    .repl h2 { margin-top:20px; max-width:1060px; font-size:66px; line-height:.98; }
+    .repl > p { margin-top:22px; max-width:980px; color:var(--muted); font-size:21px; line-height:1.45; }
+    .flow { margin-top:44px; display:grid; grid-template-columns:.72fr 52px .8fr 52px 1.2fr; align-items:stretch; }
+    .node { min-height:290px; padding:28px; border:1px solid var(--line); background:#faf7ef; }
+    .node.live { background:var(--night); color:var(--white); border-color:var(--night); }
+    .node-index { color:var(--green-dark); font-size:14px; font-weight:900; letter-spacing:.12em; }
+    .live .node-index { color:var(--green); }
+    .node h3 { margin-top:22px; font-size:37px; line-height:1.02; }
+    .node p { margin-top:20px; color:var(--muted); font-size:18px; line-height:1.45; }
+    .live p { color:#bfc7bc; }
+    .arrow { display:flex; align-items:center; justify-content:center; color:var(--green-dark); font-size:34px; font-weight:900; }
+    .runtime-grid { margin-top:26px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .runtime { padding:15px; border:1px solid #3e463d; }
+    .runtime strong { color:var(--green); font-size:17px; }
+    .runtime span { display:block; margin-top:6px; color:#aab2a7; font-size:14px; line-height:1.3; }
+    .reconcile { position:absolute; left:76px; bottom:39px; color:var(--muted); font-size:16px; font-weight:800; }
+
+    .compressed { display:flex; align-items:center; justify-content:center; text-align:center; }
+    .compressed h1 { font-size:60px; }
+    .compressed p { margin-top:18px; color:#aeb5ac; font-size:22px; }
+    .pulse { width:11px; height:11px; margin:28px auto 0; border-radius:50%; background:var(--green); box-shadow:0 0 0 12px rgba(182,255,97,.12); }
+
+    .codex h2 { margin-top:20px; max-width:1120px; font-size:60px; line-height:1; }
+    .loop { margin-top:44px; display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    .loop article { min-height:340px; padding:28px 24px; border-right:1px solid var(--line); }
+    .loop article:last-child { border-right:0; }
+    .loop .n { color:var(--green-dark); font-size:13px; font-weight:900; letter-spacing:.1em; }
+    .loop h3 { margin-top:20px; font-size:31px; line-height:1.03; }
+    .loop p { margin-top:18px; color:var(--muted); font-size:17px; line-height:1.45; }
+    .disclaimer { margin-top:26px; display:inline-block; padding:14px 18px; background:var(--night); color:var(--white); font-size:15px; font-weight:900; letter-spacing:.03em; }
+
+    .close-copy { position:absolute; left:76px; top:148px; width:930px; }
+    .close-copy h1 { margin-top:25px; font-size:104px; line-height:.92; }
+    .close-copy p { margin-top:34px; max-width:760px; color:#c2c9bf; font-size:25px; line-height:1.45; }
+    .close-copy .url { margin-top:42px; }
+    .orb { position:absolute; width:430px; height:430px; right:76px; top:190px; border-radius:50%; border:1px solid #3b4339; }
+    .orb::before,.orb::after { content:""; position:absolute; border-radius:50%; border:1px solid #596454; }
+    .orb::before { inset:55px; }
+    .orb::after { inset:125px; background:var(--green); border:0; box-shadow:0 0 90px rgba(182,255,97,.25); }
+    .orbit { position:absolute; width:18px; height:18px; border-radius:50%; background:var(--orange); right:171px; top:198px; }
+  </style>
+</head>
+<body>
+  <main id="root"></main>
+  <script>
+    const scene = Number(new URLSearchParams(location.search).get("scene") || 1);
+    const pages = {
+      1: `<section class="slide night hook"><div class="page">01 / 08</div><div><div class="eyebrow">The product gap</div><h1>The hardest part is often before the first prompt.</h1><p>Product people already know how to use browser tools. They should not need a developer to install an AI coding workflow before they can shape a running product.</p></div><div class="barriers"><div class="barrier"><b>Install</b><span>Runtimes, packages, editors</span></div><div class="barrier"><b>Git</b><span>Branches, commits, conflicts</span></div><div class="barrier"><b>Folders</b><span>Repositories and build output</span></div><div class="barrier"><b>OAuth</b><span>CLI credentials and configuration</span></div><div class="browser-pill">Open a project. Describe the outcome. Use the running product.</div></div><div class="brand">Programmable Programming Page</div></section>`,
+      2: `<section class="slide repl"><div class="page">02 / 08</div><div class="eyebrow">An AI-era product REPL</div><h2>Not source hot reload. Change the program that is already running.</h2><p>Codex works against long-lived runtimes, proves the behavior there, then reconciles the accepted state into durable engineering artifacts.</p><div class="flow"><article class="node"><div class="node-index">01 · CONVERSATION</div><h3>Describe the product decision</h3><p>No code, file tree, Git operation, model, Skill, or MCP is exposed in the workspace.</p></article><div class="arrow">→</div><article class="node"><div class="node-index">02 · CODEX</div><h3>Generate, evaluate, observe, repair</h3><p>The same turn can revise failed Clojure or browser behavior until the runtime contract passes.</p></article><div class="arrow">→</div><article class="node live"><div class="node-index">03 · LIVE PRODUCT</div><h3>Use the changed program now</h3><div class="runtime-grid"><div class="runtime"><strong>Server</strong><span>Codex attaches to the running JVM through nREPL and redefines live Vars.</span></div><div class="runtime"><strong>Browser</strong><span>A persistent isolated runtime updates UI and behavior without a refresh.</span></div></div></article></div><div class="reconcile">Accepted behavior → source · tests · SQLite · semantic history · checkpoints</div></section>`,
+      7: `<section class="slide codex"><div class="page">07 / 08</div><div class="eyebrow">Built and operated with Codex + GPT-5.6</div><h2>One operating partner, from product decisions to this film.</h2><div class="loop"><article><div class="n">01 · PRODUCT & CODE</div><h3>Shape and build</h3><p>Turn owner feedback into product decisions, Clojure and ClojureScript, contracts, tests, and recovery behavior.</p></article><article><div class="n">02 · LIVE RUNTIME</div><h3>Evaluate and repair</h3><p>Drive nREPL and browser evaluation, preserve failure reasons, and keep iterating until real behavior passes.</p></article><article><div class="n">03 · VERIFY & DEPLOY</div><h3>Prove the outcome</h3><p>Run browser scenarios, SQLite persistence checks, Docker gates, Coolify health checks, and judge canaries.</p></article><article><div class="n">04 · THIS FILM</div><h3>Make it visible</h3><p>Write the story, preserve real Codex footage, generate narration and captions, edit, and validate the final MP4.</p></article></div><div class="disclaimer">THE OWNER MADE THE PRODUCT DECISIONS · CODEX CARRIED THEM THROUGH</div><div class="brand">Programmable Programming Page</div></section>`,
+      8: `<section class="slide night"><div class="page">08 / 08</div><div class="close-copy"><div class="eyebrow">A live full-stack product workspace</div><h1>Where product conversations become running software.</h1><p>Start in the browser. Evolve the client, server, data, and product shape. Leave a real history that developers can continue.</p><div class="url">https://ppp.openai.slopbook.org</div></div><div class="orb"></div><div class="orbit"></div><div class="brand">Programmable Programming Page</div></section>`,
+      9: `<section class="slide night compressed"><div><div class="eyebrow">Honest edit</div><h1>Generation time compressed</h1><p>Real Codex output · No fixture substitution</p><div class="pulse"></div></div></section>`
+    };
+    document.getElementById("root").innerHTML = pages[scene] || pages[1];
+  </script>
+</body>
+</html>

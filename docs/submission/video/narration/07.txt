@@ -1,0 +1,1 @@
+Codex and GPT-5.6 helped shape the product, write the Clojure and ClojureScript, build the nREPL workflow, test real browser failures, configure the hosted judge environment, verify deployment health, and produce this film. The owner made the product decisions. Codex carried them through.

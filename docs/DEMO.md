@@ -1,8 +1,8 @@
 # Three-Minute Demo
 
-Status: real-Codex English submission cut captured and verified locally;
-publication pending
-Actual runtime: 168.74 seconds
+Status: polished real-Codex English narrative film built and verified locally;
+public upload pending
+Actual runtime: 168.751 seconds
 Voice: English
 Required subtitles: English
 
@@ -139,10 +139,14 @@ Expected visible outcome:
 | 2:40-2:54 | Open Tetris, show automatic falling and arrow input, return to Snake and its ranking. | `Tetris runs in the browser. Accounts and rankings stay on the server. Both evolve inside one live product workspace.` |
 | 2:54-2:59 | Final frame: library, sidebar, and tagline. | `Where product conversations become running software.` |
 
-The verified English cut is 168.74 seconds after removing dead air. The final
-export remains below 180 seconds and explicitly explains that
-Codex uses GPT-5.6 to produce structured source changes that PPP validates
-before activation.
+The polished English narrative cut is 168.751 seconds. It opens with the
+installation and Git barrier, distinguishes the nREPL-driven product loop from
+source hot reload, then uses only the verified real-Codex footage for the
+generated product story. Long model waits use explicit compression cards, and
+the brief real Tetris timer/keyboard sequence is labeled as 8x slow playback.
+The export remains below 180 seconds and explicitly explains Codex and GPT-5.6
+across product decisions, implementation, runtime repair, verification,
+deployment operations, and production of the film itself.
 
 ## 5. Camera and editing rules
 
@@ -162,9 +166,10 @@ before activation.
 
 ## 6. English subtitle file
 
-The synchronized English subtitle sidecar is in the ignored local capture
-directory beside `ppp-demo.mp4`; the MP4 also embeds the same English subtitle
-track.
+The synchronized English subtitle sidecar is in the ignored local submission
+directory beside `ppp-build-week-demo.mp4`; the MP4 also embeds the same
+English subtitle track. The reproducible deck, narration, subtitle merge, and
+FFmpeg pipeline live in `docs/submission/video/`.
 
 Subtitle review checks:
 

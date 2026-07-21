@@ -1,0 +1,1 @@
+Now Snake becomes a service. The signed-in player saves a score through a generated server action. Identity comes from the authenticated context, SQLite keeps the best score, and the ranking remains after reload.

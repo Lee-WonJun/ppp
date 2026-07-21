@@ -1,0 +1,1 @@
+PPP is not a code generator followed by hot reload. Codex attaches to the already running Clojure server through nREPL, redefines live Vars, and checks the next real request. Browser behavior evolves in a persistent sandbox runtime. Accepted behavior is then reconciled into source, tests, data, history, and checkpoints.

@@ -148,7 +148,10 @@ SQLite. The account and ranking survive reload. A product decision then turns
 the single game into a Game library with Snake preserved, and one final request
 adds timer/keyboard Tetris as the second game without losing the user or score.
 
-The final capture uses real OAuth Codex in one resumed thread. The deterministic
+The final capture uses real OAuth Codex in one resumed thread. The polished
+168.751-second narrative film adds an English explanation of the nREPL-driven
+product loop and Codex's end-to-end contribution while keeping generated
+product footage exclusively from that verified capture. The deterministic
 fake provider remains CI and packaged-regression infrastructure; its Gallery
 fixture does not appear in the video.
 
@@ -329,9 +332,10 @@ Hero image should show the running generated product and sidebar together, not a
 - [x] 24 live evaluations meet thresholds.
 - [x] Three packaged demo runs succeed consecutively.
 - [x] Secret scan covers repository and image.
-- [x] Local video is verified under three minutes with English narration,
-  synchronized English subtitles, and an explicit explanation of how Codex and
-  GPT-5.6 are used.
+- [x] Polished 168.751-second local film is verified at 1440x900/30fps with
+  English narration, burned and embedded synchronized English subtitles, real
+  Codex product footage only, and an explicit explanation of nREPL plus how
+  Codex and GPT-5.6 are used.
 - [ ] Video uploaded and publicly accessible.
 - [x] Claims match completed evidence.
 - [x] Codex and model roles stated accurately.

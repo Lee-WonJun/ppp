@@ -1,7 +1,7 @@
 # Local Release Closure
 
-Status: public judge deployment verified; upload and submission remain owner-controlled
-Last updated: 2026-07-20
+Status: public judge deployment and local final film verified; upload and submission remain owner-controlled
+Last updated: 2026-07-21
 
 ## Definition of locally complete
 
@@ -33,11 +33,13 @@ Local completeness does not authorize remote or public state changes.
   in one project and one resumed provider thread through Snake, product auth,
   visible error repair, authenticated SQLite ranking, Game library, and
   preserved Tetris addition.
-- Local final video: PPP-025 captured the same real-Codex story at 1440x900 and
-  verified a 168.74-second submission cut with honest wait-compression cards,
-  English narration, synchronized English subtitles, and explicit
-  Codex/GPT-5.6 use. The bounded record is
-  `artifacts/evidence/ppp-025-real-codex-video-capture.md`.
+- Local final film: PPP-032 turns the PPP-025 real-Codex capture into a polished
+  168.751-second 1440x900 narrative film with honest wait-compression cards,
+  disclosed 8x slow playback of the real Tetris timer/keyboard frames, English
+  narration, burned and embedded synchronized English subtitles, an accurate
+  nREPL-versus-hot-reload explanation, and explicit Codex/GPT-5.6 use. The
+  reproducible pipeline is in `docs/submission/video/`; the bounded record is
+  `artifacts/evidence/ppp-032-final-submission-film.md`.
 - Streamed real-Codex progress: PPP-026 incrementally parses bounded JSONL and
   delivers only metadata-derived product-language details to the requesting
   tab. Real OAuth browser observation and the complete gate are recorded in
@@ -51,6 +53,9 @@ Local completeness does not authorize remote or public state changes.
   one real Codex change, persisted checkpoint replay, and a clean post-login
   browser canary. The bounded record is
   `artifacts/evidence/ppp-027-coolify-judge-deployment.md`.
+- Deployment separation check on 2026-07-21: the public host remains healthy
+  and Codex-ready, while local `master` is three nREPL commits ahead of
+  `origin/master`. Those unpublished commits are not claimed as deployed.
 - Judge-readiness review: the internal release score is separated from the
   conservative external judging assessment; the majority-build Codex task has
   a high-signal reading guide in `docs/CODEX_SESSION.md`.

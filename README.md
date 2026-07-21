@@ -102,6 +102,13 @@ application functions—and owns identity, credentials, routing, quotas,
 snapshots, and cross-workspace isolation. An accepted checkpoint reconciles the
 successful live definitions back to source, tests, data, and history.
 
+Application authentication is inside the capsule. Codex may inspect and change
+its schema, password hashes, account rows, failure logs, and server logic like
+the rest of the prototype. Only PPP access, owner OAuth, connector secrets, the
+host, and other workspaces remain outside. The shared public hackathon process
+uses typed product-auth operations because projects share one JVM; that is a
+POC containment choice, not the product vision.
+
 ## Why it exists
 
 The largest barrier for many product managers and designers is not learning how to write a better prompt. It is everything before the prompt: installing tools, finding a repository, authenticating providers, running a build, and recovering when generated code breaks.

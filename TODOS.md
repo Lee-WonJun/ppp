@@ -29,7 +29,7 @@ Control Plane
                          |
                          v
 Workspace Capsule
-  source / shell / dependencies / database / nREPL / CLJS REPL
+  source / shell / dependencies / database / product auth / logs / nREPL / CLJS REPL
                          |
                          v
 Isolated product origin
@@ -80,6 +80,13 @@ Begin when either:
 This target replaces form-level capability enumeration with environment-level
 containment. It does not remove checkpoint, history, browser isolation,
 provider, quota, or recovery responsibilities.
+
+Product authentication is not promoted into the Control Plane. The capsule
+owns its account schema, password hashes, sessions, application audit data, and
+debug logs. Only PPP's own login, owner/provider secrets, billing, routing, and
+cross-workspace lifecycle remain external. Shared-Public typed auth is a
+temporary way to safely offer the same outcome while many projects share one
+JVM.
 
 ## Programmable sandbox resource coverage
 

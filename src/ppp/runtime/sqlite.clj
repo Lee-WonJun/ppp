@@ -278,6 +278,65 @@
         sql (validate-action-sql! sql params true)]
     (execute! connectable (into [sql] params))))
 
+(def ^:private workspace-control-table-patterns
+  [#"(?i)\b_ppp_runtime_meta\b"
+   #"(?i)\b_ppp_migrations\b"])
+
+(defn- validate-workspace-sql!
+  [sql params write?]
+  (let [sql (str/trim (str sql))
+        params (vec params)
+        {:keys [balanced? statements]} (policy/analyze-sql sql)
+        code (:code (first statements))
+        allowed (if write?
+                  #"(?is)^(?:insert\s+into|update|delete\s+from)\b"
+                  #"(?is)^select\b")]
+    (when (or (not balanced?)
+              (not= 1 (count statements))
+              (not (re-find allowed (or code "")))
+              (some #(re-find % sql) workspace-control-table-patterns)
+              (re-find #"(?i)\bsqlite_[a-z0-9_]*\b" sql)
+              (some #(re-find % (or code "")) action-code-forbidden)
+              (> (count params) 128)
+              (not= (placeholder-count (or code "")) (count params)))
+      (throw (ex-info
+              (if (some #(re-find % sql) workspace-control-table-patterns)
+                "Workspace data access cannot modify Control Plane metadata"
+                "SQL is outside this workspace database")
+              {:code (if (some #(re-find % sql) workspace-control-table-patterns)
+                       :repl/database-control-plane-denied
+                       :repl/database-sql-not-allowed)})))
+    [sql params]))
+
+(defn workspace-schema
+  "Describe every application or workspace-platform table, including product
+  authentication tables. Control Plane commit metadata remains outside the
+  workspace model boundary."
+  [connectable]
+  (execute!
+   connectable
+   ["SELECT name, sql
+       FROM sqlite_schema
+      WHERE type = 'table'
+        AND name NOT IN ('_ppp_runtime_meta', '_ppp_migrations')
+        AND name NOT LIKE 'sqlite_%'
+      ORDER BY name"]))
+
+(defn workspace-query!
+  [connectable sql params]
+  (let [[sql params] (validate-workspace-sql! sql params false)
+        rows (execute! connectable (into [sql] params))]
+    (when (> (count rows) 256)
+      (throw (ex-info "Workspace query returned too many rows"
+                      {:code :repl/database-result-too-large
+                       :limit 256})))
+    rows))
+
+(defn workspace-mutate!
+  [connectable sql params]
+  (let [[sql params] (validate-workspace-sql! sql params true)]
+    (execute! connectable (into [sql] params))))
+
 (defn- user-table-names*
   [connectable]
   (mapv :name

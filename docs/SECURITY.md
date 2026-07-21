@@ -29,8 +29,9 @@ absent from PPP.
 
 The intended Workspace Capsule Profile moves arbitrary development authority
 inside a disposable per-workspace container or stronger sandbox. Codex may then
-use shell, source, dependencies, server nREPL, and browser CLJS REPL inside the
-capsule. The permanent security boundary remains outside it: no Control Plane,
+use shell, source, dependencies, server nREPL, browser CLJS REPL, application
+database, authentication schema and rows, and product logs inside the capsule.
+The permanent security boundary remains outside it: no Control Plane,
 host filesystem, container runtime socket, owner/provider credential, cloud
 metadata, or other workspace access. A public multi-tenant implementation must
 prefer a hardened runtime such as gVisor, Kata, or a microVM over treating a
@@ -46,7 +47,7 @@ model before release.
 | Connector secrets | Access to developer-owned external systems. |
 | Session source and prompts | Private product strategy disclosure. |
 | SQLite data and checkpoints | User data disclosure or corruption. |
-| Generated-product password hashes and login sessions | Product-account takeover or cross-user data access. |
+| Generated-product authentication schema, hashes, and login sessions | Workspace product data; disclosure outside its capsule could enable product-account takeover. |
 | Session blobs, search documents, jobs, and ingress state | Product data disclosure, repeated side effects, or public input abuse. |
 | Fixed kernel and capability catalog | Escape from bounded generated runtime. |
 | History and journal | Loss of auditability and recovery. |
@@ -93,7 +94,7 @@ Generated source remains untrusted on both sides of the network.
 | Prompt asks AI to read credentials or host files | No provider tools, skill-only workdir, cleared environment, stdin-only context. | Live refusal scenario and process-vector unit test. |
 | Generated server code invokes JVM or shell | SCI class map empty, namespace allowlist, static forbidden-symbol validation. | Unit fixtures and evaluator escape tests. |
 | Generated client code tries to reach parent auth or recovery UI | Opaque sandbox origin, no `allow-same-origin`, no parent object passed, validated source-window/channel bridge. | Parent isolation Playwright tests. |
-| Generated code reads passwords, hashes, login tokens, or forges a user | Kernel-owned Argon2id and token service, reserved tables, typed claims/effects only. | Product-auth unit, SCI, HTTP, and browser isolation tests. |
+| Shared Public SCI reads or forges product credentials outside typed operations | Argon2id/token service, typed claims/effects, and per-session database isolation. The trusted Workspace Capsule may inspect its own auth rows but not another workspace or the Control Plane. | Product-auth unit, SCI, nREPL database-boundary, HTTP, and browser isolation tests. |
 | A product login crosses into another PPP session | UUID-derived cookie name and path, session-keyed token digest, distinct database lookup. | 1,000-sequence cross-session auth property. |
 | Checkpoint restore resurrects a revoked login | Restore keeps credential state but deletes every active auth session and attempt before activation. | Restore/auth integration property. |
 | Credential guessing exhausts or enumerates accounts | Bounded input, same unknown/wrong hash path and public error, per-identifier throttling. | Hash-path contract and throttle tests. |
@@ -273,9 +274,13 @@ The iframe sandbox and bridge validation are authoritative. SCI still bounds sou
 
 ## 12. Product identity and session management
 
-Product authentication is a Kernel capability because secure password storage,
-opaque sessions, and response cookies require authority that generated code
-must not receive.
+Product authentication belongs to the generated product's workspace. The
+Shared Public POC implements it as a Kernel-mediated capability because several
+untrusted generated programs share one JVM and one HTTP origin. That is an
+implementation boundary for this deployment profile, not the final product
+boundary. Inside an isolated Workspace Capsule, Codex may inspect or replace
+the app's auth schema and logic; the external Control Plane still owns only PPP
+access, provider credentials, routing, quotas, and workspace lifecycle.
 
 ```text
 generated form

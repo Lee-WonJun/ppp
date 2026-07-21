@@ -83,7 +83,8 @@
             "PPP_DEMO_PUBLIC_CAPTURE" "1"
             "PPP_DEMO_PUBLIC_PASSWORD" password
             "PPP_DEMO_LIVE_CAPTURE" "1"
-            "PPP_DEMO_SEMANTIC_REPAIRS" "3"
+            "PPP_DEMO_SEMANTIC_REPAIRS"
+            (or (System/getenv "PPP_DEMO_SEMANTIC_REPAIRS") "1")
             "PPP_DEMO_LIVE_OBSERVATIONS" observations-path
             "PPP_DEMO_LIVE_PLAYWRIGHT_OUTPUT" playwright-output
             "PPP_DEMO_LIVE_RESUME_FINAL" (if resume? "1" "0")}})]

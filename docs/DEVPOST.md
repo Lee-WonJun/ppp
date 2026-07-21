@@ -70,7 +70,8 @@ but are not the intended ceiling.
 
 **Wannabe architecture.** Each project receives a disposable container or
 stronger sandbox with real source, shell, dependencies, database, server
-nREPL, and browser CLJS REPL. Codex works REPL-first inside it; the external
+nREPL, browser CLJS REPL, product authentication, and app diagnostics. Codex
+works REPL-first inside it; the external
 Control Plane protects credentials, the host, and other workspaces. Accepted
 checkpoints reconcile live definitions back to source, tests, data, and history.
 
@@ -131,6 +132,12 @@ they can open the same saved products or create a named blank project. Inside a
 project, the user never sees code, filenames, diffs, Git, models, skills, or
 MCP. Developers can still inspect the session's actual CLJ, CLJS, CLJC, CSS,
 SQL, tests, prompts, before/after source, and source-plus-data checkpoints.
+
+The public POC uses typed product-auth operations because its projects share a
+JVM. This does not place the prototype's account database in the Control Plane.
+In the intended capsule profile, Codex may inspect and replace product auth,
+account rows, password hashes, and application logs while PPP access, owner
+OAuth, host state, and other workspaces remain unreachable.
 
 ## Demo
 

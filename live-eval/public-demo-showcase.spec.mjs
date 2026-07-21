@@ -43,6 +43,37 @@ test("show the final public product outcomes clearly", async ({ page }) => {
   test.setTimeout(120_000);
   await openPublicSession(page);
 
+  const signedIn = productFrame(page).getByText(/Signed in as Player One/i).first();
+  await expect(signedIn).toBeVisible();
+  await signedIn.scrollIntoViewIfNeeded();
+  await pause(2_000);
+
+  await productFrame(page).getByRole("button", {
+    name: "Sign out",
+    exact: true
+  }).click();
+  await productFrame(page).getByRole("button", {
+    name: "Have an account? Sign in",
+    exact: true
+  }).click();
+  const identifier = productFrame(page).getByRole("textbox", {
+    name: "Sign-in ID",
+    exact: true
+  });
+  const password = productFrame(page).getByLabel("Password", { exact: true });
+  await identifier.scrollIntoViewIfNeeded();
+  await identifier.pressSequentially(`player-${sessionId.slice(0, 8)}`, {
+    delay: 28
+  });
+  await password.pressSequentially("arcade password", { delay: 22 });
+  await productFrame(page).getByRole("button", {
+    name: "Sign in",
+    exact: true
+  }).click();
+  await expect(signedIn).toBeVisible({ timeout: 20_000 });
+  await signedIn.scrollIntoViewIfNeeded();
+  await pause(3_000);
+
   const backToGames = productFrame(page).getByRole("button", {
     name: "Back to games",
     exact: true
@@ -60,6 +91,29 @@ test("show the final public product outcomes clearly", async ({ page }) => {
   await pause(3_000);
 
   await productFrame(page).getByRole("button", {
+    name: "Play Snake",
+    exact: true
+  }).click();
+  const snake = productFrame(page).getByLabel("Snake game", { exact: true });
+  const snakeRow = productFrame(page).getByLabel("Snake head row", {
+    exact: true
+  });
+  await expect(snake).toBeVisible();
+  const snakeRowBefore = await snakeRow.textContent();
+  await expect.poll(() => snakeRow.textContent(), { timeout: 8_000 })
+    .not.toBe(snakeRowBefore);
+  await snake.focus();
+  await snake.press("ArrowLeft");
+  await pause(3_000);
+
+  await productFrame(page).getByRole("button", {
+    name: "Back to games",
+    exact: true
+  }).click();
+  await expect(library).toBeVisible();
+  await pause(1_500);
+
+  await productFrame(page).getByRole("button", {
     name: "Play Tetris",
     exact: true
   }).click();
@@ -72,30 +126,6 @@ test("show the final public product outcomes clearly", async ({ page }) => {
   await tetris.focus();
   await tetris.press("ArrowLeft");
   await pause(4_000);
-
-  await productFrame(page).getByRole("button", {
-    name: "Back to games",
-    exact: true
-  }).click();
-  await expect(library).toBeVisible();
-  await pause(2_000);
-  await productFrame(page).getByRole("button", {
-    name: "Play Snake",
-    exact: true
-  }).click();
-
-  const boostButton = productFrame(page).getByRole("button", {
-    name: "Boost score",
-    exact: true
-  });
-  const scoreRule = productFrame(page).getByLabel("Score rule", { exact: true });
-  const boostedScore = productFrame(page).getByLabel("Boosted score", {
-    exact: true
-  });
-  await expect(scoreRule).toContainText(/triple server rule/i);
-  await scrollToControl(boostButton);
-  await boostButton.click();
-  await expect(boostedScore).not.toBeEmpty({ timeout: 20_000 });
-  await scrollToControl(boostedScore);
-  await pause(5_000);
+  await expect(productFrame(page).getByText(/Signed in as Player One/i).first())
+    .toBeVisible();
 });

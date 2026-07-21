@@ -260,6 +260,13 @@ protects identity, credentials, routing, quotas, snapshots, the host, and other
 workspaces. At checkpoint time PPP reconciles live definitions into source,
 tests, data, and history for restart and developer handoff.
 
+The product being designed is inside the capsule, including its authentication
+system. Account tables, password hashes, server logs, network failures, and
+test data are material the agent may inspect and repair. Plaintext passwords do
+not need to be copied into ambient prompts or logs, but hiding the product's
+auth implementation from its own agent would recreate the arbitrary capability
+wall PPP is meant to remove.
+
 ## The long-term view
 
 The hackathon uses one local workspace, a shared-password gate, per-session

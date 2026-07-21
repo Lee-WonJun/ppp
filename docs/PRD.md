@@ -336,7 +336,7 @@ inside that one product session.
 |---|---|
 | PRD-F33 | Define generated authority through session-owned browser, database, identity, network, and connector resources; deny only Kernel, host, credential, cross-session, and unbounded effects. |
 | PRD-F34 | Let generated server source implement product signup, login, logout, current-user, password change, account deletion, profiles, roles, and authenticated business actions through typed identity capabilities. |
-| PRD-F35 | Keep plaintext passwords, password hashes, login tokens, cookie values, PPP access state, and reserved identity tables inaccessible to generated source and browser JavaScript. |
+| PRD-F35 | Keep PPP Control Plane credentials, provider secrets, host state, other workspaces, and parent-window cookies inaccessible. Application auth schema, hashes, account state, and failure evidence are workspace-owned data: the Shared Public POC reaches them through typed identity capabilities, while the isolated Workspace Capsule may inspect and repair them through its project nREPL and database tools. Do not place user-entered plaintext passwords in ambient provider context or logs. |
 | PRD-F36 | Scope every product login to one PPP session, preserve valid logins across ordinary product changes and reloads, revoke superseded credentials, and invalidate all live logins after checkpoint restore. |
 | PRD-F37 | Require the provider to distinguish PPP workspace access from accounts belonging to the generated product and to use available product capabilities instead of refusing ordinary product features. |
 | PRD-F38 | Maintain and verify a capability coverage matrix for common full-stack product effects; any unsupported ordinary sandbox-owned effect is tracked as a product gap rather than described as intrinsically impossible. |
@@ -363,21 +363,20 @@ The final video must support this exact continuous real-Codex story:
 
 1. Begin on Projects after workspace access is already established, create a
    named project, and open its blank white canvas.
-2. Ask for Snake and immediately use its browser timer, arrow-key input, and
+2. Type a concise dark-theme request character by character and press Enter;
+   show the blank product become a coherent dark canvas without refresh.
+3. Ask for Snake and immediately use its browser timer, arrow-key input, and
    visible score without refresh.
-3. Ask for generated-product signup and sign-in while preserving Snake.
-4. Observe that the first account area needs work, ask for a cohesive arcade
-   account UI with useful errors, submit invalid input, and see the product
-   explain how to recover.
-5. Create a real product account, sign out, sign in, reload, and remain signed
-   in.
-6. Ask for an authenticated Snake ranking, save the signed-in player's current
-   score through a generated server action, reload, and see the SQLite-backed
-   account and score still present.
-7. Decide the product should be a game platform, turn the single-game page
-   into a Game library, and preserve Snake, the account, ranking, and score.
-8. Add timer/keyboard Tetris as the second listed game while every existing
-   server-owned feature remains available.
+4. Type a generated-product account request and add signup, sign-in, sign-out,
+   and visible recoverable errors through the Shared Public POC's typed
+   product-auth bridge. State that app auth belongs to the workspace in the
+   target capsule rather than to the external Control Plane.
+5. Create a real product account, sign out, sign in again, reload, and keep the
+   signed-in account surface visible as the product continues evolving.
+6. Decide the product should be a game platform, turn the single-game page into
+   a Game library, and preserve Snake plus the signed-in account surface.
+7. Add timer/keyboard Tetris as the second listed game while the existing
+   account and Snake remain available.
 
 The demo fails if any change requires a terminal, file picker, manual Apply control, build, server restart, or browser refresh.
 
@@ -386,6 +385,16 @@ codes, OAuth, generated source, files, diffs, SQL, tests, or filesystem history.
 The provider shown in the final video is real OAuth Codex. Fake-provider flows
 remain deterministic regression tests and must not be presented as live model
 generation.
+
+Visible prompts are entered with rapid sequential typing and submitted with
+Enter. The recording keeps the composer, request, progress, and result in view
+instead of visually pasting text or leaving the conversation scrolled away.
+Genuine provider waits may be aggressively accelerated in edit, but every such
+segment is labeled and remains continuous with the real request and outcome.
+
+The contribution section states that Codex with GPT-5.6 Terra at medium
+reasoning supported product planning, implementation, the presentation deck
+and film, and is the live agent behind the recorded public test server.
 
 An extended playground gate also asks for accounts around an existing product,
 registers a new user, reloads while remaining signed in, enforces one
@@ -474,7 +483,7 @@ updates a second open tab, and the ingress changes only its matching session.
 | A background job or webhook obtains host authority | Kernel-owned runner and ingress adapter, named generated handlers, bounded payloads, no thread/socket/server control, and session-scoped databases. |
 | A binary object or search index bypasses restore or quota | Reserved SQLite resource tables, size/count limits, snapshot inclusion, logical resource hashes, and restore properties. |
 | A realtime event leaks or survives a rollback | Post-commit typed effects, exact session/runtime broadcast, opaque-frame event handlers, and cross-session negative tests. |
-| Product authentication leaks credentials or crosses sessions | Kernel-owned Argon2id credentials, opaque keyed token digests, session-scoped HttpOnly cookies, restore revocation, and isolation properties. |
+| Product authentication leaks across workspaces or into the Control Plane | Shared Public POC typed auth and opaque cookies; Workspace Capsule containment around app-owned auth schema/data; provider and host secrets remain external; restore revocation and isolation properties. |
 | Client and server change different versions | Base-version check and request-tab two-phase staging. |
 | SQLite and source diverge during crash | Prepared journal, before backup, runtime metadata version comparison, idempotent recovery. |
 | OAuth material leaks | Separate volume, mode 0600, no logs, no image/repository inclusion, shared-password gate. |

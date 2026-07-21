@@ -8,6 +8,7 @@
             [ppp.repl.bridge :as bridge]
             [ppp.repl.service :as repl]
             [ppp.runtime.server :as server]
+            [ppp.runtime.sqlite :as sqlite]
             [ppp.session.store :as store]
             [ppp.util.fs :as fs])
   (:import (java.nio.file Files)
@@ -158,6 +159,72 @@
       (finally
         (bridge/unregister-project! workspace-id)
         (repl/stop! service)
+        (fs/delete-tree! root)))))
+
+(deftest workspace-nrepl-can-inspect-and-repair-its-product-auth-database
+  (let [root (Files/createTempDirectory "ppp-nrepl-database-test"
+                                        (make-array FileAttribute 0))
+        registry (server/create-registry)
+        workspace-id (random-uuid)
+        request-id (random-uuid)
+        database-path (.resolve root "app.sqlite")]
+    (try
+      (server/activate!
+       registry workspace-id
+       (server/stage! {:source-map store/initial-source
+                       :database-path database-path
+                       :version 0
+                       :timeout-ms 500}))
+      (let [database (sqlite/datasource database-path)]
+        (sqlite/execute!
+         database
+         ["CREATE TABLE _ppp_auth_users
+             (id TEXT PRIMARY KEY, identifier_display TEXT, password_hash TEXT)"])
+        (sqlite/execute!
+         database
+         ["INSERT INTO _ppp_auth_users
+             (id, identifier_display, password_hash) VALUES (?, ?, ?)"
+          "user-1" "Player One" "fake-argon-hash"]))
+      (bridge/register-project! workspace-id registry)
+      (bridge/begin-turn! workspace-id request-id)
+
+      (let [table-names
+            (set (map :name
+                      (:tables
+                       (bridge/inspect-workspace-database workspace-id))))]
+        (is (contains? table-names "_ppp_auth_users"))
+        (is (not (contains? table-names "_ppp_runtime_meta")))
+        (is (not (contains? table-names "_ppp_migrations"))))
+      (is (= [{:id "user-1"
+               :identifier_display "Player One"
+               :password_hash "fake-argon-hash"}]
+             (bridge/query-workspace-database!
+              workspace-id
+              "SELECT id, identifier_display, password_hash FROM _ppp_auth_users"
+              [])))
+      (bridge/mutate-workspace-database!
+       workspace-id
+       "UPDATE _ppp_auth_users SET identifier_display = ? WHERE id = ?"
+       ["Player Prime" "user-1"])
+      (is (= [{:identifier_display "Player Prime"}]
+             (bridge/query-workspace-database!
+              workspace-id
+              "SELECT identifier_display FROM _ppp_auth_users WHERE id = ?"
+              ["user-1"])))
+      (is (= :repl/database-control-plane-denied
+             (:code
+              (ex-data
+               (try
+                 (bridge/query-workspace-database!
+                  workspace-id
+                  "SELECT runtime_version FROM _ppp_runtime_meta"
+                  [])
+                 (catch Exception cause cause))))))
+      (is (= [:database/inspect :database/query :database/mutate
+              :database/query :database/query]
+             (mapv :operation (bridge/finish-turn! workspace-id request-id))))
+      (finally
+        (bridge/unregister-project! workspace-id)
         (fs/delete-tree! root)))))
 
 (deftest rejected-repl-branch-never-mutates-the-public-active-runtime

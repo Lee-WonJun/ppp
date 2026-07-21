@@ -774,6 +774,31 @@
      :jobs (job-ids runtime)
      :ingresses (ingress-routes runtime)}))
 
+(defn inspect-workspace-database
+  "Return the current workspace-owned application schema to the trusted nREPL
+  profile. Product-auth tables are intentionally included; only commit and
+  recovery metadata remain Control Plane state."
+  [^Registry registry session-id]
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))]
+    {:runtime-version (:version runtime)
+     :tables (sqlite/workspace-schema (:database runtime))}))
+
+(defn query-workspace-database!
+  [^Registry registry session-id sql params]
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))]
+    (sqlite/workspace-query! (:database runtime) sql params)))
+
+(defn mutate-workspace-database!
+  [^Registry registry session-id sql params]
+  (let [runtime (or (runtime-for registry session-id)
+                    (throw (ex-info "Session runtime is not active"
+                                    {:code :runtime/not-active})))]
+    (sqlite/workspace-mutate! (:database runtime) sql params)))
+
 (defn eval-host-live!
   "Run one trusted nREPL form directly in the already-running JVM while the
   active product runtime exposes its registration capabilities. The caller

@@ -79,6 +79,55 @@
                                    :code (:code (ex-data cause))})
         (throw cause)))))
 
+(defn inspect-workspace-database
+  [session-id]
+  (let [{:keys [registry session-id]} (project! session-id)]
+    (try
+      (let [result (server/inspect-workspace-database registry session-id)]
+        (record-event! session-id {:operation :database/inspect
+                                   :status :accepted
+                                   :result result})
+        result)
+      (catch Exception cause
+        (record-event! session-id {:operation :database/inspect
+                                   :status :rejected
+                                   :code (:code (ex-data cause))})
+        (throw cause)))))
+
+(defn query-workspace-database!
+  [session-id sql params]
+  (let [{:keys [registry session-id]} (project! session-id)]
+    (try
+      (let [result (server/query-workspace-database! registry session-id sql params)]
+        (record-event! session-id {:operation :database/query
+                                   :status :accepted
+                                   :sql sql
+                                   :result result})
+        result)
+      (catch Exception cause
+        (record-event! session-id {:operation :database/query
+                                   :status :rejected
+                                   :sql sql
+                                   :code (:code (ex-data cause))})
+        (throw cause)))))
+
+(defn mutate-workspace-database!
+  [session-id sql params]
+  (let [{:keys [registry session-id]} (project! session-id)]
+    (try
+      (let [result (server/mutate-workspace-database! registry session-id sql params)]
+        (record-event! session-id {:operation :database/mutate
+                                   :status :accepted
+                                   :sql sql
+                                   :result result})
+        result)
+      (catch Exception cause
+        (record-event! session-id {:operation :database/mutate
+                                   :status :rejected
+                                   :sql sql
+                                   :code (:code (ex-data cause))})
+        (throw cause)))))
+
 (defn eval-server!
   [session-id form-or-code]
   (let [{:keys [registry session-id]} (project! session-id)]

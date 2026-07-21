@@ -223,6 +223,43 @@
                   (is false (str "unexpected promise rejection: " error))
                   (done)))))))
 
+(deftest targeted-action-failures-become-reactive-product-state
+  (async done
+         (let [client
+               (str "(ns runtime.client (:require [runtime.api :as api]))\n"
+                    "(defn page [_]\n"
+                    "  [:main [:button {:on-click #(api/action! :auth/register {} :auth/result)} \"Create account\"]])\n"
+                    "(api/register-page! :home page)")
+               staged
+               (runtime/stage-source!
+                {:version 3
+                 :source-map (source-map client)
+                 :action-fn
+                 (fn [_action-id _payload]
+                   (js/Promise.reject
+                    (ex-info "Use a valid sign-in identifier."
+                             {:code :auth/identifier-invalid})))})]
+           (runtime/retain-stage! staged)
+           (runtime/activate! 3)
+           (let [click (get-in ((:page staged) {}) [1 1 :on-click])]
+             (-> (click nil)
+                 (.then
+                  (fn [_]
+                    (is false "targeted action failure unexpectedly resolved")
+                    (done)))
+                 (.catch
+                  (fn [error]
+                    (is (= "Use a valid sign-in identifier." (.-message error)))
+                    (is (= {:error "Use a valid sign-in identifier."
+                            :code :auth/identifier-invalid}
+                           (:auth/result @(runtime/active-page-state))))
+                    (is (= {:error "Use a valid sign-in identifier."
+                            :code :auth/identifier-invalid}
+                           (get-in @(runtime/active-page-state)
+                                   [:runtime/action-errors :auth/result])))
+                    (is (empty? @(:pending staged)))
+                    (done))))))))
+
 (deftest registration-and-version-contracts
   (testing "exactly one home page and one sidebar are required"
     (let [wrong-page

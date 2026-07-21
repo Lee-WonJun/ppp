@@ -269,11 +269,38 @@
   (-> (js/Promise.resolve (action-fn action-id payload))
       (.then (fn [value]
                (when target-key
-                 (swap! state assoc target-key
-                        (if (and (map? value) (contains? value :result))
-                          (:result value)
-                          value)))
+                 (swap! state
+                        (fn [current]
+                          (-> current
+                              (assoc target-key
+                                     (if (and (map? value)
+                                              (contains? value :result))
+                                       (:result value)
+                                       value))
+                              (update :runtime/action-errors dissoc target-key)))))
                value))
+      (.catch
+       (fn [error]
+         (if target-key
+           (let [data (ex-data error)
+                 message (or (.-message error)
+                             (:message data)
+                             "The request could not be completed.")
+                 failure {:error (subs (str message) 0 (min 1024 (count (str message))))
+                          :code (or (:code data) :action/failed)}]
+             ;; A target key is an explicit request to make the server result
+             ;; observable in generated UI. Preserve that contract for both
+             ;; success and failure so a rejected HTTP action cannot leave a
+             ;; permanent optimistic or loading state behind.
+             (swap! state
+                    (fn [current]
+                      (cond-> (assoc-in current
+                                        [:runtime/action-errors target-key]
+                                        failure)
+                        (nil? (get current target-key))
+                        (assoc target-key failure))))
+             (throw error))
+           (throw error))))
       (.finally (fn [] (swap! pending disj target-key)))))
 
 (defn- runtime-api

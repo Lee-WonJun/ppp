@@ -95,6 +95,14 @@ Control Plane retains credentials, identity, workspace lifecycle, routing,
 quotas, snapshots, and cross-workspace isolation. `TODOS.md` owns the remaining
 capsule prerequisites.
 
+"Credentials" here means PPP access, provider, billing, connector, and host
+credentials. Authentication implemented by the product inside a workspace is
+workspace data. Its schema, password hashes, account rows, application logs,
+and failure evidence are visible to the Workspace Capsule's Codex/nREPL tools.
+User-entered plaintext passwords stay request-local and out of ambient prompt
+context and logs, but they are not a reason to deny the model authority over
+the application authentication system.
+
 REPL-first experiments in the target profile are provisional. A shareable
 checkpoint must reconcile the successful runtime definitions to source, tests,
 data, and history so restart and developer handoff do not depend on ephemeral
@@ -426,8 +434,14 @@ that effect into one session-scoped cookie and removes the effect before JSON
 serialization.
 
 Product profiles and roles are ordinary generated tables keyed by the returned
-public user ID. Credentials and login sessions remain in reserved tables so a
-generated query cannot read or forge them.
+public user ID. In the Shared Public POC, credentials and login sessions use
+workspace-local reserved tables reached through typed identity operations so
+one shared JVM does not grant raw database authority to every generated SCI
+program. They are still product/workspace data, not Control Plane data. The
+Workspace REPL can inspect and repair these tables through
+`ppp-inspect-workspace-db`, `ppp-query-workspace-db!`, and
+`ppp-execute-workspace-db!`; only `_ppp_runtime_meta` and `_ppp_migrations`
+remain protected commit/recovery metadata.
 
 ### 7.3 Durable binary objects
 
@@ -1117,8 +1131,10 @@ Blob and search rows are durable product data and participate in snapshots.
 Product events are not stored. Restore changes pending/running job rows to a
 terminal cancelled state before activation; it never reruns a historical job.
 
-The credential table is part of checkpoint state even though its secret fields
-are excluded from generated access and normal logical-content diagnostics.
+The credential table is part of checkpoint state. Shared Public SCI receives
+typed public claims rather than raw rows; the trusted Workspace REPL may inspect
+the schema and rows because they belong to that workspace. Normal application
+logs still exclude identifiers, plaintext passwords, hashes, and tokens.
 Focused identity restore tests compare bounded public identity state. Active
 login sessions are operational authority, not historical product data: a
 checkpoint restore deletes `_ppp_auth_sessions` and `_ppp_auth_attempts` before
@@ -1310,8 +1326,10 @@ release evidence.
 - OAuth Codex provider is a gated hackathon/self-host exception.
 - Fake provider is mandatory for deterministic CI and demo rehearsal.
 - No source promotion during the hackathon.
-- Product identity is a Kernel-mediated session resource, not a special-case
-  UI template and not an expansion of PPP workspace authority.
+- Product identity is workspace-owned application state. The Shared Public POC
+  mediates it through typed operations because multiple projects share one JVM;
+  the Workspace Capsule may inspect and replace its implementation without
+  gaining PPP Control Plane or cross-workspace authority.
 - Blob, event, job, ingress, and search are one typed session resource plane;
   they are not generated filesystem, thread, listener, or database authority.
 - In-process SCI remains the server language sandbox for the Shared Public POC

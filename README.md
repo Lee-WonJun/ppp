@@ -303,19 +303,18 @@ Public runtime HTTP is HTTPS-only and rejects private/reserved DNS results, unsa
 
 1. Create a fresh project on the public judge server with its real Codex OAuth
    provider.
-2. Create Snake and show its browser timer and keyboard input.
-3. Add a server action that returns the score plus 100; show `101` from score
-   `1` and reload to prove the feature remains.
-4. Change the same server action to multiply by three and show the changed
-   result without replacing Snake.
-5. Turn the single game into a Game library with Snake and its server action
-   preserved.
-6. Add timer/keyboard Tetris as the second playable game.
+2. Establish a dark arcade and create Snake with browser timer and keyboard input.
+3. Add real product signup/sign-in plus a SQLite-backed public profile.
+4. Show a real validation error, then create, log out, log in, and reload the
+   product account while Snake remains playable.
+5. Turn the product into a Game library and add timer/keyboard Tetris while
+   preserving the account and Snake.
 
 No change activation uses a technical Apply control, build, restart, or page
 refresh. Reload is used only afterward to prove server-owned persistence.
-The edited film contains no login, terminal, source, diff, SQL, test, or
-history shot. Its reproducible public capture and local build pipeline are
+The edited film contains no workspace password, terminal, source, diff, SQL,
+test, or history shot. It intentionally shows generated-product login because
+that is the server boundary under demonstration. Its reproducible public capture and local build pipeline are
 documented in `docs/DEMO.md` and `docs/submission/video/`; raw captures, MP4,
 SRT, traces, observations, credentials, and session data stay ignored until
 publication is separately authorized.

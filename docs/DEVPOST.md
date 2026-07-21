@@ -1,7 +1,7 @@
 # Devpost Submission Draft
 
-Status: public project copy prepared; video upload, private access delivery, and hackathon submission remain owner-controlled
-Last updated: 2026-07-20
+Status: final public capture, video upload, and Devpost resubmission in progress
+Last updated: 2026-07-22
 
 The Devpost project page is public, but its OpenAI Build Week entry has not been
 submitted (`submitted_at` is empty). Never interpret this document, a
@@ -141,35 +141,36 @@ OAuth, host state, and other workspaces remain unreachable.
 
 ## Demo
 
-The video uses a fresh project on the current public judge server. A first
-conversation creates a playable Snake game with a real browser timer and
-keyboard input. The next crosses the server boundary: it registers a server
-action that turns score `1` into `101`, and the browser visibly invokes it.
-Another conversation redefines the same business rule to multiply by three;
-the same UI then shows the changed server result without replacing Snake.
+The video uses one fresh project on the current public judge server. The first
+request establishes a polished dark arcade. The second creates playable Snake
+with a real browser timer and keyboard input. The third crosses the server
+boundary by adding real product signup and sign-in plus a SQLite-backed public
+profile while preserving Snake.
 
-A product decision turns the single game into a Game library with Snake and its
-server feature preserved. One final request adds timer/keyboard Tetris as the
-second game. The outcome showcase proves both games remain usable and Snake
-still calls the changed server action.
+The fourth request improves the account experience. The film then submits a
+real invalid identifier and shows the actionable error, creates Player One,
+signs out, signs in, and reloads. The account and game remain because these are
+real authenticated server actions and durable workspace data, not optimistic
+browser labels.
 
-The capture uses the public instance's real OAuth Codex provider. The polished
-173.417-second narrative film adds an English explanation of the REPL-driven
-product loop and Codex's end-to-end contribution while keeping every generated
-product frame exclusive to the new public-server recording. Real waits remain
-on the same screen and use visible acceleration badges. The deterministic fake
-provider remains CI and packaged-regression infrastructure; it does not appear
-in the video.
+One final product decision turns the arcade into a Game library and adds
+timer/keyboard Tetris without losing Snake or the account. The same-session
+showcase revisits login, the library, Snake, and Tetris.
+
+The capture uses the public instance's real OAuth Codex provider with GPT-5.6
+Terra at medium reasoning. Every provider wait remains a continuous part of the
+real capture and is truthfully accelerated at 24x or 30x. The deterministic
+fake provider remains CI and packaged-regression infrastructure; it does not
+appear in the video.
 
 ### Two-minute judge test
 
 1. Enter the private shared password and create a blank project.
-2. Ask for a timer-driven keyboard game and use it without refreshing.
-3. Add a server-powered score action and invoke it from the browser.
-4. Change the existing server-owned scoring rule and verify the same button
-   returns the new result.
-5. Add a game library and a second game while preserving Snake and its server
-   behavior.
+2. Ask for a dark product direction, then a timer-driven keyboard game.
+3. Add product signup and sign-in while preserving the game.
+4. Trigger a real validation error, then create, log out, log in, and reload the
+   product account.
+5. Add a game library and Tetris while preserving Snake and the account.
 6. Restore a checkpoint or use Safe Mode (`Ctrl+Alt+Shift+P`).
 
 Real Codex generation can take up to two minutes; playing the generated
@@ -318,12 +319,12 @@ through the event's approved private field or judge instruction channel.
 Required images:
 
 1. Blank canvas with handle.
-2. Playable Snake with conversation sidebar.
-3. Snake showing the visible `101` server response.
-4. Snake showing the changed triple-score server response.
+2. Dark arcade with conversation sidebar.
+3. Playable timer/keyboard Snake.
+4. Visible account validation message and signed-in state.
 5. Game library with Snake and Tetris.
-6. Playable Tetris with preserved Snake server behavior.
-7. Architecture diagram.
+6. Playable Tetris with the account preserved.
+7. Shared POC versus per-workspace nREPL architecture diagram.
 
 Hero image should show the running generated product and sidebar together, not a terminal or code screenshot.
 
@@ -339,10 +340,11 @@ Hero image should show the running generated product and sidebar together, not a
 - [x] 24 live evaluations meet thresholds.
 - [x] Three packaged demo runs succeed consecutively.
 - [x] Secret scan covers repository and image.
-- [x] Polished 173.417-second public-server film is verified at 1440x900/30fps with
+- [ ] New sub-three-minute public-server film is verified at 1440x900/30fps with
   English narration, burned and embedded synchronized English subtitles, real
   Codex product footage only, and an explicit explanation of nREPL plus how
-  Codex and GPT-5.6 are used.
+  Codex and GPT-5.6 are used across planning, implementation, presentation,
+  film production, and the deployed product agent.
 - [ ] Video uploaded and publicly accessible.
 - [x] Claims match completed evidence.
 - [x] Codex and model roles stated accurately.
@@ -351,7 +353,7 @@ Hero image should show the running generated product and sidebar together, not a
 - [ ] Shared password delivered privately and can be rotated.
 - [x] Production browser gate proves three fresh contexts, a common Projects list, and JVM restart persistence.
 - [x] Owner explicitly approved the judge deployment.
-- [ ] Owner explicitly approves the Devpost submission.
+- [x] Owner explicitly approves the Devpost submission.
 
 Local release closure and the exact owner approval queue are tracked in
-`docs/RELEASE.md` and `tickets/PPP-034.md`.
+`docs/RELEASE.md` and `tickets/PPP-035.md`.

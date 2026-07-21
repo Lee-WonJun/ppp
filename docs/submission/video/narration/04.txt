@@ -1,1 +1,1 @@
-The next request crosses the server boundary without replacing Snake. A real server action receives the live score and returns a one hundred point boost. The browser calls it, shows the response, reloads, and the server-powered feature is still there.
+The next request crosses the server boundary without replacing Snake. It adds real product signup and sign-in, plus a SQLite-backed public profile. This identity belongs to the generated workspace. Only the PPP control plane, owner credentials, host, and other workspaces stay outside.

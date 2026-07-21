@@ -52,7 +52,7 @@
          (cond
            (contains? #{:provider/timeout :provider/wait-timeout
                         :provider/interrupted} code)
-           "The product assistant stopped before it could finish reconciling the live change. The last saved product has been restored."
+           "The product assistant reached the generation time limit before it returned a complete change. The last saved product has been restored; retrying starts from that saved version."
 
            (= :provider/queue-full code)
            "The product assistant is busy. Try again after the queued change finishes."

@@ -15,6 +15,13 @@
   [value]
   (contains? #{"1" "true" "yes" "on"} (str/lower-case (str value))))
 
+(defn default-provider-timeout-ms
+  [_runtime-profile]
+  ;; Real browser evidence showed that a valid product-auth turn can cross the
+  ;; former 120-second boundary while Codex is still producing its structured
+  ;; result. The timeout is a failure ceiling, not a latency target.
+  300000)
+
 (defn load-config
   []
   (let [environment (keyword (env "PPP_ENV" "development"))
@@ -47,7 +54,7 @@
      :codex-reasoning (env "PPP_CODEX_REASONING" "medium")
      :provider-timeout-ms
      (parse-int (env "PPP_PROVIDER_TIMEOUT_MS"
-                     (if (= :workspace-repl runtime-profile) "240000" "120000")))
+                     (str (default-provider-timeout-ms runtime-profile))))
      :provider-calls-per-hour
      (parse-int (env "PPP_PROVIDER_CALLS_PER_HOUR" "100"))
      :provider-window-seconds

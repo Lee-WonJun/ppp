@@ -2,7 +2,7 @@
 
 This directory contains the reproducible source for the final local submission
 film. The generated-product footage comes only from the new public-judge
-recording and outcome showcase verified by PPP-034.
+recording and outcome showcase verified by PPP-035.
 
 ## Build
 
@@ -33,8 +33,8 @@ artifacts/submission-video/final/ppp-build-week-demo.en.srt
 
 - Generated-product shots are cut only from the new public-server real Codex
   recording and its same-session outcome showcase.
-- Each request begins at normal speed, then its remaining real provider-wait
-  footage plays at the disclosed speed on the same screen and continues
+- Each request begins with rapid human-like typing and Enter, then its remaining
+  real provider-wait footage plays at the disclosed 24x or 30x speed on the same screen and continues
   directly into the real outcome.
 - Deck scenes explain the product and architecture; they do not simulate a
   generated product result.

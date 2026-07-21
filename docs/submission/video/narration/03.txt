@@ -1,1 +1,1 @@
-One conversation creates a real Snake game. Its browser timer is already moving, and real arrow-key input changes the running game without a refresh.
+The product begins with taste, not infrastructure. One request turns the blank canvas into a dark arcade. The next creates a real Snake game. Its browser timer is already moving, and real arrow-key input changes the running game without a refresh.

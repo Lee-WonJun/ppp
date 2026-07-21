@@ -628,9 +628,11 @@ Required controls for `shared-poc`:
   and every unknown field are discarded. Duplicate details are suppressed.
 - The final message file is bounded to 512 KiB and parsed as JSON.
 - Static JSON Schema validation occurs in Codex, then Malli validates again in the host.
-- Default timeout is 120 seconds in `shared-poc` and 240 seconds in
-  `workspace-repl`, where inspect/evaluate/observe/repair and durable
-  reconciliation happen in one provider turn.
+- Default timeout is 300 seconds in both profiles. This is a failure ceiling,
+  not a latency target: a valid product-auth turn on the public server crossed
+  the former 120-second limit while Codex was still producing its structured
+  result. The visible progress stream and queue remain responsive while the
+  bounded process runs.
 - Global concurrency is one, per-session concurrency is one, FIFO capacity is eight.
 - The real Codex provider consumes one global start immediately before every
   `generate!` invocation, including repair attempts. At most 100 starts are

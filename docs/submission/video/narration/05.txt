@@ -1,1 +1,1 @@
-Then I change the business rule in conversation. The same running action stops adding one hundred and starts multiplying the score by three. The same button now proves the new server behavior, with no separate build or deploy step.
+Now the product is used, not merely previewed. An invalid identifier produces a visible message. Then Player One signs up, signs out, signs in again, and survives a reload. These are real authenticated server actions and durable workspace data, not optimistic labels in the browser.

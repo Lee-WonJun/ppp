@@ -468,7 +468,10 @@ updates a second open tab, and the ingress changes only its matching session.
 - Other tabs follow through broadcast or manifest resynchronization.
 - Filesystem history is canonical. Codex thread state is a conversational cache.
 - Checkpoints are never pruned automatically. New AI changes stop when quota is exhausted.
-- Codex provider defaults to `gpt-5.6-terra` with medium reasoning and 120-second timeout.
+- Codex provider defaults to `gpt-5.6-terra` with medium reasoning and a
+  300-second failure ceiling. Product latency remains observable through the
+  bounded progress stream; the larger ceiling prevents valid full-stack turns
+  from being killed merely because they cross two minutes.
 - Real Codex process starts are globally limited to 100 in a rolling hour by
   default and stored under Kernel data; fake-provider work is unmetered.
 - OAuth credentials are acceptable only for the shared-password-gated hackathon and trusted self-host deployment.

@@ -1,131 +1,121 @@
 # Three-Minute Demo
 
-Status: rebuilt and verified from the current public judge server; public upload
-pending
-Actual runtime: 173.417 seconds
+Status: final public-server capture and upload in progress
+Target runtime: 2:25 to 2:55
 Voice: English
-Subtitles: burned English captions plus embedded English track
+Subtitles: burned English captions plus an embedded English track
 
-## 1. What the film proves
+## 1. What the film must prove
 
 > A product conversation can create a running browser product, cross the server
-> boundary, change live business behavior, and keep evolving without a source
-> edit or page reload.
+> boundary with real product identity and SQLite data, and keep evolving without
+> exposing a source editor, Git workflow, or rebuild step to the product user.
 
-The film does not show a terminal, source tree, diff, SQL, tests, credentials,
-or internal session identifiers. The viewer sees the server boundary through a
-button that calls a generated server action, first returns `score + 100`, then
-returns `score × 3` after another conversation.
+The film uses one new project on the current public judge server. It must not
+reuse fake-provider footage, an older generated session, or a failed capture.
+The public Shared POC and the intended self-hosted Workspace Capsule are
+described separately so the film never claims that a shared judge JVM exposes
+an unrestricted nREPL endpoint.
 
 ## 2. Recording source
 
-The final generated-product footage was recorded from:
+All generated-product footage comes from:
 
 ```text
 https://ppp.openai.slopbook.org
 ```
 
-The run created a fresh `Arcade evolution` project on the shared-password judge
-workspace and used its configured real Codex OAuth provider. The password was
-passed only through an ephemeral process environment and never written to the
-capture, repository, logs, or film. Raw Playwright video, trace, observations,
-and session data remain gitignored.
-
-Reproduce the live capture and the clear outcome showcase with:
+The recording begins on the public Projects screen after workspace sign-in. It
+creates a new project and uses the deployed OAuth-backed Codex provider with
+GPT-5.6 Terra at medium reasoning. The password is passed only through an
+ephemeral process environment and is never written to the repository, capture,
+application log, or film.
 
 ```bash
 PPP_DEMO_PUBLIC_PASSWORD=... bb demo-public-capture
 PPP_DEMO_PUBLIC_PASSWORD=... \
 PPP_PUBLIC_CAPTURE_ROOT=artifacts/public-demo-capture/<timestamp> \
 bb demo-public-showcase
-```
 
-Build the film from that ignored capture:
-
-```bash
 PPP_PUBLIC_CAPTURE_ROOT=artifacts/public-demo-capture/<timestamp> \
 bash docs/submission/video/build.sh
 ```
 
-`bb demo-rehearsal` remains a fake-provider host regression. It is never used
-as generated-product footage in the submission film.
+`bb demo-rehearsal` is a deterministic host regression only. It is never used
+as submission footage.
 
 ## 3. Exact public-server story
 
-### 1. Browser-owned Snake
+### 1. Establish the visual language
 
-```text
-Build the first game in this product: a polished Snake game. It must start moving automatically from a browser timer and continue or restart automatically after a collision. Give the playable root the accessible name "Snake game", make that root keyboard-focusable, and handle real DOM ArrowUp, ArrowDown, ArrowLeft, and ArrowRight keydown events without a reload. Each accepted key must immediately update the direction state and visible direction output. Show the score and expose live values named "Snake head row", "Snake head column", "Snake direction", and "Snake score" so the running game can be verified. Keep all game logic in the browser sandbox. Do not write server, shared-domain, test, or migration files yet.
-```
+The first request turns the blank product into a dark arcade welcome screen.
+The result must visibly use a near-black canvas, high-contrast type, restrained
+neon accents, and the heading `Night Shift Arcade` without a page refresh.
 
-Verified outcome: timer movement, keyboard movement, visible score, no reload.
+### 2. Create browser-native Snake
 
-### 2. Cross the server boundary
+The second request adds a playable Snake game. The browser outcome gate proves
+that a real timer advances the snake and real arrow-key input changes the
+running state. This step remains client-only.
 
-```text
-Add one real server-powered feature to the existing Snake game without replacing it. Register a server action that accepts the current Snake score and returns that score plus 100. Add a button named "Boost score", an output named "Boosted score", and an output named "Server response". Clicking the button must call the server action and show the returned value. Keep Snake's timer and keyboard controls. Do not add SQL or migrations. Add only the minimal rollback-only domain tests for the server rule and response shape.
-```
+### 3. Cross the server boundary with product identity
 
-Verified outcome: the browser shows `101` for a live score of `1`; reload keeps
-the server-powered feature.
+The third request adds real product signup and sign-in while preserving Snake.
+It uses the workspace's product-auth capability and a host-approved SQLite
+migration for the public profile. Passwords remain request-local and hashed by
+the host; the account, public profile, and product data belong to the generated
+workspace rather than the PPP Control Plane.
 
-### 3. Change the running server rule
+### 4. Observe and repair the real account experience
 
-```text
-Change the existing server score rule without redesigning the page or replacing Snake. The same registered action must now multiply the submitted score by 3 instead of adding 100. Keep the same "Boost score" button, "Boosted score" output, and "Server response" output. Add an output named "Score rule" containing "Triple server rule". Update only the existing rollback-only domain tests for the new rule. Do not add SQL or migrations.
-```
+The fourth request improves the account panel and error behavior. The recording
+then performs the actual user path:
 
-Verified outcome: the same button returns a multiple of three, the triple-rule
-label is visible, and Snake remains playable.
+1. submit an invalid identifier and show the actionable validation message;
+2. create `Player One`;
+3. sign out;
+4. sign in with the new account;
+5. reload and show that the signed-in state and Snake remain.
 
-### 4. Make it a product family
+This is the server proof shown in the film. It demonstrates a real authenticated
+action and durable workspace data, not a local flag or scripted success label.
 
-```text
-Turn this product into a small arcade while preserving the playable Snake game and its working server-powered score feature. Add a home view headed "Game library" with a Snake catalog card and a button named "Play Snake". Add a button named "Back to games" on the Snake view. This is a client-only information-architecture change: reuse the existing server action and do not write server, shared-domain, test, or migration files.
-```
+### 5. Evolve the product into a platform
 
-Verified outcome: Game library appears; Snake opens with the triple server rule.
-
-### 5. Add Tetris without losing Snake
-
-```text
-Add Tetris as the second game in the existing Game library without removing or replacing Snake. Its catalog button must be named "Play Tetris". Tetris must advance automatically from a browser timer, accept ArrowLeft, ArrowRight, and ArrowDown without reload, use a playable root named "Tetris game", and expose live values named "Piece row" and "Piece column". Include a "Back to games" button. Preserve playable Snake, the working triple-score server action, and every existing server action. This is client-only: do not write server, shared-domain, test, or migration files.
-```
-
-Verified outcome: both games are listed; Tetris falls and accepts arrow input;
-Snake and the changed server action remain available.
-
-All five changes passed on the public server without semantic repair.
+The final request turns the arcade into a game library and adds timer-driven,
+keyboard-controlled Tetris. The final showcase revisits the account flow, the
+library, Snake, and Tetris in the same completed public session.
 
 ## 4. Film sequence
 
 | Scene | Picture | Claim |
 |---:|---|---|
-| 01 | Product barrier title | Product people should not need installs, Git, folders, builds, and auth before the first prompt. |
-| 02 | REPL versus hot reload | PPP changes behavior in long-lived runtimes; the public POC is bounded, while the self-hosted Workspace Capsule targets nREPL. |
-| 03 | Real Snake request, accelerated wait, running game | A browser timer and keyboard input work without refresh. |
-| 04 | Real server-feature request, accelerated wait, visible `101` result | The running browser calls a real generated server action. |
-| 05 | Real server-rule request, accelerated wait, visible triple result | Conversation changes the existing server behavior without replacing Snake. |
-| 06 | Real library and Tetris requests, continuous waits, outcome showcase | The product becomes a two-game library while preserving the server feature. |
-| 07 | Codex contribution | Codex helped shape, evaluate, repair, verify, deploy, and produce the film. |
-| 08 | Closing tagline | Where product conversations become running software. |
+| 01 | Editorial problem slide | Product people are blocked by setup before the first useful prompt. |
+| 02 | REPL architecture slide | PPP evaluates a running product; the shared POC is bounded and the per-workspace destination is nREPL-driven. |
+| 03 | Real dark-theme request and Snake request | Conversation changes visual direction and creates browser-native behavior. |
+| 04 | Real product-auth request and result | The same workspace crosses into server identity and SQLite-backed product data. |
+| 05 | Real error, signup, logout, login, reload | The account path is observable, repairable, and persistent. |
+| 06 | Real library/Tetris request and same-session showcase | A product decision reshapes the service without losing prior behavior. |
+| 07 | Codex contribution slide | Codex and GPT-5.6 powered planning, implementation, presentation, film production, and the deployed product agent. |
+| 08 | Closing slide | Where product conversations become running software. |
 
-Provider waits remain visually continuous and are labeled `6x`, `7x`, or `8x`
-when accelerated. The final outcome showcase is a second recording of the same
-completed public session, not a fixture or mock.
+Normal-speed typing and Enter are visible for every featured request. Only the
+continuous provider wait is accelerated, with a truthful `24x wait` or `30x
+wait` badge. The cut continues from that wait into the real result; no
+generation-compression card or fake transition replaces it.
 
 ## 5. Release checks
 
-- [x] Fresh project created on the public judge server.
-- [x] Real Codex OAuth provider used for all five changes.
-- [x] Every generated-product frame comes from the new public recording.
-- [x] Timer and keyboard Snake.
-- [x] Visible `+100` server response.
-- [x] Visible `×3` server-rule replacement.
-- [x] Game library with Snake and Tetris.
-- [x] Timer and keyboard Tetris.
-- [x] No fake-provider or previous-capture footage.
-- [x] No credential, session identifier, terminal, source, or private path.
-- [x] 1440x900 H.264, AAC audio, English captions, embedded English subtitles.
-- [x] Full decode passes at 173.417 seconds, below three minutes.
-- [ ] Upload and Devpost submission require owner approval.
+- [ ] New deployment revision is live and `/readyz` reports OAuth Codex ready.
+- [ ] Fresh project created on the public judge server.
+- [ ] All five real-Codex changes pass their browser outcome gates.
+- [ ] Dark theme, timer/keyboard Snake, and no-refresh activation are visible.
+- [ ] Invalid signup error is visible and actionable.
+- [ ] Actual signup, logout, login, and authenticated reload pass.
+- [ ] Game library and timer/keyboard Tetris pass without losing Snake/account.
+- [ ] No fake-provider or previous-capture footage appears.
+- [ ] No credential, session identifier, terminal, source, or private path appears.
+- [ ] 1440x900 H.264, AAC audio, English burned captions, embedded subtitles.
+- [ ] Full decode passes and duration is below 180 seconds.
+- [ ] Public YouTube URL plays without sign-in.
+- [ ] Devpost project is updated and reports `Submitted` with a non-null time.

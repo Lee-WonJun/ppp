@@ -595,7 +595,8 @@
     (is (re-find #"could not be drawn in this browser preview" render-message))
     (is (re-find #"does not allow" source-message))
     (is (re-find #"before proving it in the running product" live-proof-message))
-    (is (re-find #"stopped before it could finish" interrupted-message))
+    (is (re-find #"generation time limit" interrupted-message))
+    (is (re-find #"last saved product" interrupted-message))
     (is (not= render-message source-message))
     (doseq [message [render-message source-message live-proof-message
                      interrupted-message]]

@@ -115,6 +115,10 @@
                                         :development? false
                                         :runtime-profile :workspace-repl)))))
 
+(deftest complex-live-turns-have-a-five-minute-provider-ceiling
+  (is (= 300000 (config/default-provider-timeout-ms :shared-poc)))
+  (is (= 300000 (config/default-provider-timeout-ms :workspace-repl))))
+
 (deftest access-csrf-and-session-flow
   (let [data-root (Files/createTempDirectory "ppp-access-test"
                                              (make-array java.nio.file.attribute.FileAttribute 0))]

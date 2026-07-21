@@ -1,1 +1,1 @@
-A product decision changes the shape of the whole service. Snake becomes one game in a library without losing its live server action. One more conversation adds timer-driven Tetris as the second game. Both games work, and Snake still calls the changed server rule.
+A product decision changes the shape of the whole service. Snake becomes one game in a library, the account remains, and the same conversation adds timer-driven Tetris as the second game. The finished public session still supports login, Snake, and Tetris.

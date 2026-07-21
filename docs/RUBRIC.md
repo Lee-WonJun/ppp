@@ -1,7 +1,7 @@
 # Evaluation Rubric and Release Gate
 
-Status: PPP-033 continuous-wait final film and release gates complete; publication pending
-Last updated: 2026-07-21
+Status: PPP-035 public film and OpenAI Build Week submission complete
+Last updated: 2026-07-22
 
 ## 1. Scoring model
 
@@ -34,23 +34,19 @@ conservative assessment is:
 | Quality of idea | 24/25 | The live full-stack/source-history synthesis is distinctive; judges may still mistake it for another AI app builder unless differentiation is stated early. |
 | **Total** | **91/100** | Award-competitive evidence if the submission is completed, not a numeric probability of winning. |
 
-Current submission-state multiplier: **blocked** until a public video URL,
-private judge access instructions, required custom answers, and explicit final
-submission exist. A technically excellent unsubmitted draft has no award
-eligibility.
+Current submission-state multiplier: **eligible**. The public video, private
+judge access instructions, required custom answers, feedback task, and explicit
+Devpost submission all exist.
 
-Highest remaining risks and mitigations:
+Highest judging risks and mitigations:
 
-1. **Incomplete hackathon submission.** The public project copy is populated,
-   but the required video URL, private access instructions, custom answers, and
-   final submission remain owner-controlled.
-2. **“Another app builder” misclassification.** Lead with atomic full-stack
+1. **“Another app builder” misclassification.** Lead with atomic full-stack
    activation, persistent SQLite, recoverable source-plus-data history, and the
    developer-continuable source tree.
-3. **A long, noisy `/feedback` session.** Give judges a short reading guide
+2. **A long, noisy `/feedback` session.** Give judges a short reading guide
    that identifies owner decisions, Codex engineering work, real failures, and
    the resulting regression gates.
-4. **No external user validation.** Do not fabricate evidence. Present the
+3. **No external user validation.** Do not fabricate evidence. Present the
    hosted judge test and the exact audience hypothesis honestly, and treat
    independent product-manager/designer sessions as post-hackathon validation.
 
@@ -154,6 +150,7 @@ Scoring anchors:
 | E-24 | PPP-032 final narrative submission film | 168.751-second 1440x900 H.264/AAC film with burned and embedded English subtitles, real-Codex product footage, honest wait compression and Tetris slow-playback disclosure, nREPL-versus-hot-reload explanation, and Codex contribution story. |
 | E-25 | PPP-033 continuous-wait final edit | 168.518-second replacement cut with no standalone compression cards, six real provider-wait tails accelerated at 4x on the same product screen, direct request-to-outcome continuity, and revalidated media/subtitle/security contracts. |
 | E-26 | PPP-034 public-live final film | Fresh public-server project, real OAuth Codex 5/5 with zero semantic repairs, visible timer/keyboard Snake, `+100` server response, `×3` live rule replacement, Game library and timer/keyboard Tetris, plus a 173.417-second English-narrated and captioned media contract. |
+| E-27 | PPP-035 submitted public demo | Fresh public real-Codex dark-theme, Snake, product-auth, actionable account failure, signup/logout/login/reload, and Game-library/Tetris outcomes; 153.144-second English film; public signed-out playback; private judge access; and Devpost submission `1083611`. |
 
 ## 7. Automated release gate
 
@@ -228,12 +225,12 @@ LIVE-03, LIVE-04, and LIVE-05 must each pass 3/3 before recording the video.
 `bb demo-public-capture` is the explicit final recording gate. It must target
 the exact public judge origin, pass production shared-password login, verify
 the real OAuth Codex readiness contract, create one fresh project, and accept
-five outcomes: timer/keyboard Snake, a visible `+100` server action, a visible
-`×3` replacement of that existing action, client-only Game library conversion,
-and client-only timer/keyboard Tetris addition. The browser must prove the
-server feature survives reload and remains available after both client-only
-product-shape changes. `bb demo-public-showcase` records legible outcomes from
-the same completed public session.
+five outcomes: dark visual direction, timer/keyboard Snake, real product
+signup/sign-in with a SQLite-backed profile, visible account-error repair plus
+actual signup/logout/login/reload, and a two-game library with timer/keyboard
+Tetris. The browser must prove the account and Snake survive the client-only
+product-shape change. `bb demo-public-showcase` records legible login, library,
+Snake, and Tetris outcomes from the same completed public session.
 
 This gate never runs from CI or `bb verify`. A bounded semantic repair is
 recorded rather than hidden, but the final recorded take must not depend on a
@@ -303,7 +300,7 @@ Tests assert semantic roles and persistent outcomes. They do not assert exact co
 | Failure | Required handling |
 |---|---|
 | Missing OAuth/model | readiness false with setup guidance; fake provider remains testable. |
-| Provider timeout or invalid JSON | job fails; active product unchanged; retry available. |
+| Provider timeout or invalid JSON | Five-minute failure ceiling; stage-specific reason; active product unchanged; retry starts from the saved version. |
 | Forbidden or nonterminating SCI | stage terminates; active product unchanged. |
 | Migration failure | staging transaction/database discarded. |
 | Browser reject, disconnect, or timeout | no commit; reconnect may retry. |
@@ -343,15 +340,16 @@ All conditions are required:
 
 The evaluator records the current complete baseline below. PPP-024 E-16,
 PPP-025 E-17, PPP-026 E-18, PPP-027 E-19, PPP-031 E-23, PPP-032 E-24,
-PPP-033 E-25, PPP-034 E-26, and the expanded automated,
-production-browser, public-deployment, and live gates pass. Publication remains
-blocked only on uploading the verified video and submission approval.
+PPP-033 E-25, PPP-034 E-26, PPP-035 E-27, and the expanded automated,
+production-browser, public-deployment, and live gates pass. PPP-035 replaces
+the old score-rule film with the actual generated-product identity story and
+carries publication through Devpost submission.
 
 ## 13. Release assessment
 
 | Category | Score | Evidence | Status |
 |---|---:|---|---|
-| Technical implementation | 25/25 | isolated `bb verify` baseline; standard loopback nREPL with live Var redefinition; real OAuth Workspace REPL evolution 8/8; browser checkpoint rewind/return; fresh public-server final-video Codex story 5/5 with zero semantic repairs; public persistent-OAuth canary; E-15 through E-26; PPP-007 through PPP-034 evidence | pass |
+| Technical implementation | 25/25 | final `bb verify`: 198 JVM tests/1,430 assertions, 32 CLJS tests/149 assertions, 25 Chromium paths plus one intentional skip, restart checks, Docker smoke, and 242-file secret scan; standard loopback nREPL with live Var redefinition; fresh public-server final-video Codex story 5/5; E-15 through E-27 | pass |
 | Design | 23/25 | `DESIGN.md`; Login, Projects, blank, sidebar, floating, mobile, sandbox, and Safe Mode evidence under `artifacts/evidence`; semantic keyboard/reduced-motion browser tests; manually reviewed 1440x900 final cut | pass |
 | Impact | 24/25 | `docs/PRD.md`; exact Snake-to-game-platform story with generated product accounts and persistent ranking; verified Docker and shared judge workspace; private hosted identity remains explicitly future scope | pass |
 | Idea quality | 25/25 | `docs/THESIS.md`; sandbox/runtime ADR; direct generated source, staged activation, and honest scope demonstrated in the packaged product | pass |
@@ -360,7 +358,5 @@ blocked only on uploading the verified video and submission approval.
 The design score remains deliberately conservative pending external judging,
 and one impact point remains unawarded because private hosted
 identity/workspaces are not in the hackathon build. Automated,
-production-browser, live-provider, security, recovery, packaged-demo, and
-local final-video and public judge deployment gates pass. Final release remains
-blocked on public video upload, private access delivery, and explicit Devpost
-submission approval.
+production-browser, live-provider, security, recovery, packaged-demo, public
+film, public judge deployment, and explicit Devpost submission gates pass.

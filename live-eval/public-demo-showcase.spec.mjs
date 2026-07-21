@@ -44,14 +44,14 @@ test("show the final public product outcomes clearly", async ({ page }) => {
   await openPublicSession(page);
 
   const signedIn = productFrame(page).getByText(/Signed in as Player One/i).first();
-  await expect(signedIn).toBeVisible();
-  await signedIn.scrollIntoViewIfNeeded();
-  await pause(2_000);
-
-  await productFrame(page).getByRole("button", {
-    name: "Sign out",
-    exact: true
-  }).click();
+  if (await signedIn.isVisible().catch(() => false)) {
+    await signedIn.scrollIntoViewIfNeeded();
+    await pause(2_000);
+    await productFrame(page).getByRole("button", {
+      name: "Sign out",
+      exact: true
+    }).click();
+  }
   await productFrame(page).getByRole("button", {
     name: "Have an account? Sign in",
     exact: true
@@ -98,10 +98,15 @@ test("show the final public product outcomes clearly", async ({ page }) => {
   const snakeRow = productFrame(page).getByLabel("Snake head row", {
     exact: true
   });
+  const snakeColumn = productFrame(page).getByLabel("Snake head column", {
+    exact: true
+  });
   await expect(snake).toBeVisible();
-  const snakeRowBefore = await snakeRow.textContent();
-  await expect.poll(() => snakeRow.textContent(), { timeout: 8_000 })
-    .not.toBe(snakeRowBefore);
+  const snakePosition = async () =>
+    `${await snakeRow.textContent()}:${await snakeColumn.textContent()}`;
+  const snakePositionBefore = await snakePosition();
+  await expect.poll(snakePosition, { timeout: 8_000 })
+    .not.toBe(snakePositionBefore);
   await snake.focus();
   await snake.press("ArrowLeft");
   await pause(3_000);

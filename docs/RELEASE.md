@@ -1,7 +1,7 @@
 # Local Release Closure
 
-Status: public judge deployment and local final film verified; upload and submission remain owner-controlled
-Last updated: 2026-07-21
+Status: public judge deployment, final film, and Devpost submission complete
+Last updated: 2026-07-22
 
 ## Definition of locally complete
 
@@ -34,14 +34,13 @@ Local completeness does not authorize remote or public state changes.
   visible live replacement with a `×3` server rule, Game library conversion,
   and preserved timer/keyboard Tetris. Every browser outcome passed without a
   semantic repair.
-- Local final film: PPP-034 replaces the previous edit with a polished
-  173.417-second 1440x900 film whose generated-product frames come only from
-  the new public-server recording and its same-session outcome showcase. Real
+- Final public film: PPP-035 replaces the previous edit with a polished
+  153.144-second 1440x900 film whose generated-product frames come only from a
+  fresh public-server recording and its same-session outcome showcase. Real
   waits remain continuous with visible acceleration labels. English narration,
   burned and embedded synchronized English subtitles, the bounded-public-POC
   versus self-hosted-nREPL distinction, and explicit Codex/GPT-5.6 use are
-  retained. The reproducible pipeline is in `docs/submission/video/`; the
-  bounded record is `artifacts/evidence/ppp-034-public-live-recording.md`.
+  retained. The public video is <https://youtu.be/8VcptiW67JU>.
 - Streamed real-Codex progress: PPP-026 incrementally parses bounded JSONL and
   delivers only metadata-derived product-language details to the requesting
   tab. Real OAuth browser observation and the complete gate are recorded in
@@ -71,19 +70,12 @@ Local completeness does not authorize remote or public state changes.
   and Projects. Codex OAuth readiness, zero development sessions, zero
   in-memory runtimes, and no pending stages are required after the final reset.
 
-## Owner approval queue
+## Public submission closure
 
-These actions remain deliberately unperformed until the owner approves them:
-
-1. Upload the verified narrated sub-three-minute video.
-2. Add the public video URL to the live Devpost project and
-   `docs/DEVPOST.md` (the hosted demo URL is
-   `https://ppp.openai.slopbook.org`).
-3. Deliver the shared password through Devpost's private judge-instructions
-   field.
-4. Confirm submitter type, country, Work & Productivity, repository URL,
-   feedback session ID, and developer-tool test instructions.
-5. Explicitly approve and submit the Devpost entry before
-   2026-07-22 09:00 KST.
-
-The public Devpost body must never contain the shared password.
+- Public judge origin: <https://ppp.openai.slopbook.org>
+- Public film: <https://youtu.be/8VcptiW67JU>
+- Devpost project: <https://devpost.com/software/programmable-programming-page>
+- Devpost submission: `1083611`, submitted 2026-07-22 03:10:23 KST
+- Category: Work & Productivity
+- Shared judge password: delivered only through the private test-instructions
+  field; it is not present in the repository, public copy, or film.

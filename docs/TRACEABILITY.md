@@ -1,7 +1,7 @@
 # Requirements Traceability
 
 Status: implementation control document
-Last updated: 2026-07-21
+Last updated: 2026-07-22
 
 ## Rules
 
@@ -22,10 +22,10 @@ Last updated: 2026-07-21
 | PRD-F05 | PPP-006, PPP-017 | Playwright broken-sidebar recovery and render-timeout preservation | E-01, E-04 |
 | PRD-F06 | PPP-003, PPP-022 | complete version-zero product plus bounded-title HTTP/browser creation | E-01, E-05, E-14 |
 | PRD-F07 | PPP-003, PPP-006, PPP-022, PPP-025 | shared two-browser project listing, session switch persistence, and readable Projects video opening | E-01, E-03, E-14, E-17 |
-| PRD-F08 | PPP-007, PPP-015, PPP-018, PPP-019, PPP-031 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer, live status, and Workspace REPL turn contract | E-01, E-23 |
+| PRD-F08 | PPP-007, PPP-015, PPP-018, PPP-019, PPP-031, PPP-035 | prompt limit and `202` route integration; CLJS and Chromium Enter/IME composer, live status, Workspace REPL turn contract, and typed public-film prompt entry | E-01, E-23, E-27 |
 | PRD-F09 | PPP-004, PPP-007 | `ppp.provider.queue-test/provider-queue-is-global-fifo-with-eight-waiting-slots` | E-01 |
-| PRD-F10 | PPP-007, PPP-015, PPP-018, PPP-019 | protocol schema plus WebSocket integration; guarded keyboard/composition submission and bounded phase presentation | E-01 |
-| PRD-F11 | PPP-006, PPP-007, PPP-017, PPP-024, PPP-025, PPP-031, PPP-032, PPP-033, PPP-034 | hidden render, animation-independent DOM commit, no-refresh Playwright, captured real-Codex game-platform story, active browser form evaluation, and fresh public timer/keyboard film evidence | E-01, E-03, E-16, E-17, E-23, E-24, E-25, E-26 |
+| PRD-F10 | PPP-007, PPP-015, PPP-018, PPP-019, PPP-035 | protocol schema plus WebSocket integration; guarded keyboard/composition submission, bounded phase presentation, and continuous accelerated wait evidence | E-01, E-27 |
+| PRD-F11 | PPP-006, PPP-007, PPP-017, PPP-024, PPP-025, PPP-031, PPP-032, PPP-033, PPP-034, PPP-035 | hidden render, animation-independent DOM commit, no-refresh Playwright, active browser form evaluation, and fresh public dark-theme/Snake/Tetris film evidence | E-01, E-03, E-16, E-17, E-23, E-24, E-25, E-26, E-27 |
 | PRD-F12 | PPP-005, PPP-024, PPP-025, PPP-031, PPP-032, PPP-033, PPP-034 | server action integration, live nREPL action redefinition/invocation, and a public film showing `+100` then `×3` through the same browser action | E-01, E-16, E-17, E-23, E-24, E-25, E-26 |
 | PRD-F13 | PPP-005 | `ppp.property.gallery-domain-test/fake-gallery-seeds-once-persists-and-ranks-deterministically` | E-01, E-03 |
 | PRD-F14 | PPP-006, PPP-013, PPP-015, PPP-018 | sandbox state handoff; composer draft/focus tests; revision-ordered Korean IME regression | E-01 |
@@ -48,9 +48,9 @@ Last updated: 2026-07-21
 | PRD-F31 | PPP-013 | parent DOM/cookie/origin isolation Playwright suite | E-01, E-02 |
 | PRD-F32 | PPP-014 | impact-classification PBT, client-only registry reuse integration, `bb eval-evolution` | E-01, E-07 |
 | PRD-F33 | PPP-020, PPP-030 | current capability matrix and negative suite plus adopted environment-level target boundary | E-01, E-12, E-22 |
-| PRD-F34 | PPP-020 | generated signup/login/current-user/protected-action/logout integration and Playwright | E-01, E-12 |
-| PRD-F35 | PPP-020 | credential/token redaction, reserved-table denial, HttpOnly cookie inspection | E-01, E-12 |
-| PRD-F36 | PPP-020, PPP-024, PPP-025, PPP-032, PPP-033 | PBT-09/PBT-10 plus captured final-story signup, logout, login, authenticated reload, and continuous narrated account repair | E-01, E-12, E-16, E-17, E-24, E-25 |
+| PRD-F34 | PPP-020, PPP-035 | generated signup/login/current-user/protected-action/logout integration, Playwright, and public-film product-account exercise | E-01, E-12, E-27 |
+| PRD-F35 | PPP-020, PPP-035 | credential/token redaction, reserved-table denial, HttpOnly cookie inspection, and public-media secret-safety review | E-01, E-12, E-27 |
+| PRD-F36 | PPP-020, PPP-024, PPP-025, PPP-032, PPP-033, PPP-035 | PBT-09/PBT-10 plus captured signup, actionable invalid input, logout, login, authenticated reload, and account preservation | E-01, E-12, E-16, E-17, E-24, E-25, E-27 |
 | PRD-F37 | PPP-020 | fake-provider regression plus live owner-prompt evolution scenario | E-07, E-12 |
 | PRD-F38 | PPP-020 | maintained resource/effect capability matrix and unsupported-effect ledger | E-12 |
 | PRD-F39 | PPP-021 | PBT-11, blob CRUD/restore/quota integration, compiled browser upload/reload | E-01, E-13 |
@@ -62,7 +62,7 @@ Last updated: 2026-07-21
 | PRD-F45 | PPP-022 | logout/cookie disposal integration plus login-throttle PBT-17 | E-01, E-14 |
 | PRD-F46 | PPP-022 | provider rolling-window/restart/repair accounting PBT-16 | E-01, E-14 |
 | PRD-F47 | PPP-022 | exhausted-turn preservation integration and Playwright product-use continuity | E-01, E-14 |
-| PRD-F48 | PPP-023 | PBT-18, provider Skill/stdin separation, exact active-frame action failure and parent-noise exclusion browser regression | E-01, E-15 |
+| PRD-F48 | PPP-023, PPP-035 | PBT-18, provider Skill/stdin separation, exact active-frame action failure, parent-noise exclusion, and bounded generated-page failure-state regression | E-01, E-15, E-27 |
 | PRD-F49 | PPP-026, PPP-028 | streamed JSONL minimization/early-observation property, compiled-browser semantic progress, and judge-facing explanation | E-01, E-18, E-20 |
 
 ## Property mapping
@@ -178,3 +178,4 @@ PPP-001
 | PPP-032 | done | A reproducible HTML-deck, English neural narration, subtitle merge, and FFmpeg pipeline produces a 168.751-second 1440x900 H.264/AAC submission film with burned and embedded English subtitles. Generated-product footage comes only from the verified real-OAuth PPP-025 capture; long waits and the 8x Tetris slow playback are explicitly disclosed. The narrative distinguishes live nREPL Var redefinition from hot reload and the persistent browser runtime, shows Snake, accounts, visible validation, SQLite ranking, platformization, and Tetris, and states Codex's contribution through verification, judge deployment operations, and the film itself. Decoder, timeline, stream, volume, visual, and secret-safety gates pass; upload remains owner-controlled. |
 | PPP-033 | done | The final film now keeps every real request visually continuous through its real provider wait and into the outcome. Six wait tails from the same PPP-025 captures play at 4x with a small disclosure; the standalone compression slide and scene 09 are removed. The rebuilt 168.518-second 1440x900 H.264/AAC film passes full decode, 24-block subtitle monotonicity, audio-level, frame-tile continuity, source-removal, and secret-safety checks. Final `bb verify` passes 196 JVM/1,420 assertions, 31 CLJS/145 assertions, 25 Chromium paths plus one intentional skip, two production restart checks, Docker smoke, and a 235-file secret scan. |
 | PPP-034 | done | A fresh project on the public judge server passes five real OAuth Codex changes with zero semantic repairs: timer/keyboard Snake, visible `+100` server response, visible `×3` rule replacement, Game library, and timer/keyboard Tetris with Snake's server feature preserved. The rebuilt 173.417-second 1440x900 H.264/AAC film uses only this new public recording and its same-session showcase, includes English narration plus burned and embedded English subtitles, and keeps credentials, session identifiers, raw traces, and private paths out of tracked files and the final media. |
+| PPP-035 | done | Deployed revision `44541ec` passes the fresh public story: dark theme, timer/keyboard Snake, generated product auth, actionable invalid-input state, actual signup/logout/login/reload, and a preserved account plus Snake when the product becomes a Game library with Tetris. The 153.144-second 1440x900 H.264/AAC English film fully decodes, has burned and embedded subtitles, and plays publicly without sign-in. Devpost submission `1083611` is `Submitted`; private judge access contains the shared password, while the public film and repository do not. Final `bb verify` passes 198 JVM tests/1,430 assertions, 32 CLJS tests/149 assertions, 25 Chromium paths plus one intentional skip, two production restart checks, Docker smoke, formatting, and a clean 242-file secret scan. |

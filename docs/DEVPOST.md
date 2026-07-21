@@ -1,11 +1,13 @@
 # Devpost Submission Draft
 
-Status: final public capture, video upload, and Devpost resubmission in progress
+Status: submitted to OpenAI Build Week
 Last updated: 2026-07-22
 
-The Devpost project page is public, but its OpenAI Build Week entry has not been
-submitted (`submitted_at` is empty). Never interpret this document, a
-repository push, or a working hosted URL as a completed hackathon submission.
+The OpenAI Build Week entry is submitted. The final public video is
+<https://youtu.be/8VcptiW67JU>, the public project page is
+<https://devpost.com/software/programmable-programming-page>, and Devpost
+records submission `1083611` at 2026-07-21 14:10:23 EDT
+(2026-07-22 03:10:23 KST).
 
 ## Submission fields
 
@@ -335,25 +337,30 @@ Hero image should show the running generated product and sidebar together, not a
 - [x] Public Devpost project has tagline, description, technology list,
   repository link, and hosted-demo link.
 - [x] English README works from clean Linux amd64.
-- [ ] Work & Productivity selected.
+- [x] Work & Productivity selected.
 - [x] `bb verify` evidence complete.
 - [x] 24 live evaluations meet thresholds.
 - [x] Three packaged demo runs succeed consecutively.
 - [x] Secret scan covers repository and image.
-- [ ] New sub-three-minute public-server film is verified at 1440x900/30fps with
+- [x] New sub-three-minute public-server film is verified at 1440x900/30fps with
   English narration, burned and embedded synchronized English subtitles, real
   Codex product footage only, and an explicit explanation of nREPL plus how
   Codex and GPT-5.6 are used across planning, implementation, presentation,
   film production, and the deployed product agent.
-- [ ] Video uploaded and publicly accessible.
+- [x] Video uploaded and publicly accessible at
+      <https://youtu.be/8VcptiW67JU> without sign-in.
 - [x] Claims match completed evidence.
 - [x] Codex and model roles stated accurately.
 - [x] Feedback session ID recorded.
 - [x] Hosted URL works from an unauthenticated browser and opens shared sign-in.
-- [ ] Shared password delivered privately and can be rotated.
+- [x] Shared password delivered only through Devpost's private test-instructions
+      field and remains rotatable.
 - [x] Production browser gate proves three fresh contexts, a common Projects list, and JVM restart persistence.
 - [x] Owner explicitly approved the judge deployment.
 - [x] Owner explicitly approves the Devpost submission.
+- [x] Devpost reports `Submitted` with non-null `submitted_at`; submission ID is
+      `1083611`.
 
-Local release closure and the exact owner approval queue are tracked in
-`docs/RELEASE.md` and `tickets/PPP-035.md`.
+Release closure and the submitted evidence are tracked in `docs/RELEASE.md`,
+`tickets/PPP-035.md`, and
+`artifacts/evidence/ppp-035-human-public-demo.md`.

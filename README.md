@@ -8,8 +8,10 @@ The user never needs to install a development environment, clone a repository, i
 
 Status: the complete session resource plane, shared judge workspace,
 on-demand generated-product diagnostics, exact public-server final-video gate,
-and the verified 173.417-second polished real-Codex film are complete. External
-publication remains owner-controlled. Automated
+and the verified 153.144-second polished real-Codex film are complete. The film
+is public at <https://youtu.be/8VcptiW67JU>, and the OpenAI Build Week entry is
+submitted at <https://devpost.com/software/programmable-programming-page>.
+Automated
 verification, production-configured shared-access browser tests, the 24-case
 live Codex evaluation, the eight-step cumulative real-product evolution gate,
 the five-of-five public final-video story, and three consecutive packaged demo
@@ -316,8 +318,8 @@ The edited film contains no workspace password, terminal, source, diff, SQL,
 test, or history shot. It intentionally shows generated-product login because
 that is the server boundary under demonstration. Its reproducible public capture and local build pipeline are
 documented in `docs/DEMO.md` and `docs/submission/video/`; raw captures, MP4,
-SRT, traces, observations, credentials, and session data stay ignored until
-publication is separately authorized.
+SRT, traces, observations, credentials, and session data remain ignored even
+though the sanitized final film is publicly hosted.
 
 ## Architecture
 

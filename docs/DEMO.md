@@ -1,6 +1,6 @@
 # Three-Minute Demo
 
-Status: final public-server capture and upload in progress
+Status: final public-server capture published and submitted
 Target runtime: 2:25 to 2:55
 Voice: English
 Subtitles: burned English captions plus an embedded English track
@@ -106,16 +106,16 @@ generation-compression card or fake transition replaces it.
 
 ## 5. Release checks
 
-- [ ] New deployment revision is live and `/readyz` reports OAuth Codex ready.
-- [ ] Fresh project created on the public judge server.
-- [ ] All five real-Codex changes pass their browser outcome gates.
-- [ ] Dark theme, timer/keyboard Snake, and no-refresh activation are visible.
-- [ ] Invalid signup error is visible and actionable.
-- [ ] Actual signup, logout, login, and authenticated reload pass.
-- [ ] Game library and timer/keyboard Tetris pass without losing Snake/account.
-- [ ] No fake-provider or previous-capture footage appears.
-- [ ] No credential, session identifier, terminal, source, or private path appears.
-- [ ] 1440x900 H.264, AAC audio, English burned captions, embedded subtitles.
-- [ ] Full decode passes and duration is below 180 seconds.
-- [ ] Public YouTube URL plays without sign-in.
-- [ ] Devpost project is updated and reports `Submitted` with a non-null time.
+- [x] Deployment revision `44541ec` is live and `/readyz` reports OAuth Codex ready.
+- [x] Fresh project created on the public judge server.
+- [x] All five real-Codex changes pass their browser outcome gates.
+- [x] Dark theme, timer/keyboard Snake, and no-refresh activation are visible.
+- [x] Invalid signup error is visible and actionable.
+- [x] Actual signup, logout, login, and authenticated reload pass.
+- [x] Game library and timer/keyboard Tetris pass without losing Snake/account.
+- [x] No fake-provider or previous-capture footage appears.
+- [x] No credential, session identifier, terminal, source, or private path appears.
+- [x] 1440x900 H.264, AAC audio, English burned captions, embedded subtitles.
+- [x] Full decode passes; duration is 153.144 seconds.
+- [x] <https://youtu.be/8VcptiW67JU> plays without sign-in.
+- [x] Devpost reports submission `1083611` with non-null `submitted_at`.

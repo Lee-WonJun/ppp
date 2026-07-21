@@ -91,7 +91,7 @@ make_accelerated_wait() {
   local output="$1" source="$2" start="$3" end="$4" factor="${5:-30}"
   local font="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
   local source_duration output_duration
-  source_duration="$(awk -v start="$start" -v end="$end" 'BEGIN { d=end-start; printf "%.3f", d > 0.3 ? d : 0.3 }')"
+  source_duration="$(awk -v start="$start" -v end="$end" 'BEGIN { d=end-start; printf "%.3f", (d > 0.3 ? d : 0.3) }')"
   output_duration="$(awk -v source="$source_duration" -v factor="$factor" 'BEGIN { printf "%.3f", source / factor }')"
   "$FFMPEG" -y -loglevel error -ss "$start" -i "$source" -t "$source_duration" -an \
     -vf "setpts=(PTS-STARTPTS)/${factor},scale=1440:900:flags=lanczos,fps=30,drawbox=x=30:y=30:w=148:h=42:color=0x101310@0.84:t=fill,drawtext=fontfile=$font:text='${factor}x wait':fontcolor=white:fontsize=18:x=48:y=41,format=yuv420p" \
@@ -102,7 +102,7 @@ make_accelerated_wait() {
 make_outcome() {
   local output="$1" source="$2" start="$3" end="$4" hold="${5:-2.0}"
   local seconds
-  seconds="$(awk -v start="$start" -v end="$end" 'BEGIN { d=end-start; printf "%.3f", d > 0.5 ? d : 0.5 }')"
+  seconds="$(awk -v start="$start" -v end="$end" 'BEGIN { d=end-start; printf "%.3f", (d > 0.5 ? d : 0.5) }')"
   "$FFMPEG" -y -loglevel error -ss "$start" -i "$source" -t "$seconds" -an \
     -vf "scale=1440:900:flags=lanczos,fps=30,tpad=stop_mode=clone:stop_duration=$hold,format=yuv420p" \
     -c:v libx264 -preset medium -crf 19 -movflags +faststart "$output"
@@ -124,7 +124,7 @@ scenario_segment() {
   generated="$(marker "$scenario" generation-complete-ms)"
   verified="$(marker "$scenario" verification-complete-ms)"
   prompt_end="$(awk -v start="$started" -v d="$prompt_seconds" 'BEGIN { printf "%.3f", start+d }')"
-  outcome_start="$(awk -v generated="$generated" 'BEGIN { s=generated-0.6; printf "%.3f", s > 0 ? s : 0 }')"
+  outcome_start="$(awk -v generated="$generated" 'BEGIN { s=generated-0.6; printf "%.3f", (s > 0 ? s : 0) }')"
   make_source_window "$GENERATED/parts/$prefix-prompt.mp4" "$CAPTURE_SOURCE" "$started" "$prompt_seconds"
   make_accelerated_wait "$GENERATED/parts/$prefix-wait.mp4" "$CAPTURE_SOURCE" "$prompt_end" "$generated" 30
   make_outcome "$GENERATED/parts/$prefix-outcome.mp4" "$CAPTURE_SOURCE" "$outcome_start" "$verified" "$hold"

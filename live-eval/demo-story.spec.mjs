@@ -341,6 +341,25 @@ async function verifyPublicAccountExperience(page, sessionId, version) {
     }, { timeout: 20_000 }).toBe(true);
     return terminal;
   };
+  const waitForAuthenticationOutcome = async (accountMessage, previous) => {
+    let terminal = "";
+    await expect.poll(async () => {
+      if (await productFrame(page).getByText(/Signed in as Player One/i).first()
+        .isVisible().catch(() => false)) {
+        terminal = "authenticated account visible";
+        return true;
+      }
+      const value = String(await accountMessage.textContent().catch(() => ""))
+        .trim();
+      if (!value || value === String(previous || "").trim()) return false;
+      if (/creating|signing|checking|loading|please wait|working/i.test(value)) {
+        return false;
+      }
+      terminal = value;
+      return true;
+    }, { timeout: 20_000 }).toBe(true);
+    return terminal;
+  };
   try {
     await closeConversation(page);
     await returnToSignup(page);
@@ -384,34 +403,61 @@ async function verifyPublicAccountExperience(page, sessionId, version) {
       name: "Create account",
       exact: true
     }).click();
-    evidence.signup = await waitForTerminalMessage(accountMessage, signupBefore);
+    let signupTerminal = "";
+    await expect.poll(async () => {
+      if (await productFrame(page).getByText(/Signed in as Player One/i).first()
+        .isVisible().catch(() => false)) {
+        signupTerminal = "account created and authenticated";
+        return true;
+      }
+      const value = String(await accountMessage.textContent().catch(() => ""))
+        .trim();
+      if (!value || value === String(signupBefore || "").trim()) return false;
+      if (/creating|signing|checking|loading|please wait|working/i.test(value)) {
+        return false;
+      }
+      signupTerminal = value;
+      return true;
+    }, { timeout: 20_000 }).toBe(true);
+    evidence.signup = signupTerminal;
 
     if (/already|taken|in use/i.test(evidence.signup)) {
-      await productFrame(page).getByRole("button", {
-        name: "Have an account? Sign in",
-        exact: true
-      }).click();
-      const resumedId = productFrame(page).getByRole("textbox", {
-        name: "Sign-in ID",
-        exact: true
-      });
-      const resumedPassword = productFrame(page).getByLabel("Password", {
-        exact: true
-      });
-      await resumedId.fill("");
-      await resumedPassword.fill("");
-      await resumedId.pressSequentially(accountId, { delay: 12 });
-      await resumedPassword.pressSequentially(accountPassword, { delay: 20 });
-      const resumeBefore = await accountMessage.textContent();
-      await productFrame(page).getByRole("button", {
-        name: "Sign in",
-        exact: true
-      }).click();
-      evidence.resumeLogin = await waitForTerminalMessage(
-        accountMessage,
-        resumeBefore
-      );
-      expect(evidence.resumeLogin).not.toMatch(/not match|invalid|failed/i);
+      // A failed semantic verification can create the account before a later
+      // assertion asks the model to repair the UI. Re-running the verifier
+      // must therefore accept the already-authenticated state instead of
+      // assuming that a duplicate response always leaves the signup form open.
+      const existingSession = productFrame(page)
+        .getByText(/Signed in as Player One/i)
+        .first();
+      if (await existingSession.isVisible().catch(() => false)) {
+        evidence.resumeLogin = "existing authenticated account resumed";
+      } else {
+        await productFrame(page).getByRole("button", {
+          name: "Have an account? Sign in",
+          exact: true
+        }).click();
+        const resumedId = productFrame(page).getByRole("textbox", {
+          name: "Sign-in ID",
+          exact: true
+        });
+        const resumedPassword = productFrame(page).getByLabel("Password", {
+          exact: true
+        });
+        await resumedId.fill("");
+        await resumedPassword.fill("");
+        await resumedId.pressSequentially(accountId, { delay: 12 });
+        await resumedPassword.pressSequentially(accountPassword, { delay: 20 });
+        const resumeBefore = await accountMessage.textContent();
+        await productFrame(page).getByRole("button", {
+          name: "Sign in",
+          exact: true
+        }).click();
+        evidence.resumeLogin = await waitForAuthenticationOutcome(
+          accountMessage,
+          resumeBefore
+        );
+        expect(evidence.resumeLogin).not.toMatch(/not match|invalid|failed/i);
+      }
     } else {
       expect(evidence.signup).not.toMatch(/invalid|failed|could not/i);
     }
@@ -446,7 +492,10 @@ async function verifyPublicAccountExperience(page, sessionId, version) {
       name: "Sign in",
       exact: true
     }).click();
-    evidence.login = await waitForTerminalMessage(accountMessage, loginBefore);
+    evidence.login = await waitForAuthenticationOutcome(
+      accountMessage,
+      loginBefore
+    );
     expect(evidence.login).not.toMatch(/not match|invalid|failed/i);
     await expect(productFrame(page).getByText(/Signed in as Player One/i).first())
       .toBeVisible({ timeout: 20_000 });
